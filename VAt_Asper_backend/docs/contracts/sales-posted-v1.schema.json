@@ -1,0 +1,103 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:enterprise-vat:events:sales-posted:v1",
+  "title": "SalesPostedV1 envelope",
+  "description": "Committed stock issue and output VAT posting notification. Separate from the purchase financial projection.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "eventId",
+    "eventType",
+    "schemaVersion",
+    "occurredAt",
+    "tenantId",
+    "companyId",
+    "aggregateId",
+    "aggregateVersion",
+    "correlationId",
+    "payload"
+  ],
+  "properties": {
+    "eventId": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "eventType": {
+      "const": "SalesPostedV1"
+    },
+    "schemaVersion": {
+      "const": 1
+    },
+    "occurredAt": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "tenantId": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "companyId": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "aggregateId": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "aggregateVersion": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "correlationId": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "payload": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "invoiceId",
+        "warehouseId",
+        "documentNumber",
+        "businessDate",
+        "currency",
+        "netAmount",
+        "outputTaxAmount",
+        "grossAmount"
+      ],
+      "properties": {
+        "invoiceId": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "warehouseId": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "documentNumber": {
+          "type": "string",
+          "pattern": "^S-[0-9a-f]{32}$"
+        },
+        "businessDate": {
+          "type": "string",
+          "format": "date"
+        },
+        "currency": {
+          "const": "BDT"
+        },
+        "netAmount": {
+          "type": "number",
+          "minimum": 0
+        },
+        "outputTaxAmount": {
+          "type": "number",
+          "minimum": 0
+        },
+        "grossAmount": {
+          "type": "number",
+          "minimum": 0
+        }
+      }
+    }
+  }
+}

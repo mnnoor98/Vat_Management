@@ -1,0 +1,159 @@
+services:
+  identity:
+    build:
+      context: .
+      dockerfile: src/Services/Identity/Vat.Identity.Api/Dockerfile
+    environment:
+      ASPNETCORE_ENVIRONMENT: Production
+      ConnectionStrings__IdentityDatabase: "${VAT_IDENTITY_DATABASE_CONNECTION:?Set VAT_IDENTITY_DATABASE_CONNECTION}"
+      Authentication__Authority: "${VAT_OIDC_AUTHORITY:?Set VAT_OIDC_AUTHORITY}"
+      Authentication__Audience: "${VAT_OIDC_AUDIENCE:-vat-api}"
+      Messaging__Enabled: "false"
+    ports:
+      - "127.0.0.1:5101:8080"
+    restart: unless-stopped
+  company:
+    build:
+      context: .
+      dockerfile: src/Services/Company/Vat.Company.Api/Dockerfile
+    environment:
+      ASPNETCORE_ENVIRONMENT: Production
+      ConnectionStrings__CompanyDatabase: "${VAT_COMPANY_DATABASE_CONNECTION:?Set VAT_COMPANY_DATABASE_CONNECTION}"
+      Authentication__Authority: "${VAT_OIDC_AUTHORITY:?Set VAT_OIDC_AUTHORITY}"
+      Authentication__Audience: "${VAT_OIDC_AUDIENCE:-vat-api}"
+      Messaging__Enabled: "false"
+    ports:
+      - "127.0.0.1:5102:8080"
+    restart: unless-stopped
+  master-data:
+    build:
+      context: .
+      dockerfile: src/Services/MasterData/Vat.MasterData.Api/Dockerfile
+    environment:
+      ASPNETCORE_ENVIRONMENT: Production
+      ConnectionStrings__MasterDataDatabase: "${VAT_MASTERDATA_DATABASE_CONNECTION:?Set VAT_MASTERDATA_DATABASE_CONNECTION}"
+      Authentication__Authority: "${VAT_OIDC_AUTHORITY:?Set VAT_OIDC_AUTHORITY}"
+      Authentication__Audience: "${VAT_OIDC_AUDIENCE:-vat-api}"
+      Messaging__Enabled: "false"
+    ports:
+      - "127.0.0.1:5103:8080"
+    restart: unless-stopped
+  purchase:
+    build:
+      context: .
+      dockerfile: src/Services/Purchase/Vat.Purchase.Api/Dockerfile
+    environment:
+      ASPNETCORE_ENVIRONMENT: Production
+      ConnectionStrings__PurchaseDatabase: "${VAT_PURCHASE_DATABASE_CONNECTION:?Set VAT_PURCHASE_DATABASE_CONNECTION}"
+      Authentication__Authority: "${VAT_OIDC_AUTHORITY:?Set VAT_OIDC_AUTHORITY}"
+      Authentication__Audience: "${VAT_OIDC_AUDIENCE:-vat-api}"
+      Messaging__Enabled: "false"
+    ports:
+      - "127.0.0.1:5104:8080"
+    restart: unless-stopped
+  sales:
+    build:
+      context: .
+      dockerfile: src/Services/Sales/Vat.Sales.Api/Dockerfile
+    environment:
+      ASPNETCORE_ENVIRONMENT: Production
+      ConnectionStrings__SalesDatabase: "${VAT_SALES_DATABASE_CONNECTION:?Set VAT_SALES_DATABASE_CONNECTION}"
+      Authentication__Authority: "${VAT_OIDC_AUTHORITY:?Set VAT_OIDC_AUTHORITY}"
+      Authentication__Audience: "${VAT_OIDC_AUDIENCE:-vat-api}"
+      Messaging__Enabled: "false"
+    ports:
+      - "127.0.0.1:5105:8080"
+    restart: unless-stopped
+  inventory:
+    build:
+      context: .
+      dockerfile: src/Services/Inventory/Vat.Inventory.Api/Dockerfile
+    environment:
+      ASPNETCORE_ENVIRONMENT: Production
+      ConnectionStrings__InventoryDatabase: "${VAT_INVENTORY_DATABASE_CONNECTION:?Set VAT_INVENTORY_DATABASE_CONNECTION}"
+      Authentication__Authority: "${VAT_OIDC_AUTHORITY:?Set VAT_OIDC_AUTHORITY}"
+      Authentication__Audience: "${VAT_OIDC_AUDIENCE:-vat-api}"
+      Messaging__Enabled: "false"
+    ports:
+      - "127.0.0.1:5106:8080"
+    restart: unless-stopped
+  manufacturing:
+    build:
+      context: .
+      dockerfile: src/Services/Manufacturing/Vat.Manufacturing.Api/Dockerfile
+    environment:
+      ASPNETCORE_ENVIRONMENT: Production
+      ConnectionStrings__ManufacturingDatabase: "${VAT_MANUFACTURING_DATABASE_CONNECTION:?Set VAT_MANUFACTURING_DATABASE_CONNECTION}"
+      Authentication__Authority: "${VAT_OIDC_AUTHORITY:?Set VAT_OIDC_AUTHORITY}"
+      Authentication__Audience: "${VAT_OIDC_AUDIENCE:-vat-api}"
+      Messaging__Enabled: "false"
+    ports:
+      - "127.0.0.1:5107:8080"
+    restart: unless-stopped
+  vat-engine:
+    build:
+      context: .
+      dockerfile: src/Services/VatEngine/Vat.VatEngine.Api/Dockerfile
+    environment:
+      ASPNETCORE_ENVIRONMENT: Production
+      ConnectionStrings__VatEngineDatabase: "${VAT_VATENGINE_DATABASE_CONNECTION:?Set VAT_VATENGINE_DATABASE_CONNECTION}"
+      Authentication__Authority: "${VAT_OIDC_AUTHORITY:?Set VAT_OIDC_AUTHORITY}"
+      Authentication__Audience: "${VAT_OIDC_AUDIENCE:-vat-api}"
+      Messaging__Enabled: "false"
+    ports:
+      - "127.0.0.1:5108:8080"
+    restart: unless-stopped
+  compliance:
+    build:
+      context: .
+      dockerfile: src/Services/Compliance/Vat.Compliance.Api/Dockerfile
+    environment:
+      ASPNETCORE_ENVIRONMENT: Production
+      ConnectionStrings__ComplianceDatabase: "${VAT_COMPLIANCE_DATABASE_CONNECTION:?Set VAT_COMPLIANCE_DATABASE_CONNECTION}"
+      Authentication__Authority: "${VAT_OIDC_AUTHORITY:?Set VAT_OIDC_AUTHORITY}"
+      Authentication__Audience: "${VAT_OIDC_AUDIENCE:-vat-api}"
+      Messaging__Enabled: "false"
+    ports:
+      - "127.0.0.1:5109:8080"
+    restart: unless-stopped
+  workflow:
+    build:
+      context: .
+      dockerfile: src/Services/Workflow/Vat.Workflow.Api/Dockerfile
+    environment:
+      ASPNETCORE_ENVIRONMENT: Production
+      ConnectionStrings__WorkflowDatabase: "${VAT_WORKFLOW_DATABASE_CONNECTION:?Set VAT_WORKFLOW_DATABASE_CONNECTION}"
+      Authentication__Authority: "${VAT_OIDC_AUTHORITY:?Set VAT_OIDC_AUTHORITY}"
+      Authentication__Audience: "${VAT_OIDC_AUDIENCE:-vat-api}"
+      Messaging__Enabled: "false"
+    ports:
+      - "127.0.0.1:5110:8080"
+    restart: unless-stopped
+  reporting:
+    build:
+      context: .
+      dockerfile: src/Services/Reporting/Vat.Reporting.Api/Dockerfile
+    environment:
+      ASPNETCORE_ENVIRONMENT: Production
+      ConnectionStrings__ReportingDatabase: "${VAT_REPORTING_DATABASE_CONNECTION:?Set VAT_REPORTING_DATABASE_CONNECTION}"
+      Authentication__Authority: "${VAT_OIDC_AUTHORITY:?Set VAT_OIDC_AUTHORITY}"
+      Authentication__Audience: "${VAT_OIDC_AUDIENCE:-vat-api}"
+      Messaging__Enabled: "false"
+    ports:
+      - "127.0.0.1:5111:8080"
+    restart: unless-stopped
+  integration:
+    build:
+      context: .
+      dockerfile: src/Services/Integration/Vat.Integration.Api/Dockerfile
+    environment:
+      ConnectionStrings__IntegrationDatabase: "${VAT_INTEGRATION_DATABASE_CONNECTION:?Set VAT_INTEGRATION_DATABASE_CONNECTION}"
+      ASPNETCORE_ENVIRONMENT: Production
+      Authentication__Authority: "${VAT_OIDC_AUTHORITY:?Set VAT_OIDC_AUTHORITY}"
+      Authentication__Audience: "${VAT_OIDC_AUDIENCE:-vat-api}"
+      Messaging__Enabled: "false"
+      OperatorTargets__SourceBaseUrl: "${VAT_OPERATOR_SOURCE_BASE_URL:-}"
+      OperatorTargets__InboxBaseUrl: "${VAT_OPERATOR_INBOX_BASE_URL:-}"
+    ports:
+      - "127.0.0.1:5112:8080"
+    restart: unless-stopped

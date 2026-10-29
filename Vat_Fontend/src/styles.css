@@ -1,0 +1,566 @@
+/* ==========================================================================
+   ENTERPRISE VAT MANAGEMENT SYSTEM - GLOBAL DESIGN SYSTEM & TOKENS
+   NBR Compliance, Multi-Company, Maker-Checker Architecture
+   ========================================================================== */
+
+:root {
+  /* Color Palette - Premium Enterprise Slate & Emerald Theme */
+  --bg-app: #0f172a;
+  --bg-sidebar: #090e17;
+  --bg-sidebar-hover: #1e293b;
+  --bg-topbar: rgba(15, 23, 42, 0.85);
+  --bg-card: #1e293b;
+  --bg-card-subtle: #162032;
+  --bg-card-hover: #24344d;
+  --bg-input: #0f172a;
+  --bg-dialog: #1a2234;
+
+  /* Accent Colors */
+  --vat-emerald: #10b981;
+  --vat-emerald-glow: rgba(16, 185, 129, 0.25);
+  --vat-emerald-dark: #065f46;
+  --vat-teal: #14b8a6;
+  --vat-cyan: #06b6d4;
+  --vat-blue: #3b82f6;
+  --vat-indigo: #6366f1;
+  --vat-amber: #f59e0b;
+  --vat-amber-glow: rgba(245, 158, 11, 0.2);
+  --vat-rose: #f43f5e;
+  --vat-rose-glow: rgba(244, 63, 94, 0.2);
+  --vat-purple: #8b5cf6;
+
+  /* Typography Colors */
+  --text-main: #f8fafc;
+  --text-muted: #94a3b8;
+  --text-dim: #64748b;
+  --text-inverse: #0f172a;
+
+  /* Borders & Dividers */
+  --border-subtle: #334155;
+  --border-card: #293548;
+  --border-focus: #10b981;
+
+  /* Shadows & Depth */
+  --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.3);
+  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.4), 0 2px 4px -2px rgba(0, 0, 0, 0.3);
+  --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.5), 0 4px 6px -4px rgba(0, 0, 0, 0.4);
+  --shadow-glow: 0 0 20px rgba(16, 185, 129, 0.15);
+
+  /* Fonts */
+  --font-heading: 'Outfit', 'Hind Siliguri', -apple-system, BlinkMacSystemFont, sans-serif;
+  --font-body: 'Inter', 'Hind Siliguri', -apple-system, BlinkMacSystemFont, sans-serif;
+  --font-mono: 'JetBrains Mono', 'Fira Code', monospace;
+
+  /* Dimensions */
+  --sidebar-width: 270px;
+  --sidebar-collapsed-width: 78px;
+  --topbar-height: 68px;
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 14px;
+  --radius-xl: 18px;
+}
+
+/* Light Theme Variables for Printable Invoices / Mushak 6.3 */
+.print-light-theme {
+  --bg-app: #ffffff;
+  --bg-card: #ffffff;
+  --text-main: #000000;
+  --text-muted: #374151;
+  --border-subtle: #cbd5e1;
+}
+
+/* Reset & Base */
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html, body {
+  height: 100%;
+  font-family: var(--font-body);
+  background-color: var(--bg-app);
+  color: var(--text-main);
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  overflow-x: hidden;
+}
+
+/* Scrollbar Customization */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: var(--bg-app);
+}
+::-webkit-scrollbar-thumb {
+  background: var(--border-subtle);
+  border-radius: 9999px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--vat-teal);
+}
+
+/* Typography Helpers */
+h1, h2, h3, h4, h5, h6 {
+  font-family: var(--font-heading);
+  font-weight: 600;
+  color: var(--text-main);
+  letter-spacing: -0.015em;
+}
+
+.font-bengali {
+  font-family: 'Hind Siliguri', 'Inter', sans-serif !important;
+}
+
+/* Badges & Status */
+.status-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  border-radius: 9999px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.status-badge.draft {
+  background: rgba(148, 163, 184, 0.15);
+  color: #94a3b8;
+  border: 1px solid rgba(148, 163, 184, 0.3);
+}
+
+.status-badge.submitted {
+  background: rgba(59, 130, 246, 0.15);
+  color: #60a5fa;
+  border: 1px solid rgba(59, 130, 246, 0.3);
+}
+
+.status-badge.verified {
+  background: rgba(139, 92, 246, 0.15);
+  color: #a78bfa;
+  border: 1px solid rgba(139, 92, 246, 0.3);
+}
+
+.status-badge.approved, .status-badge.posted {
+  background: rgba(16, 185, 129, 0.15);
+  color: #34d399;
+  border: 1px solid rgba(16, 185, 129, 0.3);
+}
+
+.status-badge.rejected {
+  background: rgba(244, 63, 94, 0.15);
+  color: #fb7185;
+  border: 1px solid rgba(244, 63, 94, 0.3);
+}
+
+.status-badge.warning {
+  background: rgba(245, 158, 11, 0.15);
+  color: #fbbf24;
+  border: 1px solid rgba(245, 158, 11, 0.3);
+}
+
+/* Common Card & Panel */
+.vat-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border-card);
+  border-radius: var(--radius-lg);
+  padding: 20px;
+  box-shadow: var(--shadow-sm);
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.vat-card:hover {
+  border-color: var(--border-subtle);
+}
+
+.vat-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 16px;
+}
+
+.vat-card-title {
+  font-size: 1.1rem;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+/* Interactive Buttons */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 9px 18px;
+  border-radius: var(--radius-md);
+  font-size: 0.875rem;
+  font-weight: 600;
+  cursor: pointer;
+  border: none;
+  outline: none;
+  transition: all 0.2s ease;
+  font-family: var(--font-body);
+}
+
+.btn-primary {
+  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+  color: #ffffff;
+  box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
+}
+.btn-primary:hover {
+  background: linear-gradient(135deg, #34d399 0%, #10b981 100%);
+  box-shadow: 0 6px 16px rgba(16, 185, 129, 0.4);
+  transform: translateY(-1px);
+}
+
+.btn-secondary {
+  background: var(--bg-card-hover);
+  color: var(--text-main);
+  border: 1px solid var(--border-subtle);
+}
+.btn-secondary:hover {
+  background: #2e3e57;
+  border-color: #475569;
+}
+
+.btn-danger {
+  background: linear-gradient(135deg, #f43f5e 0%, #e11d48 100%);
+  color: #ffffff;
+  box-shadow: 0 4px 12px rgba(244, 63, 94, 0.3);
+}
+.btn-danger:hover {
+  background: #fb7185;
+}
+
+.btn-success {
+  background: #059669;
+  color: #ffffff;
+}
+.btn-success:hover {
+  background: #10b981;
+}
+
+.btn-sm {
+  padding: 6px 12px;
+  font-size: 0.8rem;
+  border-radius: var(--radius-sm);
+}
+
+/* Inputs & Form Controls */
+.vat-input, .vat-select {
+  width: 100%;
+  padding: 10px 14px;
+  background: var(--bg-input);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  color: var(--text-main);
+  font-size: 0.875rem;
+  font-family: var(--font-body);
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.vat-input:focus, .vat-select:focus {
+  outline: none;
+  border-color: var(--vat-emerald);
+  box-shadow: 0 0 0 3px var(--vat-emerald-glow);
+}
+
+.vat-label {
+  display: block;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  margin-bottom: 6px;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+/* Data Table Grid */
+.vat-table-container {
+  overflow-x: auto;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border-card);
+  background: var(--bg-card);
+}
+
+.vat-table {
+  width: 100%;
+  border-collapse: collapse;
+  text-align: left;
+  font-size: 0.875rem;
+}
+
+.vat-table th {
+  background: var(--bg-card-subtle);
+  color: var(--text-muted);
+  font-weight: 600;
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--border-card);
+  text-transform: uppercase;
+  font-size: 0.75rem;
+  letter-spacing: 0.05em;
+  white-space: nowrap;
+}
+
+.vat-table td {
+  padding: 14px 16px;
+  border-bottom: 1px solid var(--border-card);
+  color: var(--text-main);
+  vertical-align: middle;
+}
+
+.vat-table tbody tr {
+  transition: background-color 0.15s ease;
+}
+
+.vat-table tbody tr:hover {
+  background-color: var(--bg-card-hover);
+}
+
+.vat-table td.text-right, .vat-table th.text-right {
+  text-align: right;
+}
+
+.vat-table td.numeric {
+  font-family: var(--font-mono);
+  font-size: 0.85rem;
+}
+
+/* KPI Card Grid */
+.kpi-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 20px;
+  margin-bottom: 24px;
+}
+
+.kpi-card {
+  background: linear-gradient(145deg, var(--bg-card) 0%, var(--bg-card-subtle) 100%);
+  border: 1px solid var(--border-card);
+  border-radius: var(--radius-lg);
+  padding: 20px;
+  position: relative;
+  overflow: hidden;
+  box-shadow: var(--shadow-sm);
+}
+
+.kpi-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 4px;
+  height: 100%;
+  background: var(--vat-emerald);
+}
+
+.kpi-card.sales::before { background: var(--vat-blue); }
+.kpi-card.output-vat::before { background: var(--vat-rose); }
+.kpi-card.input-vat::before { background: var(--vat-emerald); }
+.kpi-card.net-payable::before { background: var(--vat-amber); }
+
+.kpi-label {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  margin-bottom: 8px;
+}
+
+.kpi-value {
+  font-size: 1.8rem;
+  font-weight: 800;
+  font-family: var(--font-heading);
+  color: var(--text-main);
+  line-height: 1.2;
+}
+
+.kpi-meta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.75rem;
+  color: var(--text-dim);
+  margin-top: 8px;
+}
+
+.kpi-badge-positive {
+  color: var(--vat-emerald);
+  font-weight: 600;
+}
+.kpi-badge-negative {
+  color: var(--vat-rose);
+  font-weight: 600;
+}
+
+/* Animations */
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.animate-fade-in {
+  animation: fadeIn 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+/* ==========================================================================
+   STATUTORY PRINT RULES - NBR COMPLIANCE (100% Clean Full Page)
+   ========================================================================== */
+@media print {
+  /* 1. HIDE ALL NAVIGATION, SIDEBARS, TOPBARS, BUTTONS, HEADERS */
+  app-sidebar,
+  app-topbar,
+  .sidebar,
+  .topbar,
+  .page-header,
+  .header-actions,
+  .breadcrumb-trail,
+  .tab-pill-box,
+  .copy-selector,
+  .no-print,
+  button,
+  .btn,
+  .btn-primary,
+  .btn-secondary,
+  .search-box,
+  .sidebar-footer,
+  .icon-btn,
+  .header-links,
+  .row-actions {
+    display: none !important;
+    visibility: hidden !important;
+    height: 0 !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    overflow: hidden !important;
+  }
+
+  /* 2. RESET ROOT CONTAINERS TO PURE FULL-WIDTH WHITE CANVAS */
+  html, body {
+    background: #ffffff !important;
+    color: #000000 !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    width: 100% !important;
+    height: auto !important;
+    font-size: 10pt !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  .app-layout {
+    display: block !important;
+    width: 100% !important;
+    min-height: auto !important;
+    background: #ffffff !important;
+    padding: 0 !important;
+    margin: 0 !important;
+  }
+
+  .main-wrapper {
+    display: block !important;
+    width: 100% !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    background: #ffffff !important;
+  }
+
+  .page-content {
+    display: block !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+
+  /* 3. STATUTORY FORMS (MUSHAK 6.3, 6.6, 9.1, 6.1, 4.3) STYLING */
+  .statutory-paper, .challan-document {
+    background: #ffffff !important;
+    color: #000000 !important;
+    border: none !important;
+    box-shadow: none !important;
+    padding: 0 !important;
+    margin: 0 auto !important;
+    width: 100% !important;
+  }
+
+  .taxpayer-meta-box, .parties-grid, .cost-breakdown-card, .in-words-box, .treasury-box, .part-section {
+    background: #ffffff !important;
+    border: 1px solid #000000 !important;
+    color: #000000 !important;
+    box-shadow: none !important;
+  }
+
+  .form-badge, .mushak-badge {
+    border: 2px solid #000000 !important;
+    color: #000000 !important;
+    background: transparent !important;
+  }
+
+  .register-title, .challan-title, .page-title, h1, h2, h3, h4 {
+    color: #000000 !important;
+  }
+
+  .vat-table-container {
+    border: none !important;
+    background: #ffffff !important;
+    box-shadow: none !important;
+    width: 100% !important;
+  }
+
+  .vat-table, .mushak-grid, .challan-table, .part-table {
+    border: 1px solid #000000 !important;
+    width: 100% !important;
+    border-collapse: collapse !important;
+  }
+
+  .vat-table th, .vat-table td,
+  .mushak-grid th, .mushak-grid td,
+  .challan-table th, .challan-table td,
+  .part-table th, .part-table td {
+    border: 1px solid #000000 !important;
+    color: #000000 !important;
+    background: #ffffff !important;
+    padding: 6px 8px !important;
+  }
+
+  .total-row th, .col-numbers th {
+    background: #f8fafc !important;
+    color: #000000 !important;
+    border: 1px solid #000000 !important;
+  }
+
+  .text-emerald, .text-rose, .text-amber, .text-teal, .text-dim, .words-text, .challan-no, .grand-total-cell {
+    color: #000000 !important;
+  }
+
+  .copy-watermark {
+    color: #000000 !important;
+    border-color: #000000 !important;
+  }
+
+  .sig-space, .sig-line {
+    border-top: 1px dashed #000000 !important;
+  }
+
+  .challan-footer, .signature-section {
+    page-break-inside: avoid !important;
+  }
+
+  @page {
+    size: A4 portrait;
+    margin: 10mm 15mm 15mm 15mm;
+  }
+}
+

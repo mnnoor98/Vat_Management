@@ -1,0 +1,158 @@
+﻿[
+    {
+        "name":  "Identity",
+        "port":  5101,
+        "project":  "src/Services/Identity/Vat.Identity.Api/Vat.Identity.Api.csproj",
+        "database":  "vat_identity",
+        "connectionKey":  "IdentityDatabase",
+        "ownership":  "independent",
+        "coreProjects":  [
+                             "src/Services/Identity/Domain/Vat.Identity.Domain.csproj",
+                             "src/Services/Identity/Application/Vat.Identity.Application.csproj",
+                             "src/Services/Identity/Infrastructure/Vat.Identity.Infrastructure.csproj"
+                         ]
+    },
+    {
+        "name":  "Company",
+        "port":  5102,
+        "project":  "src/Services/Company/Vat.Company.Api/Vat.Company.Api.csproj",
+        "database":  "vat_company",
+        "connectionKey":  "CompanyDatabase",
+        "ownership":  "independent",
+        "coreProjects":  [
+                             "src/Services/Company/Domain/Vat.Company.Domain.csproj",
+                             "src/Services/Company/Application/Vat.Company.Application.csproj",
+                             "src/Services/Company/Infrastructure/Vat.Company.Infrastructure.csproj"
+                         ]
+    },
+    {
+        "name":  "MasterData",
+        "port":  5103,
+        "project":  "src/Services/MasterData/Vat.MasterData.Api/Vat.MasterData.Api.csproj",
+        "database":  "vat_masterdata",
+        "connectionKey":  "MasterDataDatabase",
+        "ownership":  "independent",
+        "coreProjects":  [
+                             "src/Services/MasterData/Domain/Vat.MasterData.Domain.csproj",
+                             "src/Services/MasterData/Application/Vat.MasterData.Application.csproj",
+                             "src/Services/MasterData/Infrastructure/Vat.MasterData.Infrastructure.csproj"
+                         ]
+    },
+    {
+        "name":  "Purchase",
+        "port":  5104,
+        "project":  "src/Services/Purchase/Vat.Purchase.Api/Vat.Purchase.Api.csproj",
+        "database":  "vat_purchase",
+        "connectionKey":  "PurchaseDatabase",
+        "ownership":  "independent",
+        "coreProjects":  [
+                             "src/Services/Purchase/Domain/Vat.Purchase.Domain.csproj",
+                             "src/Services/Purchase/Application/Vat.Purchase.Application.csproj",
+                             "src/Services/Purchase/Infrastructure/Vat.Purchase.Infrastructure.csproj"
+                         ]
+    },
+    {
+        "name":  "Sales",
+        "port":  5105,
+        "project":  "src/Services/Sales/Vat.Sales.Api/Vat.Sales.Api.csproj",
+        "database":  "vat_sales",
+        "connectionKey":  "SalesDatabase",
+        "ownership":  "independent",
+        "coreProjects":  [
+                             "src/Services/Sales/Domain/Vat.Sales.Domain.csproj",
+                             "src/Services/Sales/Application/Vat.Sales.Application.csproj",
+                             "src/Services/Sales/Infrastructure/Vat.Sales.Infrastructure.csproj"
+                         ]
+    },
+    {
+        "name":  "Inventory",
+        "port":  5106,
+        "project":  "src/Services/Inventory/Vat.Inventory.Api/Vat.Inventory.Api.csproj",
+        "database":  "vat_inventory",
+        "connectionKey":  "InventoryDatabase",
+        "ownership":  "independent",
+        "coreProjects":  [
+                             "src/Services/Inventory/Domain/Vat.Inventory.Domain.csproj",
+                             "src/Services/Inventory/Application/Vat.Inventory.Application.csproj",
+                             "src/Services/Inventory/Infrastructure/Vat.Inventory.Infrastructure.csproj"
+                         ]
+    },
+    {
+        "name":  "Manufacturing",
+        "port":  5107,
+        "project":  "src/Services/Manufacturing/Vat.Manufacturing.Api/Vat.Manufacturing.Api.csproj",
+        "database":  "vat_manufacturing",
+        "connectionKey":  "ManufacturingDatabase",
+        "ownership":  "independent",
+        "coreProjects":  [
+                             "src/Services/Manufacturing/Domain/Vat.Manufacturing.Domain.csproj",
+                             "src/Services/Manufacturing/Application/Vat.Manufacturing.Application.csproj",
+                             "src/Services/Manufacturing/Infrastructure/Vat.Manufacturing.Infrastructure.csproj"
+                         ]
+    },
+    {
+        "name":  "VatEngine",
+        "port":  5108,
+        "project":  "src/Services/VatEngine/Vat.VatEngine.Api/Vat.VatEngine.Api.csproj",
+        "database":  "vat_vatengine",
+        "connectionKey":  "VatEngineDatabase",
+        "ownership":  "independent",
+        "coreProjects":  [
+                             "src/Services/VatEngine/Domain/Vat.VatEngine.Domain.csproj",
+                             "src/Services/VatEngine/Application/Vat.VatEngine.Application.csproj",
+                             "src/Services/VatEngine/Infrastructure/Vat.VatEngine.Infrastructure.csproj"
+                         ]
+    },
+    {
+        "name":  "Compliance",
+        "port":  5109,
+        "project":  "src/Services/Compliance/Vat.Compliance.Api/Vat.Compliance.Api.csproj",
+        "database":  "vat_compliance",
+        "connectionKey":  "ComplianceDatabase",
+        "ownership":  "independent",
+        "coreProjects":  [
+                             "src/Services/Compliance/Domain/Vat.Compliance.Domain.csproj",
+                             "src/Services/Compliance/Application/Vat.Compliance.Application.csproj",
+                             "src/Services/Compliance/Infrastructure/Vat.Compliance.Infrastructure.csproj"
+                         ]
+    },
+    {
+        "name":  "Workflow",
+        "port":  5110,
+        "project":  "src/Services/Workflow/Vat.Workflow.Api/Vat.Workflow.Api.csproj",
+        "database":  "vat_workflow",
+        "connectionKey":  "WorkflowDatabase",
+        "ownership":  "independent",
+        "coreProjects":  [
+                             "src/Services/Workflow/Domain/Vat.Workflow.Domain.csproj",
+                             "src/Services/Workflow/Application/Vat.Workflow.Application.csproj",
+                             "src/Services/Workflow/Infrastructure/Vat.Workflow.Infrastructure.csproj"
+                         ]
+    },
+    {
+        "name":  "Reporting",
+        "port":  5111,
+        "project":  "src/Services/Reporting/Vat.Reporting.Api/Vat.Reporting.Api.csproj",
+        "database":  "vat_reporting",
+        "connectionKey":  "ReportingDatabase",
+        "ownership":  "independent",
+        "coreProjects":  [
+                             "src/Services/Reporting/Core/Domain/Vat.Reporting.Domain.csproj",
+                             "src/Services/Reporting/Core/Application/Vat.Reporting.Application.csproj",
+                             "src/Services/Reporting/Core/Infrastructure/Vat.Reporting.Infrastructure.csproj"
+                         ]
+    },
+    {
+        "name":  "Integration",
+        "port":  5112,
+        "project":  "src/Services/Integration/Vat.Integration.Api/Vat.Integration.Api.csproj",
+        "database":  "vat_integration",
+        "connectionKey":  "IntegrationDatabase",
+        "ownership":  "independent",
+        "coreProjects":  [
+                             "src/Services/Integration/Domain/Vat.Integration.Domain.csproj",
+                             "src/Services/Integration/Application/Vat.Integration.Application.csproj",
+                             "src/Services/Integration/Infrastructure/Vat.Integration.Infrastructure.csproj"
+                         ]
+    }
+]

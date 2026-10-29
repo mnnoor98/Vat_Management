@@ -1,0 +1,9 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+  <ItemGroup>
+    <ProjectReference Include="../../../Vat.Messaging.Http/Vat.Messaging.Http.csproj" />
+    <ProjectReference Include="../../../Vat.Messaging.RabbitMq/Vat.Messaging.RabbitMq.csproj" />
+    <ProjectReference Include="../Infrastructure/Vat.Integration.Infrastructure.csproj" />
+    <ProjectReference Include="../../../Vat.Web/Vat.Web.csproj" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="10.0.11" PrivateAssets="all" />
+  </ItemGroup>
+</Project>

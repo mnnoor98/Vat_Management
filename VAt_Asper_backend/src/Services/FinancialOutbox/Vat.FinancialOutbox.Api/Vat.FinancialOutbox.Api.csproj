@@ -1,0 +1,6 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+  <ItemGroup>
+    <ProjectReference Include="../../../Vat.Hosting/Vat.Hosting.csproj" />
+    <ProjectReference Include="../../../Vat.Messaging.Http/Vat.Messaging.Http.csproj" />
+  </ItemGroup>
+</Project>

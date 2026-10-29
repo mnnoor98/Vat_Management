@@ -1,0 +1,153 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:enterprise-vat:events:customer-payment-allocated:v1",
+  "title": "CustomerPaymentAllocatedV1 envelope",
+  "description": "Committed customer receipt or allocation batch; no sales VAT or stock movement.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "eventId",
+    "eventType",
+    "schemaVersion",
+    "occurredAt",
+    "tenantId",
+    "companyId",
+    "aggregateId",
+    "aggregateVersion",
+    "correlationId",
+    "payload"
+  ],
+  "properties": {
+    "eventId": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "eventType": {
+      "const": "CustomerPaymentAllocatedV1"
+    },
+    "schemaVersion": {
+      "const": 1
+    },
+    "occurredAt": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "tenantId": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "companyId": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "aggregateId": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "aggregateVersion": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "correlationId": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "payload": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "paymentId",
+        "customerId",
+        "currency",
+        "allocations",
+        "allocationDate"
+      ],
+      "properties": {
+        "paymentId": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "customerId": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "currency": {
+          "const": "BDT"
+        },
+        "allocations": {
+          "type": "array",
+          "maxItems": 200,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "id",
+              "tenantId",
+              "companyId",
+              "customerId",
+              "paymentId",
+              "invoiceId",
+              "paymentVersion",
+              "allocationDate",
+              "amount",
+              "allocatedBy",
+              "createdAt"
+            ],
+            "properties": {
+              "id": {
+                "type": "string",
+                "format": "uuid"
+              },
+              "tenantId": {
+                "type": "string",
+                "format": "uuid"
+              },
+              "companyId": {
+                "type": "string",
+                "format": "uuid"
+              },
+              "customerId": {
+                "type": "string",
+                "format": "uuid"
+              },
+              "paymentId": {
+                "type": "string",
+                "format": "uuid"
+              },
+              "invoiceId": {
+                "type": "string",
+                "format": "uuid"
+              },
+              "paymentVersion": {
+                "type": "integer",
+                "minimum": 2
+              },
+              "allocationDate": {
+                "type": "string",
+                "format": "date"
+              },
+              "amount": {
+                "type": "number",
+                "exclusiveMinimum": 0
+              },
+              "allocatedBy": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 200
+              },
+              "createdAt": {
+                "type": "string",
+                "format": "date-time"
+              }
+            }
+          },
+          "minItems": 1
+        },
+        "allocationDate": {
+          "type": "string",
+          "format": "date"
+        }
+      }
+    }
+  }
+}

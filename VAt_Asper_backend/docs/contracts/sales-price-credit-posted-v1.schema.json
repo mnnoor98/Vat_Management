@@ -1,0 +1,157 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:enterprise-vat:events:sales-price-credit-posted:v1",
+  "title": "SalesPriceCreditPostedV1 envelope",
+  "description": "Committed financial-only price credit. Line quantities are zero; stock and reservations are unchanged.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "eventId",
+    "eventType",
+    "schemaVersion",
+    "occurredAt",
+    "tenantId",
+    "companyId",
+    "aggregateId",
+    "aggregateVersion",
+    "correlationId",
+    "payload"
+  ],
+  "properties": {
+    "eventId": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "eventType": {
+      "const": "SalesPriceCreditPostedV1"
+    },
+    "schemaVersion": {
+      "const": 1
+    },
+    "occurredAt": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "tenantId": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "companyId": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "aggregateId": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "aggregateVersion": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "correlationId": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "payload": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "invoiceId",
+        "warehouseId",
+        "documentNumber",
+        "currency",
+        "netAmount",
+        "outputTaxAmount",
+        "grossAmount",
+        "creditNoteId",
+        "originalDocumentNumber",
+        "correctionDate",
+        "lines",
+        "evidenceReference"
+      ],
+      "properties": {
+        "invoiceId": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "warehouseId": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "documentNumber": {
+          "type": "string",
+          "pattern": "^CN-[0-9a-f]{32}$"
+        },
+        "currency": {
+          "const": "BDT"
+        },
+        "netAmount": {
+          "type": "number",
+          "exclusiveMaximum": 0
+        },
+        "outputTaxAmount": {
+          "type": "number",
+          "maximum": 0
+        },
+        "grossAmount": {
+          "type": "number",
+          "maximum": 0
+        },
+        "creditNoteId": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "originalDocumentNumber": {
+          "type": "string",
+          "pattern": "^S-[0-9a-f]{32}$"
+        },
+        "correctionDate": {
+          "type": "string",
+          "format": "date"
+        },
+        "lines": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 200,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "originalEntryId",
+              "lineId",
+              "quantity",
+              "netAmount",
+              "outputTaxAmount"
+            ],
+            "properties": {
+              "originalEntryId": {
+                "type": "string",
+                "format": "uuid"
+              },
+              "lineId": {
+                "type": "string",
+                "format": "uuid"
+              },
+              "quantity": {
+                "const": 0
+              },
+              "netAmount": {
+                "type": "number",
+                "exclusiveMaximum": 0
+              },
+              "outputTaxAmount": {
+                "type": "number",
+                "maximum": 0
+              }
+            }
+          }
+        },
+        "evidenceReference": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 1000
+        }
+      }
+    }
+  }
+}

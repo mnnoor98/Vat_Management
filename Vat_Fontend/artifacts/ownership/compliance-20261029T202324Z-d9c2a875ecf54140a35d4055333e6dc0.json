@@ -1,0 +1,47 @@
+{
+  "SourceDatabase": "vat_management",
+  "TargetDatabase": "vat_compliance",
+  "AlreadyMatched": true,
+  "Tables": [
+    {
+      "Table": "form_templates",
+      "Rows": 1,
+      "Fingerprint": "396f44525fa9da74bcaf0af358238662"
+    },
+    {
+      "Table": "form_versions",
+      "Rows": 1,
+      "Fingerprint": "a4eaea55dc6d9a5d05ab42c9565d47f5"
+    },
+    {
+      "Table": "return_periods",
+      "Rows": 1,
+      "Fingerprint": "eb174d254c8a7d2de1281c6959141a00"
+    },
+    {
+      "Table": "vat_returns",
+      "Rows": 2,
+      "Fingerprint": "75ee16abc14602bbaf98d358dde10798"
+    },
+    {
+      "Table": "return_lines",
+      "Rows": 22,
+      "Fingerprint": "9b18de4008c881e268978966648c20fb"
+    },
+    {
+      "Table": "reconciliation_runs",
+      "Rows": 0,
+      "Fingerprint": "d41d8cd98f00b204e9800998ecf8427e"
+    },
+    {
+      "Table": "filing_evidence",
+      "Rows": 0,
+      "Fingerprint": "d41d8cd98f00b204e9800998ecf8427e"
+    },
+    {
+      "Table": "period_close_requests",
+      "Rows": 0,
+      "Fingerprint": "d41d8cd98f00b204e9800998ecf8427e"
+    }
+  ]
+}

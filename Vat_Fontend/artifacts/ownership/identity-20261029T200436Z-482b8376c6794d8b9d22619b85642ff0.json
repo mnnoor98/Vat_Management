@@ -1,0 +1,52 @@
+{
+  "SourceDatabase": "vat_management",
+  "TargetDatabase": "vat_identity",
+  "AlreadyMatched": true,
+  "Tables": [
+    {
+      "Table": "users",
+      "Rows": 0,
+      "Fingerprint": "d41d8cd98f00b204e9800998ecf8427e"
+    },
+    {
+      "Table": "roles",
+      "Rows": 0,
+      "Fingerprint": "d41d8cd98f00b204e9800998ecf8427e"
+    },
+    {
+      "Table": "permissions",
+      "Rows": 0,
+      "Fingerprint": "d41d8cd98f00b204e9800998ecf8427e"
+    },
+    {
+      "Table": "menu_items",
+      "Rows": 0,
+      "Fingerprint": "d41d8cd98f00b204e9800998ecf8427e"
+    },
+    {
+      "Table": "user_roles",
+      "Rows": 0,
+      "Fingerprint": "d41d8cd98f00b204e9800998ecf8427e"
+    },
+    {
+      "Table": "role_permissions",
+      "Rows": 0,
+      "Fingerprint": "d41d8cd98f00b204e9800998ecf8427e"
+    },
+    {
+      "Table": "role_menus",
+      "Rows": 0,
+      "Fingerprint": "d41d8cd98f00b204e9800998ecf8427e"
+    },
+    {
+      "Table": "refresh_sessions",
+      "Rows": 0,
+      "Fingerprint": "d41d8cd98f00b204e9800998ecf8427e"
+    },
+    {
+      "Table": "security_audit",
+      "Rows": 0,
+      "Fingerprint": "d41d8cd98f00b204e9800998ecf8427e"
+    }
+  ]
+}

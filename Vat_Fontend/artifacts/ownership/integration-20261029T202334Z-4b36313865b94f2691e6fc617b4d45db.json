@@ -1,0 +1,47 @@
+{
+  "SourceDatabase": "vat_management",
+  "TargetDatabase": "vat_integration",
+  "AlreadyMatched": true,
+  "Tables": [
+    {
+      "Table": "integration_connections",
+      "Rows": 0,
+      "Fingerprint": "d41d8cd98f00b204e9800998ecf8427e"
+    },
+    {
+      "Table": "field_mappings",
+      "Rows": 0,
+      "Fingerprint": "d41d8cd98f00b204e9800998ecf8427e"
+    },
+    {
+      "Table": "inbound_batches",
+      "Rows": 0,
+      "Fingerprint": "d41d8cd98f00b204e9800998ecf8427e"
+    },
+    {
+      "Table": "inbound_rows",
+      "Rows": 0,
+      "Fingerprint": "d41d8cd98f00b204e9800998ecf8427e"
+    },
+    {
+      "Table": "external_references",
+      "Rows": 0,
+      "Fingerprint": "d41d8cd98f00b204e9800998ecf8427e"
+    },
+    {
+      "Table": "webhook_subscriptions",
+      "Rows": 0,
+      "Fingerprint": "d41d8cd98f00b204e9800998ecf8427e"
+    },
+    {
+      "Table": "delivery_attempts",
+      "Rows": 0,
+      "Fingerprint": "d41d8cd98f00b204e9800998ecf8427e"
+    },
+    {
+      "Table": "dead_letters",
+      "Rows": 0,
+      "Fingerprint": "d41d8cd98f00b204e9800998ecf8427e"
+    }
+  ]
+}

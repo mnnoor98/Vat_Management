@@ -1,0 +1,138 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:enterprise-vat:events:customer-payment-correction-posted:v1",
+  "title": "CustomerPaymentCorrectionPostedV1 envelope",
+  "description": "Committed receipt reversal or refund. Amount is positive cash offset; original receipt and allocation rows remain unchanged.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "eventId",
+    "eventType",
+    "schemaVersion",
+    "occurredAt",
+    "tenantId",
+    "companyId",
+    "aggregateId",
+    "aggregateVersion",
+    "correlationId",
+    "payload"
+  ],
+  "properties": {
+    "eventId": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "eventType": {
+      "const": "CustomerPaymentCorrectionPostedV1"
+    },
+    "schemaVersion": {
+      "const": 1
+    },
+    "occurredAt": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "tenantId": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "companyId": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "aggregateId": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "aggregateVersion": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "correlationId": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "payload": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "correctionId",
+        "paymentId",
+        "customerId",
+        "cashEntryId",
+        "mode",
+        "correctionDate",
+        "documentNumber",
+        "currency",
+        "amount",
+        "releases"
+      ],
+      "properties": {
+        "correctionId": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "paymentId": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "customerId": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "cashEntryId": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "mode": {
+          "enum": [
+            "Reversal",
+            "Refund"
+          ]
+        },
+        "correctionDate": {
+          "type": "string",
+          "format": "date"
+        },
+        "documentNumber": {
+          "type": "string",
+          "pattern": "^(RV|RF)-[0-9a-f]{32}$"
+        },
+        "currency": {
+          "const": "BDT"
+        },
+        "amount": {
+          "type": "number",
+          "exclusiveMinimum": 0
+        },
+        "releases": {
+          "type": "array",
+          "maxItems": 2000,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "allocationId",
+              "invoiceId",
+              "amount"
+            ],
+            "properties": {
+              "allocationId": {
+                "type": "string",
+                "format": "uuid"
+              },
+              "invoiceId": {
+                "type": "string",
+                "format": "uuid"
+              },
+              "amount": {
+                "type": "number",
+                "exclusiveMinimum": 0
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

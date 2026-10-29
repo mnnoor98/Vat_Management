@@ -1,0 +1,12 @@
+**/bin
+**/obj
+.git
+.agents
+.codex
+tmp
+artifacts
+TestResults
+tests
+**/*.pdf
+**/*.zip
+.env

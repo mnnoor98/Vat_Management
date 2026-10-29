@@ -1,0 +1,7 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <ItemGroup>
+    <ProjectReference Include="../Domain/Vat.Purchase.Domain.csproj" />
+    <ProjectReference Include="../../../Vat.SharedKernel/Vat.SharedKernel.csproj" />
+  </ItemGroup>
+</Project>
+

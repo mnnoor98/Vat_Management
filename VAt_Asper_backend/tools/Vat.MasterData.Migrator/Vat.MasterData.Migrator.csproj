@@ -1,0 +1,5 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup><OutputType>Exe</OutputType></PropertyGroup>
+  <ItemGroup><ProjectReference Include="../../src/Services/MasterData/Infrastructure/Vat.MasterData.Infrastructure.csproj" /></ItemGroup>
+</Project>
+

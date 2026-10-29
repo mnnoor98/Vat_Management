@@ -1,0 +1,13 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <ItemGroup>
+    <Compile Include="../Services/*/Domain/**/*.cs" Exclude="../Services/Identity/**;../Services/Company/**;../Services/MasterData/**;../Services/Purchase/**;../Services/Sales/**;../Services/Inventory/**;../Services/VatEngine/**;../Services/Reporting/**;../Services/Integration/**;../Services/Manufacturing/**;../Services/Compliance/**;../Services/Workflow/**;../Services/**/obj/**;../Services/**/bin/**" Link="Services/%(RecursiveDir)%(Filename)%(Extension)" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="../Vat.SharedKernel/Vat.SharedKernel.csproj" />
+    <ProjectReference Include="../Services/Company/Domain/Vat.Company.Domain.csproj" />
+    <ProjectReference Include="../Services/MasterData/Domain/Vat.MasterData.Domain.csproj" />
+    <ProjectReference Include="../Services/Purchase/Domain/Vat.Purchase.Domain.csproj" />
+    <ProjectReference Include="../Services/Sales/Domain/Vat.Sales.Domain.csproj" />
+    <ProjectReference Include="../Services/VatEngine/Domain/Vat.VatEngine.Domain.csproj" />
+  </ItemGroup>
+</Project>

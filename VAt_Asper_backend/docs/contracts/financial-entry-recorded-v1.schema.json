@@ -1,0 +1,43 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:enterprise-vat:events:financial-entry-recorded:v1",
+  "title": "FinancialEntryRecordedV1",
+  "description": "Immutable signed reporting transaction, emitted atomically with purchase posting or full reversal. Delivery is at least once.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["eventId", "eventType", "schemaVersion", "occurredAt", "tenantId", "companyId", "aggregateId", "aggregateVersion", "correlationId", "payload"],
+  "properties": {
+    "eventId": { "type": "string", "format": "uuid" },
+    "eventType": { "const": "FinancialEntryRecordedV1" },
+    "schemaVersion": { "const": 1 },
+    "occurredAt": { "type": "string", "format": "date-time" },
+    "tenantId": { "type": "string", "format": "uuid" },
+    "companyId": { "type": "string", "format": "uuid" },
+    "aggregateId": { "type": "string", "format": "uuid" },
+    "aggregateVersion": { "type": "integer", "minimum": 1 },
+    "correlationId": { "type": "string", "format": "uuid" },
+    "payload": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["transactionId", "purchaseId", "branchId", "warehouseId", "kind", "businessDate", "externalReference", "currency", "netAmount", "taxAmount", "recoverableTaxAmount", "reversalOfTransactionId"],
+      "properties": {
+        "transactionId": { "type": "string", "format": "uuid" },
+        "purchaseId": { "type": "string", "format": "uuid" },
+        "branchId": { "type": "string", "format": "uuid" },
+        "warehouseId": { "type": "string", "format": "uuid" },
+        "kind": { "enum": ["Purchase", "PurchaseReversal"] },
+        "businessDate": { "type": "string", "format": "date" },
+        "externalReference": { "type": "string", "minLength": 1, "maxLength": 100 },
+        "currency": { "const": "BDT" },
+        "netAmount": { "type": "number", "multipleOf": 0.0001 },
+        "taxAmount": { "type": "number", "multipleOf": 0.0001 },
+        "recoverableTaxAmount": { "type": "number", "multipleOf": 0.0001 },
+        "reversalOfTransactionId": { "type": ["string", "null"], "format": "uuid" }
+      },
+      "oneOf": [
+        { "properties": { "kind": { "const": "Purchase" }, "reversalOfTransactionId": { "type": "null" }, "netAmount": { "minimum": 0 }, "taxAmount": { "minimum": 0 }, "recoverableTaxAmount": { "minimum": 0 } } },
+        { "properties": { "kind": { "const": "PurchaseReversal" }, "reversalOfTransactionId": { "type": "string" }, "netAmount": { "maximum": 0 }, "taxAmount": { "maximum": 0 }, "recoverableTaxAmount": { "maximum": 0 } } }
+      ]
+    }
+  }
+}

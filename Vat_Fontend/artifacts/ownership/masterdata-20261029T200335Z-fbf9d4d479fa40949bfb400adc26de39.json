@@ -1,0 +1,22 @@
+{
+  "SourceDatabase": "vat_management",
+  "TargetDatabase": "vat_masterdata",
+  "AlreadyMatched": false,
+  "Tables": [
+    {
+      "Table": "products",
+      "Rows": 5,
+      "Fingerprint": "08ab734ab7cc75c80199488f5b116203"
+    },
+    {
+      "Table": "suppliers",
+      "Rows": 3,
+      "Fingerprint": "6b1e1b16f8bc5868ad48b358d02eefb2"
+    },
+    {
+      "Table": "customers",
+      "Rows": 4,
+      "Fingerprint": "dc1631ed56cebbf05817db72059326f4"
+    }
+  ]
+}

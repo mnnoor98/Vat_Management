@@ -1,0 +1,113 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:enterprise-vat:events:sales-credit-posted:v1",
+  "title": "SalesCreditPostedV1 envelope",
+  "description": "Committed full goods-return credit notification; signed negative net and output VAT amounts reverse original frozen posting.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "eventId",
+    "eventType",
+    "schemaVersion",
+    "occurredAt",
+    "tenantId",
+    "companyId",
+    "aggregateId",
+    "aggregateVersion",
+    "correlationId",
+    "payload"
+  ],
+  "properties": {
+    "eventId": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "eventType": {
+      "const": "SalesCreditPostedV1"
+    },
+    "schemaVersion": {
+      "const": 1
+    },
+    "occurredAt": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "tenantId": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "companyId": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "aggregateId": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "aggregateVersion": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "correlationId": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "payload": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "invoiceId",
+        "warehouseId",
+        "documentNumber",
+        "currency",
+        "netAmount",
+        "outputTaxAmount",
+        "grossAmount",
+        "creditNoteId",
+        "originalDocumentNumber",
+        "correctionDate"
+      ],
+      "properties": {
+        "invoiceId": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "warehouseId": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "documentNumber": {
+          "type": "string",
+          "pattern": "^CN-[0-9a-f]{32}$"
+        },
+        "currency": {
+          "const": "BDT"
+        },
+        "netAmount": {
+          "type": "number",
+          "maximum": 0
+        },
+        "outputTaxAmount": {
+          "type": "number",
+          "maximum": 0
+        },
+        "grossAmount": {
+          "type": "number",
+          "maximum": 0
+        },
+        "creditNoteId": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "originalDocumentNumber": {
+          "type": "string",
+          "pattern": "^S-[0-9a-f]{32}$"
+        },
+        "correctionDate": {
+          "type": "string",
+          "format": "date"
+        }
+      }
+    }
+  }
+}

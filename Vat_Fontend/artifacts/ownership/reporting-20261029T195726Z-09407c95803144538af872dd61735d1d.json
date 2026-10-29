@@ -1,0 +1,67 @@
+{
+  "SourceDatabase": "vat_management",
+  "TargetDatabase": "vat_reporting",
+  "AlreadyMatched": false,
+  "Tables": [
+    {
+      "Table": "financial_coverage_verifications",
+      "Rows": 0,
+      "Fingerprint": "empty"
+    },
+    {
+      "Table": "customer_snapshot_generations",
+      "Rows": 0,
+      "Fingerprint": "empty"
+    },
+    {
+      "Table": "customer_snapshot_audit",
+      "Rows": 0,
+      "Fingerprint": "empty"
+    },
+    {
+      "Table": "snapshot_generations",
+      "Rows": 0,
+      "Fingerprint": "empty"
+    },
+    {
+      "Table": "snapshot_entries",
+      "Rows": 0,
+      "Fingerprint": "empty"
+    },
+    {
+      "Table": "snapshot_heads",
+      "Rows": 0,
+      "Fingerprint": "empty"
+    },
+    {
+      "Table": "snapshot_command_receipts",
+      "Rows": 0,
+      "Fingerprint": "empty"
+    },
+    {
+      "Table": "snapshot_operator_audit",
+      "Rows": 0,
+      "Fingerprint": "empty"
+    },
+    {
+      "Table": "financial_inbox_generations",
+      "Rows": 0,
+      "Fingerprint": "empty"
+    },
+    {
+      "Table": "financial_inbox_messages",
+      "Rows": 0,
+      "Fingerprint": "empty"
+    },
+    {
+      "Table": "financial_live_entries",
+      "Rows": 0,
+      "Fingerprint": "empty"
+    },
+    {
+      "Table": "financial_inbox_dead_letters",
+      "Rows": 0,
+      "Fingerprint": "empty"
+    }
+  ]
+}

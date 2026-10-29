@@ -1,0 +1,10 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <ItemGroup>
+    <ProjectReference Include="../Vat.Messaging/Vat.Messaging.csproj" />
+    <ProjectReference Include="../Vat.Domain/Vat.Domain.csproj" />
+  </ItemGroup>
+  <ItemGroup>
+    <Compile Include="../Services/*/Application/**/*.cs" Exclude="../Services/Identity/**;../Services/Company/**;../Services/MasterData/**;../Services/Purchase/**;../Services/Sales/**;../Services/Inventory/**;../Services/VatEngine/**;../Services/Reporting/**;../Services/Integration/**;../Services/Manufacturing/**;../Services/Compliance/**;../Services/Workflow/**;../Services/**/obj/**;../Services/**/bin/**" Link="Services/%(RecursiveDir)%(Filename)%(Extension)" />
+  </ItemGroup>
+  <ItemGroup><ProjectReference Include="../Vat.SharedKernel/Vat.SharedKernel.csproj" /></ItemGroup>
+</Project>

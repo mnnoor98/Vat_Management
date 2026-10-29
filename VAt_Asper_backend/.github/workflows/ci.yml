@@ -1,0 +1,77 @@
+name: Backend checks
+on:
+  push:
+  pull_request:
+permissions:
+  contents: read
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+    services:
+      rabbitmq:
+        image: rabbitmq:4-management
+        ports:
+          - 5672:5672
+        options: >-
+          --health-cmd "rabbitmq-diagnostics -q ping"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 24
+      postgres:
+        image: postgres:18
+        env:
+          POSTGRES_USER: vat_test
+          POSTGRES_PASSWORD: ci-disposable-only
+          POSTGRES_DB: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U vat_test -d postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 12
+    env:
+      VAT_TEST_RABBITMQ_URI: amqp://guest:guest@localhost:5672/%2F
+      VAT_TEST_POSTGRES: Host=localhost;Port=5432;Database=postgres;Username=vat_test;Password=ci-disposable-only
+      ConnectionStrings__IntegrationDatabase: Host=localhost;Port=5432;Database=postgres;Username=vat_test;Password=ci-disposable-only
+      ConnectionStrings__ManufacturingDatabase: Host=localhost;Port=5432;Database=postgres;Username=vat_test;Password=ci-disposable-only
+      ConnectionStrings__ComplianceDatabase: Host=localhost;Port=5432;Database=postgres;Username=vat_test;Password=ci-disposable-only
+      ConnectionStrings__WorkflowDatabase: Host=localhost;Port=5432;Database=postgres;Username=vat_test;Password=ci-disposable-only
+      ConnectionStrings__IdentityDatabase: Host=localhost;Port=5432;Database=postgres;Username=vat_test;Password=ci-disposable-only
+      ConnectionStrings__VatDatabase: Host=localhost;Port=5432;Database=postgres;Username=vat_test;Password=ci-disposable-only
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: global.json
+      - run: dotnet restore EnterpriseVat.sln -p:NuGetAuditMode=all
+      - run: dotnet build EnterpriseVat.sln --configuration Release --no-restore -warnaserror
+      - run: dotnet tool restore
+      - run: dotnet ef migrations has-pending-model-changes --project src/Vat.Infrastructure --startup-project src/Vat.Api --context VatDbContext --configuration Release --no-build
+      - run: dotnet ef migrations has-pending-model-changes --project src/Services/Identity/Infrastructure --startup-project src/Services/Identity/Vat.Identity.Api --context IdentityDbContext --configuration Release --no-build
+      - run: dotnet ef migrations has-pending-model-changes --project src/Services/Workflow/Infrastructure --startup-project src/Services/Workflow/Vat.Workflow.Api --context WorkflowDbContext --configuration Release --no-build
+      - run: dotnet ef migrations has-pending-model-changes --project src/Services/Compliance/Infrastructure --startup-project src/Services/Compliance/Vat.Compliance.Api --context ComplianceDbContext --configuration Release --no-build
+      - run: dotnet ef migrations has-pending-model-changes --project src/Services/Manufacturing/Infrastructure --startup-project src/Services/Manufacturing/Vat.Manufacturing.Api --context ManufacturingDbContext --configuration Release --no-build
+      - run: dotnet ef migrations has-pending-model-changes --project src/Services/Integration/Infrastructure --startup-project src/Services/Integration/Vat.Integration.Api --context IntegrationDbContext --configuration Release --no-build
+      - name: Publish business and financial source adapter packages
+        shell: pwsh
+        run: ./scripts/Publish-Services.ps1 -IncludeFinancialOutbox
+      - name: Verify financial source adapter authentication and routes
+        shell: pwsh
+        run: ./scripts/Test-FinancialOutboxHost.ps1 -Published
+      - name: Verify Reporting inbox service authentication and routes
+        shell: pwsh
+        run: ./scripts/Test-ReportingInboxHost.ps1 -Published
+      - name: Verify independent API processes and route ownership
+        shell: pwsh
+        run: ./scripts/Test-ServiceHosts.ps1 -Published
+      - run: dotnet test EnterpriseVat.sln --configuration Release --no-build --no-restore --logger trx --results-directory TestResults
+      - uses: actions/upload-artifact@v4
+        with:
+          name: backend-packages
+          path: artifacts/publish/
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: test-results
+          path: TestResults/*.trx

@@ -1,0 +1,47 @@
+{
+  "SourceDatabase": "vat_management",
+  "TargetDatabase": "vat_inventory",
+  "AlreadyMatched": false,
+  "Tables": [
+    {
+      "Table": "warehouses",
+      "Rows": 0,
+      "Fingerprint": "none"
+    },
+    {
+      "Table": "stock_balances",
+      "Rows": 0,
+      "Fingerprint": "none"
+    },
+    {
+      "Table": "stock_movements",
+      "Rows": 0,
+      "Fingerprint": "none"
+    },
+    {
+      "Table": "transfers",
+      "Rows": 0,
+      "Fingerprint": "none"
+    },
+    {
+      "Table": "transfer_lines",
+      "Rows": 0,
+      "Fingerprint": "none"
+    },
+    {
+      "Table": "transfer_journal",
+      "Rows": 0,
+      "Fingerprint": "none"
+    },
+    {
+      "Table": "adjustments",
+      "Rows": 0,
+      "Fingerprint": "none"
+    },
+    {
+      "Table": "adjustment_lines",
+      "Rows": 0,
+      "Fingerprint": "none"
+    }
+  ]
+}

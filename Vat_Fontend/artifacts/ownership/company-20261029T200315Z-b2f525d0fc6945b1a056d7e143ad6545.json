@@ -1,0 +1,22 @@
+{
+  "SourceDatabase": "vat_management",
+  "TargetDatabase": "vat_company",
+  "AlreadyMatched": false,
+  "Tables": [
+    {
+      "Table": "companies",
+      "Rows": 0,
+      "Fingerprint": "none"
+    },
+    {
+      "Table": "branches",
+      "Rows": 0,
+      "Fingerprint": "none"
+    },
+    {
+      "Table": "fiscal_periods",
+      "Rows": 0,
+      "Fingerprint": "none"
+    }
+  ]
+}

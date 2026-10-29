@@ -1,0 +1,37 @@
+{
+  "SourceDatabase": "vat_management",
+  "TargetDatabase": "vat_vatengine",
+  "AlreadyMatched": false,
+  "Tables": [
+    {
+      "Table": "tax_rule_versions",
+      "Rows": 2,
+      "Fingerprint": "c5d1eef44e6448cc39b18f2cd7aec9f1"
+    },
+    {
+      "Table": "tax_ledger",
+      "Rows": 6,
+      "Fingerprint": "bbec7baddac20a51a5b51043beb50f64"
+    },
+    {
+      "Table": "tax_treatments",
+      "Rows": 0,
+      "Fingerprint": "empty"
+    },
+    {
+      "Table": "tax_calculation_snapshots",
+      "Rows": 0,
+      "Fingerprint": "empty"
+    },
+    {
+      "Table": "tax_posting_batches",
+      "Rows": 0,
+      "Fingerprint": "empty"
+    },
+    {
+      "Table": "vds_entries",
+      "Rows": 0,
+      "Fingerprint": "empty"
+    }
+  ]
+}

@@ -1,0 +1,7 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <ItemGroup>
+    <ProjectReference Include="../Vat.Messaging/Vat.Messaging.csproj" />
+    <PackageReference Include="RabbitMQ.Client" Version="7.2.1" />
+    <PackageReference Include="Microsoft.Extensions.Hosting.Abstractions" Version="10.0.11" />
+  </ItemGroup>
+</Project>

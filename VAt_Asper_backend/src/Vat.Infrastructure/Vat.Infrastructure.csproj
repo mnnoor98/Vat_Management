@@ -1,0 +1,13 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <ItemGroup>
+    <ProjectReference Include="../Vat.Application/Vat.Application.csproj" />
+    <ProjectReference Include="../Vat.Messaging/Vat.Messaging.csproj" />
+    <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" Version="10.0.3" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore" Version="10.0.11" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Relational" Version="10.0.11" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="10.0.11" PrivateAssets="all" />
+  </ItemGroup>
+  <ItemGroup>
+    <Compile Include="../Services/*/Infrastructure/**/*.cs" Exclude="../Services/Identity/**;../Services/Company/**;../Services/MasterData/**;../Services/Purchase/**;../Services/Sales/**;../Services/Inventory/**;../Services/VatEngine/**;../Services/Reporting/**;../Services/Integration/**;../Services/Manufacturing/**;../Services/Compliance/**;../Services/Workflow/**;../Services/**/obj/**;../Services/**/bin/**" Link="Services/%(RecursiveDir)%(Filename)%(Extension)" />
+  </ItemGroup>
+</Project>

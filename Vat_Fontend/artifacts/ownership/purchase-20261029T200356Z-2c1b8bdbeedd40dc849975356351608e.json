@@ -1,0 +1,27 @@
+{
+  "SourceDatabase": "vat_management",
+  "TargetDatabase": "vat_purchase",
+  "AlreadyMatched": false,
+  "Tables": [
+    {
+      "Table": "purchases",
+      "Rows": 11,
+      "Fingerprint": "61006b4e3ab7906a69fb28213efb0405"
+    },
+    {
+      "Table": "purchase_lines",
+      "Rows": 18,
+      "Fingerprint": "e2d6d62e3bbfee4ea937b7e2ae5551b5"
+    },
+    {
+      "Table": "purchase_posting_plans",
+      "Rows": 4,
+      "Fingerprint": "61b2d8340d3877ff6a0b0ac3d94dd280"
+    },
+    {
+      "Table": "purchase_reversals",
+      "Rows": 0,
+      "Fingerprint": "empty"
+    }
+  ]
+}

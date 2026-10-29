@@ -1,0 +1,22 @@
+{
+  "SourceDatabase": "vat_management",
+  "TargetDatabase": "vat_company",
+  "AlreadyMatched": false,
+  "Tables": [
+    {
+      "Table": "companies",
+      "Rows": 1,
+      "Fingerprint": "7b5a074a04c1e4588c43ce05f5c7bade"
+    },
+    {
+      "Table": "branches",
+      "Rows": 3,
+      "Fingerprint": "29f0feac15b1bb38cee2205fca9f04d0"
+    },
+    {
+      "Table": "fiscal_periods",
+      "Rows": 1,
+      "Fingerprint": "ebdd402363cc40cc9982a211e08cfe2c"
+    }
+  ]
+}

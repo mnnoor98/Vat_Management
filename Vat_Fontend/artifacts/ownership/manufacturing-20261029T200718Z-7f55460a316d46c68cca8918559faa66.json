@@ -1,0 +1,42 @@
+{
+  "SourceDatabase": "vat_management",
+  "TargetDatabase": "vat_manufacturing",
+  "AlreadyMatched": false,
+  "Tables": [
+    {
+      "Table": "bom_headers",
+      "Rows": 2,
+      "Fingerprint": "1bc94994abcedd6f58345e77fd40e0ff"
+    },
+    {
+      "Table": "coefficient_versions",
+      "Rows": 2,
+      "Fingerprint": "8afa0a3c4ff4fb20662b48aa4d01f3ab"
+    },
+    {
+      "Table": "bom_lines",
+      "Rows": 4,
+      "Fingerprint": "a76bcebdd2f74db8be9293ee508ab488"
+    },
+    {
+      "Table": "production_orders",
+      "Rows": 0,
+      "Fingerprint": "empty"
+    },
+    {
+      "Table": "material_issues",
+      "Rows": 0,
+      "Fingerprint": "empty"
+    },
+    {
+      "Table": "production_receipts",
+      "Rows": 0,
+      "Fingerprint": "empty"
+    },
+    {
+      "Table": "wastage_records",
+      "Rows": 0,
+      "Fingerprint": "empty"
+    }
+  ]
+}

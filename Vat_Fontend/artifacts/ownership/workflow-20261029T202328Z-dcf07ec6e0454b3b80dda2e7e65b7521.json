@@ -1,0 +1,42 @@
+{
+  "SourceDatabase": "vat_management",
+  "TargetDatabase": "vat_workflow",
+  "AlreadyMatched": true,
+  "Tables": [
+    {
+      "Table": "workflow_definitions",
+      "Rows": 0,
+      "Fingerprint": "d41d8cd98f00b204e9800998ecf8427e"
+    },
+    {
+      "Table": "workflow_versions",
+      "Rows": 0,
+      "Fingerprint": "d41d8cd98f00b204e9800998ecf8427e"
+    },
+    {
+      "Table": "approval_instances",
+      "Rows": 0,
+      "Fingerprint": "d41d8cd98f00b204e9800998ecf8427e"
+    },
+    {
+      "Table": "approval_tasks",
+      "Rows": 0,
+      "Fingerprint": "d41d8cd98f00b204e9800998ecf8427e"
+    },
+    {
+      "Table": "approval_actions",
+      "Rows": 0,
+      "Fingerprint": "d41d8cd98f00b204e9800998ecf8427e"
+    },
+    {
+      "Table": "delegations",
+      "Rows": 0,
+      "Fingerprint": "d41d8cd98f00b204e9800998ecf8427e"
+    },
+    {
+      "Table": "escalation_rules",
+      "Rows": 0,
+      "Fingerprint": "d41d8cd98f00b204e9800998ecf8427e"
+    }
+  ]
+}

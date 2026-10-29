@@ -1,0 +1,67 @@
+{
+  "SourceDatabase": "vat_management",
+  "TargetDatabase": "vat_sales",
+  "AlreadyMatched": false,
+  "Tables": [
+    {
+      "Table": "sales_invoices",
+      "Rows": 0,
+      "Fingerprint": "empty"
+    },
+    {
+      "Table": "sales_invoice_lines",
+      "Rows": 0,
+      "Fingerprint": "empty"
+    },
+    {
+      "Table": "sales_summaries",
+      "Rows": 0,
+      "Fingerprint": "none"
+    },
+    {
+      "Table": "postings",
+      "Rows": 0,
+      "Fingerprint": "none"
+    },
+    {
+      "Table": "posting_entries",
+      "Rows": 0,
+      "Fingerprint": "empty"
+    },
+    {
+      "Table": "credit_notes",
+      "Rows": 0,
+      "Fingerprint": "empty"
+    },
+    {
+      "Table": "debit_notes",
+      "Rows": 0,
+      "Fingerprint": "empty"
+    },
+    {
+      "Table": "payments",
+      "Rows": 0,
+      "Fingerprint": "empty"
+    },
+    {
+      "Table": "payment_allocations",
+      "Rows": 0,
+      "Fingerprint": "empty"
+    },
+    {
+      "Table": "payment_corrections",
+      "Rows": 0,
+      "Fingerprint": "empty"
+    },
+    {
+      "Table": "payment_cash_adjustments",
+      "Rows": 0,
+      "Fingerprint": "empty"
+    },
+    {
+      "Table": "payment_allocation_releases",
+      "Rows": 0,
+      "Fingerprint": "empty"
+    }
+  ]
+}

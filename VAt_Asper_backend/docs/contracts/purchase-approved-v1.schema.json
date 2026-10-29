@@ -1,0 +1,36 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:enterprise-vat:events:purchase-approved:v1",
+  "title": "PurchaseApprovedV1 envelope",
+  "description": "An immutable approval notification. It does not confirm inventory or VAT posting; optional messaging workers deliver it without adding report monetary totals.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["eventId", "eventType", "schemaVersion", "occurredAt", "tenantId", "companyId", "aggregateId", "aggregateVersion", "correlationId", "payload"],
+  "properties": {
+    "eventId": { "type": "string", "format": "uuid" },
+    "eventType": { "const": "PurchaseApprovedV1" },
+    "schemaVersion": { "const": 1 },
+    "occurredAt": { "type": "string", "format": "date-time" },
+    "tenantId": { "type": "string", "format": "uuid" },
+    "companyId": { "type": "string", "format": "uuid" },
+    "aggregateId": { "type": "string", "format": "uuid" },
+    "aggregateVersion": { "type": "integer", "minimum": 1 },
+    "correlationId": { "type": "string", "format": "uuid" },
+    "payload": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["purchaseId", "branchId", "documentVersion", "externalReference", "businessDate", "currency", "netAmount", "makerId", "approverId"],
+      "properties": {
+        "purchaseId": { "type": "string", "format": "uuid" },
+        "branchId": { "type": "string", "format": "uuid" },
+        "documentVersion": { "type": "integer", "minimum": 1 },
+        "externalReference": { "type": "string", "minLength": 1, "maxLength": 100 },
+        "businessDate": { "type": "string", "format": "date" },
+        "currency": { "const": "BDT" },
+        "netAmount": { "type": "number", "minimum": 0 },
+        "makerId": { "type": "string", "minLength": 1, "maxLength": 200 },
+        "approverId": { "type": "string", "minLength": 1, "maxLength": 200 }
+      }
+    }
+  }
+}

@@ -1,0 +1,42 @@
+# ====================================================================
+# Enterprise VAT Management System - Root .gitignore
+# ====================================================================
+
+# .NET & C# Build Outputs
+bin/
+obj/
+*.user
+*.userosscache
+*.sln.docstates
+*.suo
+.vs/
+TestResults/
+*.log
+
+# Backend Temporary & Runtime Dumps
+artifacts/backups/
+artifacts/services/
+tmp/
+*.dump
+*.dump.sha256
+
+# Node.js & Angular Frontend
+node_modules/
+dist/
+.angular/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Editors & IDEs
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS Generated Files
+Thumbs.db
+ehthumbs.db
+[Dd]esktop.ini
+$RECYCLE.BIN/
+.DS_Store
