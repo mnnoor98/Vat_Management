@@ -2,10 +2,10 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Vat.Api.Security;
 using Vat.Application.Security;
-using Vat.Services.Purchase;
-using Vat.Services.Purchase.Contracts;
+using Vat.Application;
+using Vat.Application.Contracts;
 
-namespace Vat.Services.Purchase.Controllers;
+namespace Vat.Coordinated.Purchase.Controllers;
 
 public static class PurchaseApiCommands
 {

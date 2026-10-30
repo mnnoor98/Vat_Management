@@ -1,3 +1,5 @@
+Current runtime (30 October 2026): this API uses the coordinated financial core and `ConnectionStrings__VatDatabase`. Supply the same reviewed financial database to all seven financial hosts. The extracted context is staged, not the active write owner. See [transaction boundary, configuration and validation](../../../docs/architecture/0034-coordinated-financial-boundary.md). Earlier ownership/migration notes below describe historical or staged implementations; do not treat changing connections as a data migration.
+
 # Reporting backend
 
 The optional service-only inbox delivery endpoint is enabled through `InboxServer__Enabled=true` plus a dedicated secret and HTTPS listener. It returns V1 receipts after inbox/projection/quarantine commit; storage still uses the financial database. See [delivery configuration and ownership limits](../../../docs/architecture/0022-reporting-delivery-commit-receipts.md). The endpoint is disabled by default.

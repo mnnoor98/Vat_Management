@@ -72,6 +72,8 @@ public sealed class PaymentService(IPaymentStore store, ICustomerStore customers
     }
     public async Task<CommandOutcome> Approve(Actor actor, Guid company, Guid id, TransitionRequest request, string correlation, CancellationToken ct)
     {
+        actor.RequireCompany(company);
+        Vat.Domain.FinancialBoundary.RequireAvailable();
         var payment = await Find(actor, company, id, ct);
         if (!policy.Enabled) throw new DomainException("posting_disabled", "Financial posting is disabled.", 409);
         await periods.RequireOpen(actor.TenantId, company, payment.PaymentDate, ct);

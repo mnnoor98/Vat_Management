@@ -1,32 +1,13 @@
 import { HttpInterceptorFn, HttpRequest, HttpHandlerFn, HttpEvent, HttpErrorResponse } from '@angular/common/http';
 import { inject } from '@angular/core';
 import { Router } from '@angular/router';
-import { Observable, BehaviorSubject, throwError, of } from 'rxjs';
-import { catchError, filter, switchMap, take } from 'rxjs/operators';
+import { Observable, throwError } from 'rxjs';
+import { catchError } from 'rxjs/operators';
 import { ToastService } from '../services/toast.service';
 import { AuthService } from '../services/auth.service';
 import { CompanyContextService } from '../services/company-context.service';
 
-// Module-level token refresh state for queuing concurrent requests
-let isRefreshing = false;
-const refreshTokenSubject = new BehaviorSubject<string | null>(null);
-
-/**
- * Resilient Global Error & Authentication Interceptor
- * 
- * Capabilities:
- * 1. 401 Unauthorized:
- *    - Automatic token refresh & request retry queue.
- *    - If refresh fails, cleans session and redirects to /login with returnUrl.
- * 2. 403 Forbidden:
- *    - Surfaces role-specific RBAC permission denial notices without kicking user out.
- * 3. 500 Internal Server Error:
- *    - Extracts RFC 7807 ProblemDetails payloads (traceId, detail, errors).
- * 4. 422 Unprocessable Entity & 409 Conflict:
- *    - Surfaces NBR statutory rule violations and optimistic concurrency version conflicts.
- * 5. Status 0 (Network Offline):
- *    - Handles backend server outages and offline states gracefully.
- */
+// Surface server failures; a rejected session requires issuer reauthentication. Commands are never silently replayed.
 export const errorInterceptor: HttpInterceptorFn = (
   req: HttpRequest<unknown>,
   next: HttpHandlerFn
@@ -127,55 +108,6 @@ function handle401Error(
   router: Router,
   toast: ToastService
 ): Observable<HttpEvent<unknown>> {
-  // If the request was for auth endpoints or we are already at the login page, don't loop
-  if (req.url.includes('/login') || req.url.includes('/register') || req.url.includes('/refresh') || router.url.includes('/login')) {
-    authService.handleSessionExpired(router.url);
-    return throwError(() => error);
-  }
-
-  if (!isRefreshing) {
-    isRefreshing = true;
-    refreshTokenSubject.next(null);
-
-    return authService.refreshToken().pipe(
-      switchMap((newToken: string | null) => {
-        isRefreshing = false;
-        if (newToken) {
-          refreshTokenSubject.next(newToken);
-          const retriedReq = req.clone({
-            setHeaders: {
-              Authorization: `Bearer ${newToken}`
-            }
-          });
-          return next(retriedReq);
-        }
-
-        // Token refresh returned null or failed
-        authService.handleSessionExpired(router.url);
-        return throwError(() => error);
-      }),
-      catchError(refreshErr => {
-        isRefreshing = false;
-        authService.handleSessionExpired(router.url);
-        return throwError(() => refreshErr);
-      })
-    );
-  } else {
-    // Another request is currently refreshing the token; queue this request
-    return refreshTokenSubject.pipe(
-      filter(token => token !== null),
-      take(1),
-      switchMap((token: string | null) => {
-        if (!token) {
-          return throwError(() => error);
-        }
-        const retriedReq = req.clone({
-          setHeaders: {
-            Authorization: `Bearer ${token}`
-          }
-        });
-        return next(retriedReq);
-      })
-    );
-  }
+  authService.handleSessionExpired(router.url);
+  return throwError(() => error);
 }

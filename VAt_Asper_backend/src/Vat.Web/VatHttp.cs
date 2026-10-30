@@ -1,3 +1,4 @@
+using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Builder;
@@ -30,6 +31,7 @@ public static class VatHttp
 {
     public static WebApplicationBuilder AddVatHttp(this WebApplicationBuilder builder, string serviceName)
     {
+        builder.Services.TryAddSingleton(TimeProvider.System);
         builder.Services.AddSingleton(new BackendIdentity(serviceName));
         builder.Services.AddOptions<OidcSettings>().BindConfiguration("Authentication")
             .Validate(settings => Uri.TryCreate(settings.Authority, UriKind.Absolute, out var uri) && uri.Scheme == "https"
@@ -62,47 +64,20 @@ public static class VatHttp
             .Configure<IOptions<OidcSettings>>((options, settings) =>
             {
                 // Every environment validates an external issuer; test hosts replace discovery explicitly.
-                var isLocalDev = settings.Value.Authority.Contains("localhost");
-                if (isLocalDev)
+                options.Authority = settings.Value.Authority;
+                options.Audience = settings.Value.Audience;
+                options.RequireHttpsMetadata = true;
+                options.MapInboundClaims = false;
+                options.IncludeErrorDetails = false;
+                options.TokenValidationParameters = new TokenValidationParameters
                 {
-                    var devKey = new SymmetricSecurityKey("EnterpriseVatSecretDevKeyForLocalTesting2026!#"u8.ToArray());
-                    var oidcConfig = new Microsoft.IdentityModel.Protocols.OpenIdConnect.OpenIdConnectConfiguration { Issuer = "https://localhost:5080" };
-                    oidcConfig.SigningKeys.Add(devKey);
-                    options.Configuration = oidcConfig;
-                    options.RequireHttpsMetadata = false;
-                    options.MapInboundClaims = false;
-                    options.TokenValidationParameters = new TokenValidationParameters
-                    {
-                        ValidateIssuer = true,
-                        ValidIssuer = "https://localhost:5080",
-                        ValidateAudience = true,
-                        ValidAudience = settings.Value.Audience,
-                        ValidateLifetime = true,
-                        RequireSignedTokens = true,
-                        RequireExpirationTime = true,
-                        ClockSkew = TimeSpan.FromSeconds(30),
-                        ValidateIssuerSigningKey = true,
-                        IssuerSigningKey = devKey,
-                        NameClaimType = "sub"
-                    };
-                }
-                else
-                {
-                    options.Authority = settings.Value.Authority;
-                    options.Audience = settings.Value.Audience;
-                    options.RequireHttpsMetadata = true;
-                    options.MapInboundClaims = false;
-                    options.IncludeErrorDetails = false;
-                    options.TokenValidationParameters = new TokenValidationParameters
-                    {
-                        ValidateIssuer = true, ValidateAudience = true, ValidateLifetime = true,
-                        ValidateIssuerSigningKey = true, RequireSignedTokens = true, RequireExpirationTime = true,
-                        ClockSkew = TimeSpan.FromSeconds(30), NameClaimType = "sub",
-                        ValidAlgorithms = [SecurityAlgorithms.RsaSha256, SecurityAlgorithms.RsaSha384, SecurityAlgorithms.RsaSha512,
-                            SecurityAlgorithms.RsaSsaPssSha256, SecurityAlgorithms.RsaSsaPssSha384, SecurityAlgorithms.RsaSsaPssSha512,
-                            SecurityAlgorithms.EcdsaSha256, SecurityAlgorithms.EcdsaSha384, SecurityAlgorithms.EcdsaSha512]
-                    };
-                }
+                    ValidateIssuer = true, ValidateAudience = true, ValidateLifetime = true,
+                    ValidateIssuerSigningKey = true, RequireSignedTokens = true, RequireExpirationTime = true,
+                    ClockSkew = TimeSpan.FromSeconds(30), NameClaimType = "sub",
+                    ValidAlgorithms = [SecurityAlgorithms.RsaSha256, SecurityAlgorithms.RsaSha384, SecurityAlgorithms.RsaSha512,
+                        SecurityAlgorithms.RsaSsaPssSha256, SecurityAlgorithms.RsaSsaPssSha384, SecurityAlgorithms.RsaSsaPssSha512,
+                        SecurityAlgorithms.EcdsaSha256, SecurityAlgorithms.EcdsaSha384, SecurityAlgorithms.EcdsaSha512]
+                };
                 options.Events = new JwtBearerEvents
                 {
                     OnTokenValidated = context =>

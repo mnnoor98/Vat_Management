@@ -9,8 +9,8 @@ namespace Vat.Services.Sales.Infrastructure;
 
 public sealed class SalesPeriodGuard : IPeriodGuard
 {
-    public Task RequireOpen(Guid tenantId, Guid companyId, DateOnly businessDate, CancellationToken ct) => Task.CompletedTask;
-    public Task LockShared(Guid tenantId, Guid companyId, CancellationToken ct) => Task.CompletedTask;
+    public Task RequireOpen(Guid tenantId, Guid companyId, DateOnly businessDate, CancellationToken ct) => Task.FromException(new Vat.Domain.DomainException("financial_boundary_unavailable", "Verified period admission and financial coordination are required.", 503));
+    public Task LockShared(Guid tenantId, Guid companyId, CancellationToken ct) => Task.FromException(new Vat.Domain.DomainException("financial_boundary_unavailable", "Verified period admission and financial coordination are required.", 503));
 }
 
 public sealed class SalesCustomerStore(SalesDbContext db) : ICustomerStore
@@ -50,7 +50,8 @@ public static class SalesPersistence
     public static IServiceCollection AddSalesPersistence(this IServiceCollection services, IConfiguration config)
     {
         var cs = config.GetConnectionString("SalesDatabase")
-            ?? "Host=127.0.0.1;Port=5432;Database=vat_sales;Username=postgres;Password=123456;";
+            ?? throw new InvalidOperationException("Configure ConnectionStrings:SalesDatabase.");
+        if (string.IsNullOrWhiteSpace(cs)) throw new InvalidOperationException("Configure ConnectionStrings:SalesDatabase.");
         services.AddDbContext<SalesDbContext>(options => Configure(options, cs));
         services.AddScoped<SalesStore>();
         services.AddScoped<ISalesInvoiceStore>(sp => sp.GetRequiredService<SalesStore>());

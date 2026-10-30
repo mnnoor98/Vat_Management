@@ -1,3 +1,5 @@
+Current runtime (30 October 2026): this API uses the coordinated financial core and `ConnectionStrings__VatDatabase`. Supply the same reviewed financial database to all seven financial hosts. The extracted context is staged, not the active write owner. See [transaction boundary, configuration and validation](../../../docs/architecture/0034-coordinated-financial-boundary.md). Earlier ownership/migration notes below describe historical or staged implementations; do not treat changing connections as a data migration.
+
 # Company backend
 
 This backend owns `Vat.Company.Api`, its controllers and its own process on local port **5102**. Its current owned source folders are `Application`, `Domain`, `Infrastructure`. Shared transactional/build dependencies are described in the [architecture guide](../../../docs/SERVICE_ARCHITECTURE.md).

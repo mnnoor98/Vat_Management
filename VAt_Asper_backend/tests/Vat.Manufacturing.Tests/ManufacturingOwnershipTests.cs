@@ -112,6 +112,17 @@ public sealed class ManufacturingOwnershipTests(ManufacturingApiFactory factory)
             await Assert.ThrowsAsync<InvalidOperationException>(() => ManufacturingDataTransfer.Transfer(source, settings.ConnectionString));
             await using (var target = new ManufacturingDbContext(options.Options)) Assert.Equal("independent", await target.Orders.Where(x => x.TenantId == tenant && x.CompanyId == company).Select(x => x.Reference).SingleAsync());
             Assert.Equal(text, await factory.Inspect(db => db.Orders.Where(x => x.TenantId == tenant && x.CompanyId == company).Select(x => x.Reference).SingleAsync()));
+            // Even matching metadata must not overwrite or bypass an active workflow target.
+            await using (var target = new ManufacturingDbContext(options.Options))
+            {
+                (await target.Orders.SingleAsync(x => x.TenantId == tenant && x.CompanyId == company)).Reference = text;
+                target.Add(new CoefficientCommand { TenantId = tenant, CompanyId = company, Id = Guid.NewGuid(),
+                    Actor = "maker", RequestHash = new string('a', 64), ResponseJson = "{}", StatusCode = 200, CreatedAt = DateTimeOffset.UtcNow });
+                await target.SaveChangesAsync();
+            }
+            var active = await Assert.ThrowsAsync<InvalidOperationException>(() => ManufacturingDataTransfer.Transfer(source, settings.ConnectionString));
+            Assert.Contains("active coefficient workflow", active.Message);
+            await using (var target = new ManufacturingDbContext(options.Options)) Assert.Equal(1, await target.Set<CoefficientCommand>().CountAsync());
         }
         finally
         {

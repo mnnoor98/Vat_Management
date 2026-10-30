@@ -8,3 +8,4 @@ echo.
 echo Opening Gateway Swagger UI: http://localhost:5080/swagger
 start http://localhost:5080/swagger
 exit
+

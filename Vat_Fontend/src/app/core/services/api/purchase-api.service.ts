@@ -1,9 +1,11 @@
+import { throwError } from 'rxjs';
 import { Injectable, inject } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
-import { Observable, of, delay, map, catchError, switchMap } from 'rxjs';
+import { Observable, of, delay, map, catchError, switchMap, forkJoin } from 'rxjs';
 import { PurchaseInvoice, DocumentStatus, PurchaseLine } from '../../models/vat-models';
 import { MockDataService } from '../mock-data.service';
 import { CompanyContextService } from '../company-context.service';
+import { CalculationSnapshot, FinancialPlan, InvoicePage } from '../../models/financial-contracts';
 import { environment } from '../../../../environments/environment';
 
 export interface BackendPurchaseLineResponse {
@@ -45,17 +47,16 @@ export class PurchaseApiService {
     return `${environment.apiGatewayUrl}/companies/${this.context.companyGuid()}/purchases`;
   }
 
-  public getInvoices(): Observable<PurchaseInvoice[]> {
+  public getInvoices(page: InvoicePage = {}): Observable<PurchaseInvoice[]> {
     if (environment.useMockData) {
-      return of([...this.mockData.purchaseInvoices]).pipe(delay(80));
+      const items = this.mockData.purchaseInvoices;
+      const start = page.before ? items.findIndex(x => x.id === page.before) + 1 : 0;
+      return of(items.slice(start, start + (page.take ?? 25))).pipe(delay(80));
     }
 
-    return this.http.get<BackendPurchaseResponse[]>(this.baseUrl).pipe(
-      map(responses => responses.map(res => this.mapBackendToFrontend(res))),
-      catchError(err => {
-        console.warn('Backend purchases endpoint unavailable, falling back to mock data:', err);
-        return of([...this.mockData.purchaseInvoices]);
-      })
+    return this.http.get<BackendPurchaseResponse[]>(this.baseUrl, { params: { take: page.take ?? 25, ...(page.before ? { before: page.before } : {}) } }).pipe(
+      switchMap(responses => responses.length ? forkJoin(responses.map(res => this.hydrate(res))) : of([])),
+      catchError(error => throwError(() => error))
     );
   }
 
@@ -66,11 +67,8 @@ export class PurchaseApiService {
     }
 
     return this.http.get<BackendPurchaseResponse>(`${this.baseUrl}/${id}`).pipe(
-      map(res => this.mapBackendToFrontend(res)),
-      catchError(() => {
-        const inv = this.mockData.purchaseInvoices.find(p => p.id === id);
-        return of(inv);
-      })
+      switchMap(res => this.hydrate(res)),
+      catchError(error => throwError(() => error))
     );
   }
 
@@ -85,7 +83,7 @@ export class PurchaseApiService {
         id: `PUR-2026-${count}`,
         invoiceNumber: `PUR-${count}`,
         supplierInvoiceNumber: invoice.supplierInvoiceNumber || 'INV-TEMP',
-        supplierId: invoice.supplierId || 'PTY-SUP-01',
+        supplierId: invoice.supplierId || '',
         supplierName: invoice.supplierName || 'Selected Supplier',
         supplierBin: invoice.supplierBin || '001928374-0101',
         purchaseType: invoice.purchaseType || 'Local',
@@ -131,10 +129,10 @@ export class PurchaseApiService {
     const payload = {
       branchId: targetBranchGuid,
       externalReference: invoice.supplierInvoiceNumber || `INV-${Date.now()}`,
-      supplierReference: invoice.supplierId || 'PTY-SUP-01',
+      supplierReference: invoice.supplierId,
       businessDate: invoice.invoiceDate || new Date().toISOString().split('T')[0],
       lines: (invoice.lines || []).map(l => ({
-        productReference: l.productId || 'PROD-01',
+        productReference: l.productReference || l.productId,
         description: l.productName || 'Raw Material Item',
         quantity: l.quantity,
         unitPrice: l.unitPrice
@@ -144,15 +142,15 @@ export class PurchaseApiService {
     return this.http.post<BackendPurchaseResponse>(this.baseUrl, payload).pipe(
       switchMap(created => {
         // Automatically submit draft purchase invoice to transition it to 'Submitted'
-        return this.http.post<BackendPurchaseResponse>(`${this.baseUrl}/${created.id}/submit`, { expectedVersion: 1 }).pipe(
+        return this.http.post<BackendPurchaseResponse>(`${this.baseUrl}/${created.id}/submit`, { expectedVersion: created.version }).pipe(
           map(res => this.mapBackendToFrontend(res)),
-          catchError(() => of(this.mapBackendToFrontend(created)))
+          catchError(error => throwError(() => error))
         );
       })
     );
   }
 
-  public submitTransition(id: string, expectedVersion: number = 1): Observable<boolean> {
+  public submitTransition(id: string, expectedVersion: number): Observable<boolean> {
     if (environment.useMockData) {
       return this.updateStatus(id, 'Submitted');
     }
@@ -161,24 +159,17 @@ export class PurchaseApiService {
     );
   }
 
-  public approveTransition(id: string, expectedVersion: number = 2): Observable<boolean> {
+  public approveTransition(id: string, expectedVersion: number): Observable<boolean> {
     if (environment.useMockData) {
       return this.updateStatus(id, 'Approved');
     }
     return this.http.post<unknown>(`${this.baseUrl}/${id}/approve`, { expectedVersion }).pipe(
       map(() => true),
-      catchError(err => {
-        if (expectedVersion !== 1) {
-          return this.http.post<unknown>(`${this.baseUrl}/${id}/approve`, { expectedVersion: 1 }).pipe(
-            map(() => true)
-          );
-        }
-        throw err;
-      })
+      catchError(error => throwError(() => error))
     );
   }
 
-  public rejectTransition(id: string, reason: string, expectedVersion: number = 2): Observable<boolean> {
+  public rejectTransition(id: string, reason: string, expectedVersion: number): Observable<boolean> {
     if (environment.useMockData) {
       return this.updateStatus(id, 'Rejected');
     }
@@ -187,34 +178,23 @@ export class PurchaseApiService {
     );
   }
 
-  public postPurchase(id: string, expectedVersion: number = 3): Observable<boolean> {
-    if (environment.useMockData) {
-      return this.updateStatus(id, 'Posted');
-    }
-    const defaultWarehouseId = '55555555-5555-5555-5555-555555555551';
-    return this.http.post<{ id: string }>(`${this.baseUrl}/${id}/posting-plans`, {
-      expectedVersion,
-      warehouseId: defaultWarehouseId
-    }).pipe(
-      switchMap(plan => {
-        return this.http.post<BackendPurchaseResponse>(`${this.baseUrl}/${id}/posting-plans/${plan.id}/post`, {
-          expectedVersion: expectedVersion + 1
-        }).pipe(
-          map(() => {
-            this.updateStatus(id, 'Posted');
-            return true;
-          })
-        );
-      }),
-      catchError(err => {
-        console.warn('Post purchase via plan failed, fallback to mock status:', err);
-        this.updateStatus(id, 'Posted');
-        return of(true);
-      })
+  public preparePosting(id: string, expectedVersion: number, warehouseId: string): Observable<FinancialPlan> {
+    return this.http.post<FinancialPlan>(`${this.baseUrl}/${id}/posting-plans`, { expectedVersion, warehouseId });
+  }
+
+  public getPostingPlan(id: string): Observable<FinancialPlan> {
+    return this.http.get<{ latestPlan: FinancialPlan | null }>(`${this.baseUrl}/${id}/posting-status`).pipe(
+      switchMap(status => status.latestPlan ? of(status.latestPlan) : throwError(() => new Error('No prepared posting plan exists.')))
     );
   }
 
+  public postPurchase(id: string, expectedVersion: number, planId: string): Observable<boolean> {
+    if (environment.useMockData) return this.updateStatus(id, 'Posted');
+    return this.http.post<BackendPurchaseResponse>(`${this.baseUrl}/${id}/posting-plans/${planId}/post`, { expectedVersion }).pipe(map(() => true));
+  }
+
   public updateStatus(id: string, status: DocumentStatus): Observable<boolean> {
+    if (!environment.useMockData) return throwError(() => new Error('Reload the document and use a versioned server command.'));
     const found = this.mockData.purchaseInvoices.find(p => p.id === id);
     if (found) {
       found.status = status;
@@ -222,49 +202,58 @@ export class PurchaseApiService {
     return of(true).pipe(delay(50));
   }
 
-  private mapBackendToFrontend(res: BackendPurchaseResponse): PurchaseInvoice {
-    const lines: PurchaseLine[] = (res.lines || []).map((l, i) => {
-      const taxable = Math.round(l.quantity * l.unitPrice * 100) / 100;
-      const vat = Math.round(taxable * 0.15 * 100) / 100;
+  private hydrate(res: BackendPurchaseResponse): Observable<PurchaseInvoice> {
+    if (!['PostingPrepared', 'Posted', 'ReversalPending', 'Reversed'].includes(res.status)) return of(this.mapBackendToFrontend(res));
+    return this.getPostingPlan(res.id).pipe(map(plan => {
+      const invoice = this.mapBackendToFrontend(res, plan.snapshot);
+      invoice.warehouseId = plan.warehouseId;
+      invoice.postingPlanId = plan.id;
+      return invoice;
+    }));
+  }
+
+  private mapBackendToFrontend(res: BackendPurchaseResponse, snapshot?: CalculationSnapshot): PurchaseInvoice {
+    const lines: PurchaseLine[] = (snapshot?.lines ?? res.lines ?? []).map((l, i) => {
+      const calculated = snapshot?.lines[i];
+      const taxable = calculated?.netAmount ?? l.netAmount;
+      const vat = calculated?.taxAmount ?? calculated?.outputTaxAmount ?? 0;
       return {
         id: `PL-${i + 1}`,
         productId: l.productReference,
         productName: l.description,
         productNameBn: l.description,
-        hsCode: '3901.20.00',
-        uom: 'KG',
+        hsCode: '',
+        uom: calculated?.unitOfMeasure ?? '',
         quantity: l.quantity,
         unitPrice: l.unitPrice,
         taxableAmount: taxable,
-        vatRatePercent: 15,
+        vatRatePercent: calculated?.ratePercent ?? 0,
         vatAmount: vat,
         supplementaryDutyAmount: 0,
         advanceTaxAmount: 0,
         vdsAmount: 0,
         totalAmount: taxable + vat,
-        isCreditEligible: true
+        isCreditEligible: (calculated?.recoverablePercent ?? 0) > 0
       };
     });
 
     const subTotal = lines.reduce((acc, x) => acc + x.taxableAmount, 0);
     const totalVat = lines.reduce((acc, x) => acc + x.vatAmount, 0);
 
-    let status: DocumentStatus = 'Draft';
-    if (res.status === 'Submitted') status = 'Submitted';
-    else if (res.status === 'Posted') status = 'Posted';
-    else if (res.status === 'ApprovedPendingPosting') status = 'Approved';
-    else if (res.status === 'Rejected') status = 'Rejected';
+    const status = (res.status === 'ApprovedPendingPosting' ? 'Approved' : res.status) as DocumentStatus;
 
     return {
       id: res.id,
+      version: res.version,
+      taxCalculated: !!snapshot,
       invoiceNumber: `PUR-${res.externalReference || res.id.slice(0, 8)}`,
       supplierInvoiceNumber: res.externalReference,
-      supplierId: 'PTY-SUP-01',
-      supplierName: res.supplierReference,
-      supplierBin: '001928374-0101',
+      supplierId: res.supplierReference,
+      supplierName: snapshot?.supplierName ?? res.supplierReference,
+      supplierBin: '',
       purchaseType: 'Local',
       invoiceDate: res.businessDate,
-      fiscalPeriod: this.context.activeFiscalPeriod().periodCode,
+      fiscalPeriod: res.businessDate.slice(0, 7),
       companyId: res.companyId,
       branchId: res.branchId,
       status,
@@ -274,7 +263,7 @@ export class PurchaseApiService {
       totalSupplementaryDuty: 0,
       totalAdvanceTax: 0,
       totalVds: 0,
-      grandTotal: subTotal + totalVat,
+      grandTotal: snapshot?.grossAmount ?? res.netAmount,
       createdAt: res.createdAt ? res.createdAt.substring(0, 16).replace('T', ' ') : '',
       createdBy: res.createdBy || 'Maker'
     };

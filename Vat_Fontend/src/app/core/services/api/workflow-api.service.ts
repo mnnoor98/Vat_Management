@@ -1,3 +1,4 @@
+import { throwError } from 'rxjs';
 import { Injectable, inject } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable, of, delay, catchError, map } from 'rxjs';
@@ -30,14 +31,12 @@ export class WorkflowApiService {
         this.navService.setBadgeCount('MENU_WORKFLOW', pendingCount);
         return tasks;
       }),
-      catchError(err => {
-        console.warn('Backend workflow endpoint failed, falling back to mock tasks:', err);
-        return of([...this.mockData.approvalTasks]);
-      })
+      catchError(error => throwError(() => error))
     );
   }
 
   public approveTask(taskId: string, remarks?: string): Observable<boolean> {
+    if (!environment.useMockData) return throwError(() => new Error('Open the source document and submit a versioned approval decision.'));
     const task = this.mockData.approvalTasks.find(t => t.id === taskId);
     if (task) {
       task.status = 'Approved';
@@ -65,6 +64,7 @@ export class WorkflowApiService {
   }
 
   public rejectTask(taskId: string, rejectionReason: string): Observable<boolean> {
+    if (!environment.useMockData) return throwError(() => new Error('Open the source document and submit a versioned approval decision.'));
     const task = this.mockData.approvalTasks.find(t => t.id === taskId);
     if (task) {
       task.status = 'Rejected';
@@ -92,6 +92,7 @@ export class WorkflowApiService {
   }
 
   public sendBackTask(taskId: string, correctionNotes: string): Observable<boolean> {
+    if (!environment.useMockData) return throwError(() => new Error('Open the source document and submit a versioned approval decision.'));
     const task = this.mockData.approvalTasks.find(t => t.id === taskId);
     if (task) {
       task.status = 'SentBack';

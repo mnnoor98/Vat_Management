@@ -1,6 +1,6 @@
 // Enterprise VAT Models - Bangladesh NBR Compliance
 
-export type DocumentStatus = 'Draft' | 'Submitted' | 'Verified' | 'Approved' | 'Posted' | 'Rejected' | 'Cancelled';
+export type DocumentStatus = 'Draft' | 'Submitted' | 'Verified' | 'Approved' | 'Posted' | 'Rejected' | 'Cancelled' | 'PostingPrepared' | 'Reserved' | 'ReversalPending' | 'Reversed' | 'CreditPending' | 'Credited' | 'PartiallyCredited' | 'DebitPending';
 
 export interface Company {
   id: string;
@@ -41,7 +41,7 @@ export interface FiscalPeriod {
   dueDate: string;
 }
 
-export type EnterpriseRole = 'Maker' | 'Checker' | 'Approver' | 'TaxManager' | 'Auditor' | 'SuperAdmin';
+export type EnterpriseRole = 'User' | 'Maker' | 'Checker' | 'Approver' | 'TaxManager' | 'Auditor' | 'SuperAdmin';
 
 export interface UserProfile {
   id: string;
@@ -73,6 +73,8 @@ export interface MenuItem {
 }
 
 export interface ProductItem {
+  taxCode?: string;
+  metadataOnly?: boolean;
   id: string;
   code: string;
   name: string;
@@ -91,6 +93,8 @@ export interface ProductItem {
 }
 
 export interface BusinessParty {
+  version?: number;
+  isActive?: boolean;
   id: string;
   partyType: 'Customer' | 'Supplier';
   code: string;
@@ -107,6 +111,7 @@ export interface BusinessParty {
 }
 
 export interface PurchaseLine {
+  productReference?: string;
   id: string;
   productId: string;
   productName: string;
@@ -126,6 +131,10 @@ export interface PurchaseLine {
 }
 
 export interface PurchaseInvoice {
+  version?: number;
+  taxCalculated?: boolean;
+  warehouseId?: string;
+  postingPlanId?: string;
   id: string;
   invoiceNumber: string;
   supplierInvoiceNumber: string;
@@ -157,6 +166,7 @@ export interface PurchaseInvoice {
 }
 
 export interface SalesLine {
+  productReference?: string;
   id: string;
   productId: string;
   productName: string;
@@ -174,6 +184,10 @@ export interface SalesLine {
 }
 
 export interface SalesInvoice {
+  version?: number;
+  taxCalculated?: boolean;
+  warehouseId?: string;
+  postingPlanId?: string;
   id: string;
   invoiceNumber: string;
   challanNumber63: string; // Official Mushak 6.3 Serial
@@ -306,6 +320,7 @@ export interface Warehouse {
 }
 
 export interface StockBalance {
+  branchId?: string;
   balanceId: string;
   warehouseId: string;
   warehouseCode: string;
@@ -339,6 +354,7 @@ export interface Mushak65TransferLine {
 }
 
 export interface Mushak65Transfer {
+  version?: number;
   id?: string;
   transferNumber: string;
   dispatchDate: string;

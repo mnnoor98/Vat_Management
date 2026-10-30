@@ -1,4 +1,4 @@
-import { Component, OnInit, inject } from '@angular/core';
+import { Component, OnInit, inject, ChangeDetectorRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ReactiveFormsModule, FormBuilder, FormGroup, Validators } from '@angular/forms';
 import { Router, RouterModule } from '@angular/router';
@@ -16,6 +16,7 @@ import { NbrValidators } from '../../../shared/validators/nbr-validators';
   standalone: true,
   imports: [CommonModule, ReactiveFormsModule, RouterModule, BdtCurrencyPipe],
   template: `
+    <p class="vat-card">Draft tax amounts are estimates only. The server calculates applicable tax during posting preparation; review that snapshot before authorization.</p>
     <div class="sales-entry-page">
       <!-- Header -->
       <div class="page-header">
@@ -29,7 +30,7 @@ import { NbrValidators } from '../../../shared/validators/nbr-validators';
           <p class="page-subtitle">
             {{ context.locale() === 'bn'
               ? 'কারখানা বা ডিপো হতে পণ্য অপসারণের পূর্বে সংবিধিবদ্ধ ১৫% মূসক চালানপত্র ইস্যু'
-              : 'Issue statutory 15% VAT Challan prior to goods dispatch from factory or warehouse' }}
+              : 'Create a sales draft for approval and server tax calculation' }}
           </p>
         </div>
 
@@ -93,8 +94,10 @@ import { NbrValidators } from '../../../shared/validators/nbr-validators';
                 {{ c.name }} (BIN: {{ c.bin }})
               </option>
             </select>
+            <button type="button" class="btn btn-secondary" *ngIf="hasMoreCustomers || customersError" [disabled]="customersLoading" (click)="loadMoreCustomers()">{{ customersError ? 'Retry customers' : 'Load more customers' }}</button>
+            <p *ngIf="customersError" role="alert">{{ customersError }}</p>
             <div *ngIf="selectedCustomer" class="customer-meta-badge">
-              <span class="font-mono text-emerald font-bold">BIN: {{ selectedCustomer.bin }}</span> | 
+              <span class="font-mono text-emerald font-bold">BIN: {{ selectedCustomer.bin || 'Not supplied' }}</span> |
               <span class="text-dim">{{ selectedCustomer.address }}</span>
             </div>
             <div *ngIf="isFieldInvalid('customerId')" class="vat-field-error">
@@ -291,7 +294,7 @@ import { NbrValidators } from '../../../shared/validators/nbr-validators';
             <span class="totals-value">{{ subTotal | bdtCurrency }}</span>
           </div>
           <div class="totals-row">
-            <span class="totals-label">Total Output VAT (15%):</span>
+            <span class="totals-label">Estimated Output VAT:</span>
             <span class="totals-value text-rose">+ {{ totalVat | bdtCurrency }}</span>
           </div>
           <div class="totals-divider"></div>
@@ -547,7 +550,12 @@ export class SalesEntryComponent implements OnInit {
   private toast = inject(ToastService);
   private router = inject(Router);
 
+  private cdr = inject(ChangeDetectorRef);
   public customers: BusinessParty[] = [];
+  public hasMoreCustomers = false;
+  public customersLoading = false;
+  public customersError = '';
+  private customerCursor: string | undefined;
   public products: ProductItem[] = [];
   public branches: Branch[] = [];
 
@@ -581,23 +589,16 @@ export class SalesEntryComponent implements OnInit {
     const initialBranchId = this.context.activeBranch().id;
     this.salesForm.patchValue({ selectedBranchId: initialBranchId });
 
-    this.masterApi.getParties('Customer').subscribe({
-      next: (data) => {
-        this.customers = data || [];
-        if (this.customers.length > 0 && !this.salesForm.get('customerId')?.value) {
-          this.salesForm.patchValue({ customerId: this.customers[0].id });
-          this.onCustomerChange();
-        }
-      }
-    });
+    this.loadMoreCustomers();
 
     this.masterApi.getProducts().subscribe({
       next: (data) => {
-        this.products = (data || []).filter(p => p.salesPrice > 0);
+        this.products = data || [];
         if (this.products.length > 0 && !this.lineDraftForm.get('productId')?.value) {
           this.lineDraftForm.patchValue({ productId: this.products[0].id });
           this.onProductSelect();
         }
+        this.cdr.markForCheck();
       }
     });
   }
@@ -605,6 +606,22 @@ export class SalesEntryComponent implements OnInit {
   get selectedCustomer(): BusinessParty | undefined {
     const id = this.salesForm.get('customerId')?.value;
     return this.customers.find(c => c.id === id);
+  }
+
+  loadMoreCustomers(): void {
+    if (this.customersLoading) return;
+    this.customersLoading = true; this.customersError = '';
+    this.masterApi.getParties('Customer', { before: this.customerCursor, take: 25 }).subscribe({
+      next: data => {
+        this.customerCursor = data.at(-1)?.id ?? this.customerCursor;
+        this.hasMoreCustomers = data.length === 25;
+        this.customers.push(...data.filter(c => c.isActive !== false));
+        if (!this.salesForm.get('customerId')?.value && this.customers.length) {
+          this.salesForm.patchValue({ customerId: this.customers[0].id }); this.onCustomerChange();
+        }
+        this.customersLoading = false; this.cdr.markForCheck();
+      }, error: e => { this.customersError = e?.message || 'Unable to load customers.'; this.customersLoading = false; this.cdr.markForCheck(); }
+    });
   }
 
   onCustomerChange(): void {
@@ -668,6 +685,7 @@ export class SalesEntryComponent implements OnInit {
     const line: SalesLine = {
       id: `SL-${Date.now()}`,
       productId: prod.id,
+      productReference: prod.code,
       productName: prod.name,
       productNameBn: prod.nameBn,
       hsCode: prod.hsCode,
@@ -752,7 +770,7 @@ export class SalesEntryComponent implements OnInit {
       subTotal: this.subTotal,
       totalVat: this.totalVat,
       grandTotal: this.grandTotal,
-      remarks: 'Issued statutory Mushak 6.3 Tax Challan via Reactive Form Engine.'
+      remarks: 'Sales draft submitted for approval.'
     };
 
     this.salesApi.createSalesInvoice(invoice).subscribe({
@@ -761,12 +779,10 @@ export class SalesEntryComponent implements OnInit {
         this.toast.success(
           this.context.locale() === 'bn'
             ? `মূসক ৬.৩ কর চালানপত্র ${created?.challanNumber63 || ''} সফলভাবে প্রস্তুত করা হয়েছে!`
-            : `Mushak 6.3 Tax Challan ${created?.challanNumber63 || ''} created successfully!`,
-          this.context.locale() === 'bn' ? 'চালানপত্র প্রস্তুত সম্পন্ন' : 'Challan Issued'
+            : `Sales invoice ${created?.invoiceNumber || ''} submitted for approval.`,
+          this.context.locale() === 'bn' ? 'চালানপত্র প্রস্তুত সম্পন্ন' : 'Invoice Submitted'
         );
-        this.router.navigate(['/app/sales/challan-preview'], {
-          queryParams: { id: created?.id }
-        });
+        this.router.navigate(['/app/sales/invoices']);
       },
       error: (err) => {
         this.isSubmitting = false;

@@ -160,6 +160,8 @@ public sealed class SalesPostingService(ISalesInvoiceStore invoices, ISalesPosti
 {
     public async Task<CommandOutcome> Reserve(Actor actor, Guid companyId, Guid id, ReserveSalesRequest request, string correlation, CancellationToken ct)
     {
+        actor.RequireCompany(companyId);
+        Vat.Domain.FinancialBoundary.RequireAvailable();
         var invoice = await Invoice(actor, companyId, id, ct);
         await periods.RequireOpen(actor.TenantId, companyId, invoice.BusinessDate, ct);
         var warehouse = await references.Warehouse(actor.TenantId, companyId, request.WarehouseId, ct);
@@ -185,6 +187,8 @@ public sealed class SalesPostingService(ISalesInvoiceStore invoices, ISalesPosti
 
     public async Task<CommandOutcome> Post(Actor actor, Guid companyId, Guid id, TransitionRequest request, string correlation, CancellationToken ct)
     {
+        actor.RequireCompany(companyId);
+        Vat.Domain.FinancialBoundary.RequireAvailable();
         var invoice = await Invoice(actor, companyId, id, ct);
         await periods.RequireOpen(actor.TenantId, companyId, invoice.BusinessDate, ct);
         if (!policy.Enabled) throw new DomainException("posting_disabled", "Financial posting is disabled.", 409);

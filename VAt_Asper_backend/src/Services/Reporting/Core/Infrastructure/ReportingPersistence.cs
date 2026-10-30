@@ -28,7 +28,8 @@ public static class ReportingPersistence
     public static IServiceCollection AddReportingPersistence(this IServiceCollection services, IConfiguration config)
     {
         var cs = config.GetConnectionString("ReportingDatabase")
-            ?? "Host=127.0.0.1;Port=5432;Database=vat_reporting;Username=postgres;Password=123456;";
+            ?? throw new InvalidOperationException("Configure ConnectionStrings:ReportingDatabase.");
+        if (string.IsNullOrWhiteSpace(cs)) throw new InvalidOperationException("Configure ConnectionStrings:ReportingDatabase.");
         services.AddReportingGenerationCore(cs);
         return services;
     }

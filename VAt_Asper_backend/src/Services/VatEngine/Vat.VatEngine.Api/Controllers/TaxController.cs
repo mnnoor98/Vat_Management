@@ -1,10 +1,11 @@
+using Vat.Application.Contracts;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Vat.Api.Security;
 using Vat.Application.Security;
-using Vat.Services.VatEngine;
+using Vat.Application;
 
-namespace Vat.Services.VatEngine.Controllers;
+namespace Vat.Coordinated.VatEngine.Controllers;
 
 public static class VatEngineApiCommands
 {
@@ -29,21 +30,21 @@ public static class VatEngineApiCommands
 public sealed class TaxController : ControllerBase
 {
     [HttpPost("/api/v1/companies/{companyId:guid}/tax/rules", Name = "CreateTaxRule")]
-    [Authorize(Policy = VatEnginePermissions.TaxRuleManage)]
+    [Authorize(Policy = Permissions.TaxRuleManage)]
     [ProducesResponseType(typeof(TaxRuleResponse), 201)]
     public async Task<IActionResult> CreateTaxRule([FromRoute] Guid companyId, [FromBody] CreateTaxRuleRequest request,
-        [FromServices] TaxRuleService service, [FromServices] ICommandExecutor commands, CancellationToken ct)
+        [FromServices] ReferenceDataService service, [FromServices] ICommandExecutor commands, CancellationToken ct)
     {
         var ctx = HttpContext;
         return await VatEngineApiCommands.Execute(ctx, commands, companyId, "tax-rule.create", request,
-            () => service.Create(ctx.GetActor(), companyId, request, ctx.TraceIdentifier, ct), ct);
+            () => service.Rule(ctx.GetActor(), companyId, request, ctx.TraceIdentifier, ct), ct);
     }
 
     [HttpPost("/api/v1/companies/{companyId:guid}/tax/rules/{id:guid}/publish", Name = "PublishTaxRule")]
-    [Authorize(Policy = VatEnginePermissions.TaxRulePublish)]
+    [Authorize(Policy = Permissions.TaxRulePublish)]
     [ProducesResponseType(typeof(TaxRuleResponse), 200)]
     public async Task<IActionResult> PublishTaxRule([FromRoute] Guid companyId, [FromRoute] Guid id,
-        [FromBody] TransitionRequest request, [FromServices] TaxRuleService service, [FromServices] ICommandExecutor commands, CancellationToken ct)
+        [FromBody] TransitionRequest request, [FromServices] ReferenceDataService service, [FromServices] ICommandExecutor commands, CancellationToken ct)
     {
         var ctx = HttpContext;
         return await VatEngineApiCommands.Execute(ctx, commands, companyId, $"tax-rule.publish:{id}", request,
@@ -51,18 +52,17 @@ public sealed class TaxController : ControllerBase
     }
 
     [HttpGet("/api/v1/companies/{companyId:guid}/tax/rules/{id:guid}", Name = "GetTaxRule")]
-    [Authorize(Policy = VatEnginePermissions.TaxRead)]
+    [Authorize(Policy = Permissions.TaxRead)]
     public async Task<IActionResult> GetTaxRule([FromRoute] Guid companyId, [FromRoute] Guid id,
-        [FromServices] TaxRuleService service, CancellationToken ct)
+        [FromServices] ReferenceDataService service, CancellationToken ct)
     {
-        var outcome = await service.Get(HttpContext.GetActor(), companyId, id, ct);
-        return StatusCode(outcome.StatusCode, outcome.Body);
+        return Ok(await service.GetRule(HttpContext.GetActor(), companyId, id, ct));
     }
 
     [HttpGet("/api/v1/companies/{companyId:guid}/tax/ledger", Name = "GetTaxLedger")]
-    [Authorize(Policy = VatEnginePermissions.TaxRead)]
+    [Authorize(Policy = Permissions.TaxRead)]
     public async Task<IActionResult> GetTaxLedger([FromRoute] Guid companyId, [FromQuery] Guid? purchaseId,
-        [FromQuery] Guid? before, [FromQuery] int? take, [FromServices] TaxLedgerService service, CancellationToken ct)
+        [FromQuery] Guid? before, [FromQuery] int? take, [FromServices] PostingService service, CancellationToken ct)
     {
         return Ok(await service.TaxLedger(HttpContext.GetActor(), companyId, purchaseId, before, take ?? 25, ct));
     }

@@ -2,7 +2,7 @@ import { Component, OnInit, ViewChild, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterModule, Router } from '@angular/router';
 import { CompanyContextService } from '../../core/services/company-context.service';
-import { Coefficient43 } from '../../core/models/vat-models';
+import { CoefficientResult } from '../../core/services/api/manufacturing-api.service';
 import { CoefficientDeclarationComponent } from './components/coefficient-declaration/coefficient-declaration.component';
 import { BomListComponent } from './components/bom-list/bom-list.component';
 import { NewDeclarationComponent } from './components/new-declaration/new-declaration.component';
@@ -121,7 +121,7 @@ export class ManufacturingComponent implements OnInit {
     }
   }
 
-  public onDeclarationSelected(dec: Coefficient43): void {
+  public onDeclarationSelected(dec: CoefficientResult): void {
     this.activeTab = 'declaration';
     setTimeout(() => {
       if (this.declarationComp) {
@@ -131,7 +131,7 @@ export class ManufacturingComponent implements OnInit {
   }
 
   public onDeclarationCreated(declarationNumber: string): void {
-    this.successMsg = `উপকরণ-উৎপাদ সহগ ঘোষণা '${declarationNumber}' সফলভাবে দাখিল ও পোস্টগ্রেস ডাটাবেজে সংরক্ষিত হয়েছে!`;
+    this.successMsg = `Coefficient draft '${declarationNumber}' saved. Submit and approve it separately in the register.`;
     this.activeTab = 'declaration';
   }
 }

@@ -17,7 +17,8 @@ public static class PurchasePersistence
     public static IServiceCollection AddPurchasePersistence(this IServiceCollection services, IConfiguration config)
     {
         var cs = config.GetConnectionString("PurchaseDatabase")
-            ?? "Host=127.0.0.1;Port=5432;Database=vat_purchase;Username=postgres;Password=123456;";
+            ?? throw new InvalidOperationException("Configure ConnectionStrings:PurchaseDatabase.");
+        if (string.IsNullOrWhiteSpace(cs)) throw new InvalidOperationException("Configure ConnectionStrings:PurchaseDatabase.");
         services.AddDbContext<PurchaseDbContext>(options => Configure(options, cs));
         services.AddScoped<PurchaseStore>();
         services.AddScoped<IPurchaseStore>(sp => sp.GetRequiredService<PurchaseStore>());

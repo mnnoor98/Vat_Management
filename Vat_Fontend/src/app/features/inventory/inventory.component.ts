@@ -34,7 +34,7 @@ import { TransferEntryComponent } from './components/transfer-entry/transfer-ent
         <div class="header-actions">
           <div class="tab-pill-box">
             <button class="tab-btn" [class.active-tab]="activeTab === 'stock'" (click)="activeTab = 'stock'">
-              Live Stock Valuation
+              Live Stock Quantities
             </button>
             <button class="tab-btn" [class.active-tab]="activeTab === 'mushak65'" (click)="activeTab = 'mushak65'">
               মূসক ৬.৫ স্থানান্তর চালান
@@ -109,14 +109,14 @@ export class InventoryComponent implements OnInit {
 
   public getTabTitle(): string {
     switch (this.activeTab) {
-      case 'stock': return 'Live Stock Valuation';
+      case 'stock': return 'Live Stock Quantities';
       case 'mushak65': return 'Mushak 6.5 Transfer Challan';
       case 'newTransfer': return 'Issue 6.5 Transfer';
     }
   }
 
   public onTransferCreated(transferNumber: string): void {
-    this.successMsg = `মূসক ৬.৫ স্থানান্তর চালান '${transferNumber}' সফলভাবে নিবন্ধিত ও স্টক সমন্বয় করা হয়েছে!`;
+    this.successMsg = `Transfer draft '${transferNumber}' saved. Submit, approve and post it in the register to move stock.`;
     this.activeTab = 'mushak65';
   }
 }

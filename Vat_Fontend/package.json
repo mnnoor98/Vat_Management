@@ -7,7 +7,8 @@
     "build": "ng build",
     "watch": "ng build --watch --configuration development",
     "typecheck": "tsc --project tsconfig.app.json --noEmit",
-    "test": "node --experimental-strip-types --test tests/nbr-validators.test.ts tests/vat-calculations.test.ts"
+    "test": "node --experimental-strip-types --test tests/nbr-validators.test.ts tests/vat-calculations.test.ts",
+    "test:api": "node tests/run-api-tests.mjs"
   },
   "private": true,
   "packageManager": "npm@11.13.0",
@@ -18,6 +19,7 @@
     "@angular/forms": "^22.0.0",
     "@angular/platform-browser": "^22.0.0",
     "@angular/router": "^22.0.0",
+    "oidc-client-ts": "^3.5.0",
     "rxjs": "~7.8.0",
     "tslib": "^2.8.1"
   },
@@ -25,6 +27,7 @@
     "@angular/build": "^22.0.8",
     "@angular/cli": "^22.0.8",
     "@angular/compiler-cli": "^22.0.0",
-    "typescript": "~6.0.2"
+    "typescript": "~6.0.2",
+    "esbuild": "0.28.2"
   }
 }

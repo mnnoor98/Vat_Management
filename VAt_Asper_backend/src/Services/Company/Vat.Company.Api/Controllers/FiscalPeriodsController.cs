@@ -2,10 +2,10 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Vat.Api.Security;
 using Vat.Application.Security;
-using Vat.Services.Company;
-using Vat.Services.Company.Contracts;
+using Vat.Application;
+using Vat.Application.Contracts;
 
-namespace Vat.Services.Company.Controllers;
+namespace Vat.Coordinated.Company.Controllers;
 
 [ApiController]
 [Tags("Company")]
@@ -57,6 +57,7 @@ public sealed class FiscalPeriodsController : ControllerBase
                 () => service.Close(ctx.GetActor(), companyId, id, request, ctx.TraceIdentifier, ct), ct);
     }
 
+    [HttpPost("/api/v1/companies/{companyId:guid}/periods/{id:guid}/cancel-close", Name = "CancelFiscalPeriodClose")]
     [HttpPost("/api/v1/companies/{companyId:guid}/periods/{id:guid}/reopen", Name = "ReopenFiscalPeriod")]
     [Authorize(Policy = Permissions.PeriodManage)]
     [ProducesResponseType(typeof(PeriodResponse), 200)]

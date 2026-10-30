@@ -2,11 +2,11 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Vat.Api.Security;
 using Vat.Application.Security;
-using Vat.Services.Company;
-using Vat.Services.Company.Contracts;
-using Vat.Services.Company.Infrastructure;
+using Vat.Application;
+using Vat.Application.Contracts;
+using Vat.Infrastructure.Persistence;
 
-namespace Vat.Services.Company.Controllers;
+namespace Vat.Coordinated.Company.Controllers;
 
 public static class CompanyApiCommands
 {

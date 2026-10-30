@@ -1,4 +1,4 @@
-import { Component, OnInit, inject } from '@angular/core';
+import { Component, OnInit, inject, ChangeDetectorRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { InventoryApiService } from '../../../../core/services/api/inventory-api.service';
@@ -14,6 +14,14 @@ import { Warehouse, StockBalance } from '../../../../core/models/vat-models';
   imports: [CommonModule, FormsModule, BdtCurrencyPipe, BengaliNumberPipe],
   template: `
     <div class="vat-card">
+      <p>Live quantities are shown below. Cost, valuation and HS codes are unavailable from this stock feed.</p>
+      <p role="alert" *ngIf="loadError">{{ loadError }} <button (click)="loadStockBalances()">Retry</button></p>
+      <div class="card-toolbar">
+        <button class="btn btn-secondary" [disabled]="isLoading || page === 0" (click)="changePage(-1)">Previous</button>
+        <span>Page {{ page + 1 }} ? Search and export apply to this page.</span>
+        <button class="btn btn-secondary" [disabled]="isLoading || !hasNext || page >= 400" (click)="changePage(1)">Next</button>
+        <button class="btn btn-secondary" *ngIf="hasMoreWarehouses" [disabled]="warehousesLoading" (click)="loadWarehouses()">Load more warehouses</button>
+      </div>
       <div class="card-toolbar">
         <div class="search-box">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -37,13 +45,13 @@ import { Warehouse, StockBalance } from '../../../../core/models/vat-models';
             </option>
           </select>
           <div *ngIf="!context.isSuperAdmin()" class="locked-wh-pill">
-            🏢 {{ context.activeBranch().name }} ({{ context.activeBranch().warehouseId || 'WH-01' }})
+            🏢 {{ context.activeBranch().name }} ({{ context.activeBranch().warehouseId || 'No warehouse selected' }})
           </div>
         </div>
 
         <div class="summary-kpis">
-          <span class="kpi-pill">Total Items: <strong>{{ filteredBalances.length }}</strong></span>
-          <span class="kpi-pill val">Total Valuation: <strong>{{ totalStockValuation | bdtCurrency }}</strong></span>
+          <span class="kpi-pill">Items on this page: <strong>{{ filteredBalances.length }}</strong></span>
+          <span class="kpi-pill val">Valuation: <strong>Unavailable</strong></span>
           <button class="btn btn-secondary btn-sm" (click)="exportStockToCsv()" title="Export Stock Valuation (.csv)">
             <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
@@ -85,14 +93,14 @@ import { Warehouse, StockBalance } from '../../../../core/models/vat-models';
                 <span class="wh-tag font-mono">🏢 {{ b.warehouseCode }}</span>
                 <small class="text-dim d-block">{{ b.warehouseName }}</small>
               </td>
-              <td><span class="hs-tag font-mono">{{ b.hsCode || '3901.20.00' }}</span></td>
+              <td><span class="hs-tag font-mono">{{ b.hsCode || 'Unavailable' }}</span></td>
               <td><span class="uom-tag">{{ b.unitOfMeasure }}</span></td>
               <td class="text-right numeric font-bold" [class.text-amber]="b.availableQuantity <= 0">
                 {{ b.availableQuantity | bengaliNumber }}
               </td>
-              <td class="text-right numeric">{{ (b.standardCost || 150) | bdtCurrency:false }}</td>
+              <td class="text-right numeric">{{ b.standardCost == null ? "Unavailable" : (b.standardCost | bdtCurrency:false) }}</td>
               <td class="text-right numeric font-bold text-emerald">
-                {{ (b.totalValuation || (b.availableQuantity * (b.standardCost || 150))) | bdtCurrency:false }}
+                {{ b.totalValuation == null ? "Unavailable" : (b.totalValuation | bdtCurrency:false) }}
               </td>
               <td>
                 <span *ngIf="b.availableQuantity > 0" class="stock-pill">In Stock</span>
@@ -108,7 +116,7 @@ import { Warehouse, StockBalance } from '../../../../core/models/vat-models';
           <tfoot>
             <tr class="total-row">
               <th colspan="7" class="text-right font-bengali">সর্বমোট ইনভেন্টরি স্টক মূল্যায়ন:</th>
-              <th class="text-right numeric font-bold text-emerald">{{ totalStockValuation | bdtCurrency:false }}</th>
+              <th class="text-right numeric font-bold text-emerald">{{ totalStockValuation == null ? "Unavailable" : (totalStockValuation | bdtCurrency:false) }}</th>
               <th></th>
             </tr>
           </tfoot>
@@ -143,6 +151,14 @@ export class StockSummaryComponent implements OnInit {
   private csvExport = inject(CsvExportService);
   public context = inject(CompanyContextService);
 
+  private cdr = inject(ChangeDetectorRef);
+  public page = 0;
+  public hasNext = false;
+  public loadError = '';
+  public warehousesLoading = false;
+  public hasMoreWarehouses = false;
+  private warehouseSkip = 0;
+  private requestId = 0;
   public warehouses: Warehouse[] = [];
   public stockBalances: StockBalance[] = [];
   public selectedWarehouse = 'ALL';
@@ -155,32 +171,29 @@ export class StockSummaryComponent implements OnInit {
   }
 
   public loadWarehouses(): void {
-    this.inventoryApi.getWarehouses().subscribe({
-      next: (data) => this.warehouses = data,
-      error: (err) => console.warn('Failed to load warehouses:', err)
+    this.warehousesLoading = true;
+    this.inventoryApi.getWarehouses(this.warehouseSkip, 100).subscribe({
+      next: data => { this.warehouses.push(...data); this.warehouseSkip += data.length; this.hasMoreWarehouses = data.length === 100 && this.warehouseSkip <= 10000; this.warehousesLoading = false; this.cdr.markForCheck(); },
+      error: e => { this.loadError = e?.message || 'Unable to load warehouses.'; this.warehousesLoading = false; this.cdr.markForCheck(); }
     });
   }
-
   public loadStockBalances(): void {
-    this.isLoading = true;
-    this.inventoryApi.getAllStockBalances(this.selectedWarehouse).subscribe({
-      next: (data) => {
-        this.stockBalances = data;
-        this.isLoading = false;
-      },
-      error: (err) => {
-        console.warn('Failed to load stock balances:', err);
-        this.isLoading = false;
-      }
+    const id = ++this.requestId;
+    this.isLoading = true; this.loadError = ''; this.stockBalances = []; this.hasNext = false;
+    this.inventoryApi.getAllStockBalances(this.selectedWarehouse, this.page * 25, 25).subscribe({
+      next: data => { if (id !== this.requestId) return; this.stockBalances = data; this.hasNext = data.length === 25; this.isLoading = false; this.cdr.markForCheck(); },
+      error: e => { if (id !== this.requestId) return; this.loadError = e?.message || 'Unable to load stock balances.'; this.isLoading = false; this.cdr.markForCheck(); }
     });
   }
-
-  public onWarehouseFilterChange(): void {
-    this.loadStockBalances();
+  public changePage(direction: number): void {
+    if (this.isLoading || (direction < 0 && this.page === 0) || (direction > 0 && (!this.hasNext || this.page >= 400))) return;
+    this.page += direction; this.loadStockBalances();
   }
+  public onWarehouseFilterChange(): void { this.page = 0; this.loadStockBalances(); }
 
   get filteredBalances(): StockBalance[] {
     let list = this.stockBalances;
+    if (!this.context.isSuperAdmin()) list = list.filter(b => b.branchId === this.context.branchGuid());
     if (this.selectedWarehouse !== 'ALL') {
       list = list.filter(b => b.warehouseId === this.selectedWarehouse || b.warehouseCode === this.selectedWarehouse);
     }
@@ -194,11 +207,9 @@ export class StockSummaryComponent implements OnInit {
     );
   }
 
-  get totalStockValuation(): number {
-    return this.filteredBalances.reduce((sum, b) => {
-      const cost = b.standardCost || 150.0;
-      return sum + (b.availableQuantity * cost);
-    }, 0);
+  get totalStockValuation(): number | null {
+    if (!this.filteredBalances.length || this.filteredBalances.some(b => b.totalValuation == null)) return null;
+    return this.filteredBalances.reduce((sum, b) => sum + b.totalValuation!, 0);
   }
 
   public exportStockToCsv(): void {
@@ -221,11 +232,11 @@ export class StockSummaryComponent implements OnInit {
       b.warehouseName,
       b.branchName,
       b.productDescription,
-      b.hsCode || '3901.20.00',
+      b.hsCode || 'Unavailable',
       b.unitOfMeasure,
       b.availableQuantity,
-      b.standardCost || 150.0,
-      (b.availableQuantity * (b.standardCost || 150.0))
+      b.standardCost ?? 'Unavailable',
+      b.totalValuation ?? 'Unavailable'
     ]);
 
     const compId = this.context.activeCompany().id;

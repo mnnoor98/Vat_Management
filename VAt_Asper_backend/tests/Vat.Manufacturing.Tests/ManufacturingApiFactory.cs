@@ -36,7 +36,20 @@ public sealed class ManufacturingApiFactory : WebApplicationFactory<Program>, IA
         builder.UseEnvironment("Development");
         builder.ConfigureAppConfiguration((_, configuration) => configuration.AddInMemoryCollection(new Dictionary<string, string?>
         {
+            ["ConnectionStrings:VatDatabase"] = _connection,
+            ["ConnectionStrings:IdentityDatabase"] = _connection,
+            ["ConnectionStrings:CompanyDatabase"] = _connection,
+            ["ConnectionStrings:MasterDataDatabase"] = _connection,
+            ["ConnectionStrings:PurchaseDatabase"] = _connection,
+            ["ConnectionStrings:SalesDatabase"] = _connection,
+            ["ConnectionStrings:InventoryDatabase"] = _connection,
             ["ConnectionStrings:ManufacturingDatabase"] = _connection,
+            ["ConnectionStrings:VatEngineDatabase"] = _connection,
+            ["ConnectionStrings:ComplianceDatabase"] = _connection,
+            ["ConnectionStrings:WorkflowDatabase"] = _connection,
+            ["ConnectionStrings:ReportingDatabase"] = _connection,
+            ["ConnectionStrings:IntegrationDatabase"] = _connection,
+
             ["Authentication:Authority"] = Issuer,
             ["Authentication:Audience"] = Audience,
             ["Posting:Enabled"] = "true",
@@ -69,6 +82,11 @@ public sealed class ManufacturingApiFactory : WebApplicationFactory<Program>, IA
             await command.ExecuteNonQueryAsync();
         }
         using var scope = Services.CreateScope();
+        var effectiveConnections = scope.ServiceProvider.GetRequiredService<IConfiguration>()
+            .GetSection("ConnectionStrings").GetChildren().ToArray();
+        Assert.NotEmpty(effectiveConnections);
+        Assert.All(effectiveConnections, entry => Assert.Equal(_connection, entry.Value));
+
         var db = scope.ServiceProvider.GetRequiredService<ManufacturingDbContext>();
         await db.Database.MigrateAsync();
     }

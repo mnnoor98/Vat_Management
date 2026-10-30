@@ -12,6 +12,8 @@ public sealed class PurchaseReversalService(IPurchaseStore purchases, IPurchaseP
     public async Task<CommandOutcome> Request(Actor actor, Guid companyId, Guid purchaseId, RequestReversalRequest request, string correlationId, CancellationToken ct)
     {
         actor.RequireCompany(companyId);
+        Vat.Domain.FinancialBoundary.RequireAvailable();
+        actor.RequireCompany(companyId);
         var purchase = await RequirePurchase(actor, companyId, purchaseId, ct);
         var plan = await plans.LatestPlan(actor.TenantId, companyId, purchaseId, ct)
             ?? throw new DomainException("not_found", "Purchase posting plan not found.", 404);
@@ -25,6 +27,8 @@ public sealed class PurchaseReversalService(IPurchaseStore purchases, IPurchaseP
     public async Task<CommandOutcome> Authorize(Actor actor, Guid companyId, Guid purchaseId, Guid reversalId,
         ApproveReversalRequest request, string correlationId, CancellationToken ct)
     {
+        actor.RequireCompany(companyId);
+        Vat.Domain.FinancialBoundary.RequireAvailable();
         actor.RequireCompany(companyId);
         var reversal = await reversals.Find(actor.TenantId, companyId, purchaseId, reversalId, ct)
             ?? throw new DomainException("not_found", "Reversal not found.", 404);

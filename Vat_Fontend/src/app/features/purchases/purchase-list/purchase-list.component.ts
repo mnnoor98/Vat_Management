@@ -1,4 +1,5 @@
-import { Component, OnInit, inject } from '@angular/core';
+import { FinancialPostingComponent } from '../../../shared/components/financial-posting.component';
+import { Component, OnInit, inject, ChangeDetectorRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterModule } from '@angular/router';
 import { FormsModule } from '@angular/forms';
@@ -14,9 +15,17 @@ import { MockDataService } from '../../../core/services/mock-data.service';
 @Component({
   selector: 'app-purchase-list',
   standalone: true,
-  imports: [CommonModule, RouterModule, FormsModule, BdtCurrencyPipe, StatusBadgeComponent],
+  imports: [FinancialPostingComponent, CommonModule, RouterModule, FormsModule, BdtCurrencyPipe, StatusBadgeComponent],
   template: `
     <div class="purchase-page">
+      <app-financial-posting *ngIf="postingInvoice as invoice" [invoice]="invoice" kind="purchase" (changed)="loadInvoices()" (closed)="postingInvoice = null"></app-financial-posting>
+      <p *ngIf="loadError" role="alert">{{ loadError }} <button (click)="loadInvoices()">Retry</button></p>
+      <div class="header-actions">
+        <button class="btn btn-secondary" [disabled]="loading || pageIndex === 0" (click)="changePage(-1)">Previous</button>
+        <span>Page {{ pageIndex + 1 }} ? Filters and export apply to this page</span>
+        <button class="btn btn-secondary" [disabled]="loading || !hasNextPage" (click)="changePage(1)">Next</button>
+      </div>
+      <p>Tax is pending until a server calculation is prepared. Amounts before preparation exclude tax. Posted amounts show the original posting snapshot; subsequent corrections remain separate.</p>
       <!-- Breadcrumb & Header -->
       <div class="page-header">
         <div>
@@ -73,7 +82,7 @@ import { MockDataService } from '../../../core/services/mock-data.service';
               <option value="All">All Statuses</option>
               <option value="Draft">Draft</option>
               <option value="Submitted">Submitted</option>
-              <option value="Approved">Approved</option>
+              <option value="Approved">Approved</option><option value="PostingPrepared">Posting prepared</option>
               <option value="Posted">Posted</option>
             </select>
           </div>
@@ -100,7 +109,7 @@ import { MockDataService } from '../../../core/services/mock-data.service';
                 <th>Type</th>
                 <th>Date</th>
                 <th class="text-right">Taxable Value</th>
-                <th class="text-right">VAT (15%)</th>
+                <th class="text-right">VAT</th>
                 <th class="text-right">Total Payable</th>
                 <th>Status</th>
                 <th class="text-right">Actions</th>
@@ -131,12 +140,13 @@ import { MockDataService } from '../../../core/services/mock-data.service';
                 </td>
                 <td>{{ inv.invoiceDate }}</td>
                 <td class="text-right numeric">{{ inv.subTotal | bdtCurrency:false }}</td>
-                <td class="text-right numeric text-emerald">{{ inv.totalVat | bdtCurrency:false }}</td>
-                <td class="text-right numeric font-bold">{{ inv.grandTotal | bdtCurrency:false }}</td>
+                <td class="text-right numeric text-emerald">{{ inv.taxCalculated ? (inv.totalVat | bdtCurrency:false) : "Pending" }}</td>
+                <td class="text-right numeric font-bold">{{ inv.taxCalculated ? (inv.grandTotal | bdtCurrency:false) : "Pending tax" }}</td>
                 <td><app-status-badge [status]="inv.status"></app-status-badge></td>
                 <td class="text-right">
                   <div class="row-actions">
                     <button class="btn-action" (click)="viewInvoice(inv)" title="View Details">View</button>
+                    <button class="btn-action" *ngIf="inv.status === 'Draft' && context.hasPermission('purchase.submit')" (click)="submitInvoice(inv.id)">Submit draft</button>
                     <ng-container *ngIf="inv.status === 'Submitted'">
                       <button 
                         class="btn-action btn-approve" 
@@ -152,7 +162,7 @@ import { MockDataService } from '../../../core/services/mock-data.service';
                         Read Only
                       </span>
                     </ng-container>
-                    <ng-container *ngIf="inv.status === 'Approved'">
+                    <ng-container *ngIf="(inv.status === 'Approved' || inv.status === 'PostingPrepared')">
                       <button 
                         class="btn-action btn-post" 
                         *ngIf="canPost()" 
@@ -250,12 +260,12 @@ import { MockDataService } from '../../../core/services/mock-data.service';
                     <td class="text-right numeric font-bold">{{ l.quantity | number }}</td>
                     <td class="text-right numeric">{{ l.unitPrice | bdtCurrency:false }}</td>
                     <td class="text-right numeric font-bold">{{ l.taxableAmount | bdtCurrency:false }}</td>
-                    <td class="text-center">{{ l.vatRatePercent }}%</td>
-                    <td class="text-right numeric text-emerald">{{ l.vatAmount | bdtCurrency:false }}</td>
+                    <td class="text-center">{{ selectedInvoice.taxCalculated ? l.vatRatePercent + "%" : "Pending" }}</td>
+                    <td class="text-right numeric text-emerald">{{ selectedInvoice.taxCalculated ? (l.vatAmount | bdtCurrency:false) : "Pending" }}</td>
                     <td class="text-right numeric">{{ l.vdsAmount | bdtCurrency:false }}</td>
                     <td>
                       <span class="rebate-tag" [class.yes]="l.isCreditEligible">
-                        {{ l.isCreditEligible ? 'Sec 46 Eligible' : 'Ineligible' }}
+                        {{ !selectedInvoice.taxCalculated ? 'Pending' : l.isCreditEligible ? 'Recoverable per snapshot' : 'Not recoverable' }}
                       </span>
                     </td>
                     <td class="text-right numeric font-bold">{{ l.totalAmount | bdtCurrency:false }}</td>
@@ -277,8 +287,8 @@ import { MockDataService } from '../../../core/services/mock-data.service';
                   <span class="font-mono font-bold">{{ selectedInvoice.subTotal | bdtCurrency }}</span>
                 </div>
                 <div class="sum-row">
-                  <span>Input VAT (15% মূসক):</span>
-                  <span class="font-mono font-bold text-emerald">{{ selectedInvoice.totalVat | bdtCurrency }}</span>
+                  <span>Input VAT ( মূসক):</span>
+                  <span class="font-mono font-bold text-emerald">{{ selectedInvoice.taxCalculated ? (selectedInvoice.totalVat | bdtCurrency) : "Pending" }}</span>
                 </div>
                 <div class="sum-row" *ngIf="selectedInvoice.totalVds > 0">
                   <span>VDS Withholding (উৎসে কর্তন):</span>
@@ -287,7 +297,7 @@ import { MockDataService } from '../../../core/services/mock-data.service';
                 <div class="sum-divider"></div>
                 <div class="sum-row grand-total-row">
                   <span>Grand Total (সর্বমোট প্রদেয়):</span>
-                  <span class="font-mono font-bold text-emerald text-lg">{{ selectedInvoice.grandTotal | bdtCurrency }}</span>
+                  <span class="font-mono font-bold text-emerald text-lg">{{ selectedInvoice.taxCalculated ? (selectedInvoice.grandTotal | bdtCurrency) : "Pending tax" }}</span>
                 </div>
               </div>
             </div>
@@ -581,6 +591,14 @@ export class PurchaseListComponent implements OnInit {
   private csvExport = inject(CsvExportService);
   private toast = inject(ToastService);
 
+  public postingInvoice: PurchaseInvoice | null = null;
+  public loading = false;
+  public loadError = '';
+  public readonly pageSize = 25;
+  public pageIndex = 0;
+  public hasNextPage = false;
+  private cursors: (string | undefined)[] = [undefined];
+  private cdr = inject(ChangeDetectorRef);
   public invoices: PurchaseInvoice[] = [];
   public filteredInvoices: PurchaseInvoice[] = [];
   public branches: Branch[] = [];
@@ -606,36 +624,29 @@ export class PurchaseListComponent implements OnInit {
   }
 
   loadInvoices(): void {
-    this.purchaseApi.getInvoices().subscribe(data => {
-      this.invoices = data;
-      this.applyFilters();
+    this.loading = true; this.loadError = '';
+    this.purchaseApi.getInvoices({ before: this.cursors[this.pageIndex], take: this.pageSize }).subscribe({
+      next: data => {
+        this.invoices = data; this.hasNextPage = data.length === this.pageSize;
+        this.loading = false; this.applyFilters(); this.cdr.markForCheck();
+      },
+      error: e => { this.loading = false; this.loadError = e?.message || 'Unable to load invoices.'; this.invoices = []; this.filteredInvoices = []; this.hasNextPage = false; this.cdr.markForCheck(); }
     });
+  }
+
+  changePage(direction: number): void {
+    if (this.loading || (direction < 0 && this.pageIndex === 0) || (direction > 0 && !this.hasNextPage)) return;
+    if (direction > 0) this.cursors[this.pageIndex + 1] = this.invoices[this.invoices.length - 1].id;
+    this.pageIndex += direction; this.loadInvoices();
   }
 
   applyFilters(): void {
     let result = [...this.invoices];
 
-    // Branch isolation: Non-superadmin users only see invoices for their assigned branch
     if (!this.context.isSuperAdmin()) {
-      const curBranchId = this.context.activeBranch().id;
-      const curBranchGuid = this.context.branchGuid();
-      result = result.filter(i => 
-        !i.branchId || 
-        i.branchId === curBranchId || 
-        i.branchId === curBranchGuid ||
-        (curBranchId === 'BR-01' && i.branchId.includes('31')) ||
-        (curBranchId === 'BR-02' && i.branchId.includes('32')) ||
-        (curBranchId === 'BR-03' && i.branchId.includes('33'))
-      );
+      result = result.filter(i => i.branchId === this.context.branchGuid());
     } else if (this.selectedBranchFilter !== 'All') {
-      const targetGuid = this.context.resolveBranchGuid(this.selectedBranchFilter);
-      result = result.filter(i => 
-        i.branchId === this.selectedBranchFilter || 
-        i.branchId === targetGuid ||
-        (this.selectedBranchFilter === 'BR-01' && i.branchId?.includes('31')) ||
-        (this.selectedBranchFilter === 'BR-02' && i.branchId?.includes('32')) ||
-        (this.selectedBranchFilter === 'BR-03' && i.branchId?.includes('33'))
-      );
+      result = result.filter(i => i.branchId === this.context.resolveBranchGuid(this.selectedBranchFilter));
     }
 
     if (this.searchQuery.trim()) {
@@ -666,41 +677,25 @@ export class PurchaseListComponent implements OnInit {
   }
 
   getBranchName(branchId?: string): string {
-    if (!branchId) return 'Dhaka HQ';
-    if (branchId === 'BR-02' || branchId.includes('32')) return 'Chittagong Depot';
-    if (branchId === 'BR-03' || branchId.includes('33')) return 'Bogura Warehouse';
-    return 'Dhaka HQ';
+    return this.branches.find(b => b.id === branchId)?.name || branchId || 'Unspecified';
   }
 
-  canApprove(): boolean {
-    return this.context.hasPermission('purchase.invoice.approve');
-  }
+  canApprove(): boolean { return this.context.hasPermission('purchase.approve'); }
 
   canPost(): boolean {
-    return this.context.isSuperAdmin() || this.context.userRole() === 'TaxManager' || this.context.userRole() === 'Checker';
+    return this.context.hasPermission('purchase.post') || this.context.hasPermission('purchase.prepare');
   }
 
   postInvoiceToLedger(id: string): void {
-    if (!this.canPost()) {
-      this.toast.error(
-        this.context.locale() === 'bn' ? 'লেজারে পোস্ট করার অনুমতি নেই।' : 'Access Denied: You lack permissions to post to ledger.',
-        'অননুমোদিত অ্যাকশন (RBAC Restriction)'
-      );
-      return;
-    }
+    this.postingInvoice = this.invoices.find(i => i.id === id) || null;
+  }
 
-    const isBn = this.context.locale() === 'bn';
-    this.purchaseApi.postPurchase(id).subscribe({
-      next: () => {
-        this.toast.success(
-          isBn ? `চালান ${id} সফলভাবে ভ্যাট ও ইনভেন্টরি লেজারে পোস্ট করা হয়েছে!` : `Invoice ${id} successfully posted to VAT & inventory ledger!`,
-          isBn ? 'পোস্টিং সম্পন্ন (Posted)' : 'Ledger Posting Complete'
-        );
-        this.loadInvoices();
-      },
-      error: (err) => {
-        this.toast.error(err?.message || 'Posting failed', 'পোস্টিং ব্যর্থ');
-      }
+  submitInvoice(id: string): void {
+    const invoice = this.invoices.find(i => i.id === id);
+    if (!invoice || !Number.isSafeInteger(invoice.version)) { this.toast.error('Reload the invoice to obtain its current version.'); return; }
+    this.purchaseApi.submitTransition(id, invoice.version!).subscribe({
+      next: () => this.loadInvoices(),
+      error: e => { this.toast.error(e?.message || 'Submission failed. Reload the invoice.'); this.loadInvoices(); }
     });
   }
 
@@ -715,8 +710,6 @@ export class PurchaseListComponent implements OnInit {
       return;
     }
 
-    const isGuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id);
-
     const onApproved = () => {
       this.toast.success(
         this.context.locale() === 'bn'
@@ -727,21 +720,12 @@ export class PurchaseListComponent implements OnInit {
       this.loadInvoices();
     };
 
-    if (isGuid) {
-      this.purchaseApi.approveTransition(id, 2).subscribe({
-        next: onApproved,
-        error: () => {
-          this.purchaseApi.approveTransition(id, 1).subscribe({
-            next: onApproved,
-            error: () => {
-              this.purchaseApi.updateStatus(id, 'Approved').subscribe(onApproved);
-            }
-          });
-        }
-      });
-    } else {
-      this.purchaseApi.updateStatus(id, 'Approved').subscribe(onApproved);
-    }
+    const invoice = this.invoices.find(i => i.id === id);
+    if (!Number.isSafeInteger(invoice?.version)) { this.toast.error('Reload the invoice to obtain its current version.'); return; }
+    this.purchaseApi.approveTransition(id, invoice!.version!).subscribe({
+      next: onApproved,
+      error: e => { this.toast.error(e?.message || 'Approval failed. Reload the invoice.'); this.loadInvoices(); }
+    });
   }
 
   approveFromModal(id: string): void {
@@ -777,11 +761,11 @@ export class PurchaseListComponent implements OnInit {
       i.invoiceDate,
       i.fiscalPeriod,
       i.subTotal,
-      i.totalVat,
+      i.taxCalculated ? i.totalVat : 'Pending',
       i.totalSupplementaryDuty || 0,
       i.totalAdvanceTax,
       i.totalVds,
-      i.grandTotal,
+      i.taxCalculated ? i.grandTotal : 'Pending tax',
       i.bankPaymentRef || 'N/A',
       i.status
     ]);

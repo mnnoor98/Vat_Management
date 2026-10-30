@@ -25,6 +25,7 @@ public sealed class TransferService(ITransferStore store, IAuditWriter audit, IE
 
     public async Task<CommandOutcome> Transition(Actor actor, Guid company, Guid id, string action, TransferActionRequest request, string correlation, CancellationToken ct)
     {
+        if (action == "post") Vat.Domain.FinancialBoundary.RequireAvailable();
         Require(actor, company, action == "approve" ? InventoryPermissions.InventoryApprove : action == "post" ? InventoryPermissions.InventoryPost : InventoryPermissions.InventoryManage);
         if (request.ExpectedVersion < 1) throw new DomainException("validation_failed", "ExpectedVersion must be positive.");
         if (request.Reason is { Length: > 1000 }) throw new DomainException("validation_failed", "Reason exceeds 1000 characters.");

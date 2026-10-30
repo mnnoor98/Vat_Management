@@ -1,41 +1,5 @@
 [
   {
-    "service": "MasterData",
-    "controller": "CustomerController",
-    "method": "Get",
-    "path": "/api/v1/companies/{companyId}/customers"
-  },
-  {
-    "service": "MasterData",
-    "controller": "CustomerController",
-    "method": "Get",
-    "path": "/api/v1/companies/{companyId}/customers/{id}"
-  },
-  {
-    "service": "MasterData",
-    "controller": "CustomerController",
-    "method": "Post",
-    "path": "/api/v1/companies/{companyId}/customers"
-  },
-  {
-    "service": "MasterData",
-    "controller": "CustomerController",
-    "method": "Post",
-    "path": "/api/v1/companies/{companyId}/customers/{id}/update"
-  },
-  {
-    "service": "Reporting",
-    "controller": "CustomerReportingController",
-    "method": "Get",
-    "path": "/api/v1/companies/{companyId}/customers/{customerId}/statement"
-  },
-  {
-    "service": "Reporting",
-    "controller": "CustomerReportingController",
-    "method": "Get",
-    "path": "/api/v1/companies/{companyId}/customers/{customerId}/ageing"
-  },
-  {
     "service": "Company",
     "controller": "CompanyController",
     "method": "Post",
@@ -50,13 +14,13 @@
   {
     "service": "Company",
     "controller": "CompanyController",
-    "method": "Post",
+    "method": "Get",
     "path": "/api/v1/companies/{companyId}/branches"
   },
   {
     "service": "Company",
     "controller": "CompanyController",
-    "method": "Get",
+    "method": "Post",
     "path": "/api/v1/companies/{companyId}/branches"
   },
   {
@@ -66,15 +30,333 @@
     "path": "/api/v1/companies/{companyId}/branches/{branchId}"
   },
   {
-    "service": "Purchase",
-    "controller": "PurchaseController",
+    "service": "Company",
+    "controller": "FiscalPeriodsController",
+    "method": "Get",
+    "path": "/api/v1/companies/{companyId}/periods"
+  },
+  {
+    "service": "Company",
+    "controller": "FiscalPeriodsController",
     "method": "Post",
-    "path": "/api/v1/companies/{companyId}/purchases"
+    "path": "/api/v1/companies/{companyId}/periods"
+  },
+  {
+    "service": "Company",
+    "controller": "FiscalPeriodsController",
+    "method": "Get",
+    "path": "/api/v1/companies/{companyId}/periods/{id}"
+  },
+  {
+    "service": "Company",
+    "controller": "FiscalPeriodsController",
+    "method": "Post",
+    "path": "/api/v1/companies/{companyId}/periods/{id}/cancel-close"
+  },
+  {
+    "service": "Company",
+    "controller": "FiscalPeriodsController",
+    "method": "Post",
+    "path": "/api/v1/companies/{companyId}/periods/{id}/close"
+  },
+  {
+    "service": "Company",
+    "controller": "FiscalPeriodsController",
+    "method": "Post",
+    "path": "/api/v1/companies/{companyId}/periods/{id}/reopen"
+  },
+  {
+    "service": "Company",
+    "controller": "FiscalPeriodsController",
+    "method": "Post",
+    "path": "/api/v1/companies/{companyId}/periods/{id}/request-close"
+  },
+  {
+    "service": "Compliance",
+    "controller": "ComplianceController",
+    "method": "Get",
+    "path": "/api/v1/companies/{companyId}/compliance/adjustments"
+  },
+  {
+    "service": "Compliance",
+    "controller": "ComplianceController",
+    "method": "Post",
+    "path": "/api/v1/companies/{companyId}/compliance/credit-notes"
+  },
+  {
+    "service": "Compliance",
+    "controller": "ComplianceController",
+    "method": "Post",
+    "path": "/api/v1/companies/{companyId}/compliance/debit-notes"
+  },
+  {
+    "service": "Compliance",
+    "controller": "ComplianceController",
+    "method": "Get",
+    "path": "/api/v1/companies/{companyId}/compliance/returns"
+  },
+  {
+    "service": "Compliance",
+    "controller": "ComplianceController",
+    "method": "Get",
+    "path": "/api/v1/companies/{companyId}/compliance/returns/9-1"
+  },
+  {
+    "service": "Compliance",
+    "controller": "ComplianceController",
+    "method": "Post",
+    "path": "/api/v1/companies/{companyId}/compliance/returns/9-1/submit"
+  },
+  {
+    "service": "Compliance",
+    "controller": "ComplianceController",
+    "method": "Get",
+    "path": "/api/v1/companies/{companyId}/compliance/vat-ledger"
+  },
+  {
+    "service": "Compliance",
+    "controller": "ComplianceController",
+    "method": "Post",
+    "path": "/api/v1/companies/{companyId}/compliance/vat-ledger/deposit"
+  },
+  {
+    "service": "Compliance",
+    "controller": "ComplianceController",
+    "method": "Get",
+    "path": "/api/v1/companies/{companyId}/compliance/vds-certificates"
+  },
+  {
+    "service": "Compliance",
+    "controller": "ComplianceController",
+    "method": "Post",
+    "path": "/api/v1/companies/{companyId}/compliance/vds-certificates"
+  },
+  {
+    "service": "Compliance",
+    "controller": "ComplianceController",
+    "method": "Post",
+    "path": "/api/v1/companies/{companyId}/compliance/vds-certificates/{id}/deposit"
+  },
+  {
+    "service": "Identity",
+    "controller": "RetiredDevelopmentAuthController",
+    "method": "Get",
+    "path": "/api/v1/auth/dev-token"
+  },
+  {
+    "service": "Identity",
+    "controller": "IdentityController",
+    "method": "Get",
+    "path": "/api/v1/companies/{companyId}/identity/roles"
+  },
+  {
+    "service": "Identity",
+    "controller": "ProfileController",
+    "method": "Get",
+    "path": "/api/v1/identity/me"
+  },
+  {
+    "service": "Integration",
+    "controller": "IntegrationController",
+    "method": "Get",
+    "path": "/api/v1/companies/{companyId}/integration/connections"
+  },
+  {
+    "service": "Integration",
+    "controller": "MessagingController",
+    "method": "Get",
+    "path": "/api/v1/companies/{companyId}/messaging/dead-letters"
+  },
+  {
+    "service": "Integration",
+    "controller": "MessagingController",
+    "method": "Post",
+    "path": "/api/v1/companies/{companyId}/messaging/dead-letters/{id}/replay"
+  },
+  {
+    "service": "Integration",
+    "controller": "MessagingController",
+    "method": "Get",
+    "path": "/api/v1/companies/{companyId}/messaging/outbox"
+  },
+  {
+    "service": "Integration",
+    "controller": "MessagingController",
+    "method": "Post",
+    "path": "/api/v1/companies/{companyId}/messaging/outbox/{id}/retry"
+  },
+  {
+    "service": "Inventory",
+    "controller": "InventoryController",
+    "method": "Get",
+    "path": "/api/v1/companies/{companyId}/inventory/all-balances"
+  },
+  {
+    "service": "Inventory",
+    "controller": "InventoryController",
+    "method": "Get",
+    "path": "/api/v1/companies/{companyId}/inventory/balances"
+  },
+  {
+    "service": "Inventory",
+    "controller": "InventoryController",
+    "method": "Get",
+    "path": "/api/v1/companies/{companyId}/transfers"
+  },
+  {
+    "service": "Inventory",
+    "controller": "InventoryController",
+    "method": "Post",
+    "path": "/api/v1/companies/{companyId}/transfers"
+  },
+  {
+    "service": "Inventory",
+    "controller": "InventoryController",
+    "method": "Post",
+    "path": "/api/v1/companies/{companyId}/transfers/{id}/approve"
+  },
+  {
+    "service": "Inventory",
+    "controller": "InventoryController",
+    "method": "Post",
+    "path": "/api/v1/companies/{companyId}/transfers/{id}/cancel"
+  },
+  {
+    "service": "Inventory",
+    "controller": "InventoryController",
+    "method": "Post",
+    "path": "/api/v1/companies/{companyId}/transfers/{id}/post"
+  },
+  {
+    "service": "Inventory",
+    "controller": "InventoryController",
+    "method": "Post",
+    "path": "/api/v1/companies/{companyId}/transfers/{id}/submit"
+  },
+  {
+    "service": "Inventory",
+    "controller": "InventoryController",
+    "method": "Get",
+    "path": "/api/v1/companies/{companyId}/warehouses"
+  },
+  {
+    "service": "Inventory",
+    "controller": "InventoryController",
+    "method": "Post",
+    "path": "/api/v1/companies/{companyId}/warehouses"
+  },
+  {
+    "service": "Inventory",
+    "controller": "InventoryController",
+    "method": "Get",
+    "path": "/api/v1/companies/{companyId}/warehouses/{id}"
+  },
+  {
+    "service": "Manufacturing",
+    "controller": "ManufacturingController",
+    "method": "Get",
+    "path": "/api/v1/companies/{companyId}/manufacturing/coefficients"
+  },
+  {
+    "service": "Manufacturing",
+    "controller": "ManufacturingController",
+    "method": "Post",
+    "path": "/api/v1/companies/{companyId}/manufacturing/coefficients"
+  },
+  {
+    "service": "Manufacturing",
+    "controller": "ManufacturingController",
+    "method": "Put",
+    "path": "/api/v1/companies/{companyId}/manufacturing/coefficients/{id}/approve"
+  },
+  {
+    "service": "Manufacturing",
+    "controller": "ManufacturingController",
+    "method": "Post",
+    "path": "/api/v1/companies/{companyId}/manufacturing/coefficients/{id}/cancel"
+  },
+  {
+    "service": "Manufacturing",
+    "controller": "ManufacturingController",
+    "method": "Post",
+    "path": "/api/v1/companies/{companyId}/manufacturing/coefficients/{id}/submit"
+  },
+  {
+    "service": "Manufacturing",
+    "controller": "ManufacturingController",
+    "method": "Get",
+    "path": "/api/v1/companies/{companyId}/manufacturing/production-orders"
+  },
+  {
+    "service": "MasterData",
+    "controller": "CustomerController",
+    "method": "Get",
+    "path": "/api/v1/companies/{companyId}/customers"
+  },
+  {
+    "service": "MasterData",
+    "controller": "CustomerController",
+    "method": "Post",
+    "path": "/api/v1/companies/{companyId}/customers"
+  },
+  {
+    "service": "MasterData",
+    "controller": "CustomerController",
+    "method": "Get",
+    "path": "/api/v1/companies/{companyId}/customers/{id}"
+  },
+  {
+    "service": "MasterData",
+    "controller": "CustomerController",
+    "method": "Post",
+    "path": "/api/v1/companies/{companyId}/customers/{id}/update"
+  },
+  {
+    "service": "MasterData",
+    "controller": "MasterDataController",
+    "method": "Get",
+    "path": "/api/v1/companies/{companyId}/products"
+  },
+  {
+    "service": "MasterData",
+    "controller": "MasterDataController",
+    "method": "Post",
+    "path": "/api/v1/companies/{companyId}/products"
+  },
+  {
+    "service": "MasterData",
+    "controller": "MasterDataController",
+    "method": "Get",
+    "path": "/api/v1/companies/{companyId}/products/{id}"
+  },
+  {
+    "service": "MasterData",
+    "controller": "MasterDataController",
+    "method": "Get",
+    "path": "/api/v1/companies/{companyId}/suppliers"
+  },
+  {
+    "service": "MasterData",
+    "controller": "MasterDataController",
+    "method": "Post",
+    "path": "/api/v1/companies/{companyId}/suppliers"
+  },
+  {
+    "service": "MasterData",
+    "controller": "MasterDataController",
+    "method": "Get",
+    "path": "/api/v1/companies/{companyId}/suppliers/{id}"
   },
   {
     "service": "Purchase",
     "controller": "PurchaseController",
     "method": "Get",
+    "path": "/api/v1/companies/{companyId}/purchases"
+  },
+  {
+    "service": "Purchase",
+    "controller": "PurchaseController",
+    "method": "Post",
     "path": "/api/v1/companies/{companyId}/purchases"
   },
   {
@@ -82,12 +364,6 @@
     "controller": "PurchaseController",
     "method": "Get",
     "path": "/api/v1/companies/{companyId}/purchases/{id}"
-  },
-  {
-    "service": "Purchase",
-    "controller": "PurchaseController",
-    "method": "Post",
-    "path": "/api/v1/companies/{companyId}/purchases/{id}/submit"
   },
   {
     "service": "Purchase",
@@ -102,130 +378,58 @@
     "path": "/api/v1/companies/{companyId}/purchases/{id}/reject"
   },
   {
-    "service": "Sales",
-    "controller": "PaymentCorrectionController",
+    "service": "Purchase",
+    "controller": "PurchaseController",
     "method": "Post",
-    "path": "/api/v1/companies/{companyId}/payments/{paymentId}/reversals"
+    "path": "/api/v1/companies/{companyId}/purchases/{id}/submit"
   },
   {
-    "service": "Sales",
-    "controller": "PaymentCorrectionController",
+    "service": "Purchase",
+    "controller": "PurchaseReversalsController",
     "method": "Post",
-    "path": "/api/v1/companies/{companyId}/payments/{paymentId}/refunds"
+    "path": "/api/v1/companies/{companyId}/purchases/{purchaseId}/cancel-unposted"
   },
   {
-    "service": "Sales",
-    "controller": "PaymentCorrectionController",
+    "service": "Purchase",
+    "controller": "RetiredPostingShortcutController",
     "method": "Post",
-    "path": "/api/v1/companies/{companyId}/payments/{paymentId}/reversals/{id}/approve"
+    "path": "/api/v1/companies/{companyId}/purchases/{purchaseId}/post-ledger"
   },
   {
-    "service": "Sales",
-    "controller": "PaymentCorrectionController",
+    "service": "Purchase",
+    "controller": "PurchasePostingController",
     "method": "Post",
-    "path": "/api/v1/companies/{companyId}/payments/{paymentId}/reversals/{id}/cancel"
+    "path": "/api/v1/companies/{companyId}/purchases/{purchaseId}/posting-plans"
   },
   {
-    "service": "Sales",
-    "controller": "PaymentCorrectionController",
-    "method": "Post",
-    "path": "/api/v1/companies/{companyId}/payments/{paymentId}/refunds/{id}/approve"
-  },
-  {
-    "service": "Sales",
-    "controller": "PaymentCorrectionController",
-    "method": "Post",
-    "path": "/api/v1/companies/{companyId}/payments/{paymentId}/refunds/{id}/cancel"
-  },
-  {
-    "service": "Sales",
-    "controller": "PaymentCorrectionController",
+    "service": "Purchase",
+    "controller": "PurchasePostingController",
     "method": "Get",
-    "path": "/api/v1/companies/{companyId}/payments/{paymentId}/corrections"
+    "path": "/api/v1/companies/{companyId}/purchases/{purchaseId}/posting-plans/{planId}"
   },
   {
-    "service": "Sales",
-    "controller": "PaymentCorrectionController",
+    "service": "Purchase",
+    "controller": "PurchasePostingController",
+    "method": "Post",
+    "path": "/api/v1/companies/{companyId}/purchases/{purchaseId}/posting-plans/{planId}/cancel"
+  },
+  {
+    "service": "Purchase",
+    "controller": "PurchasePostingController",
+    "method": "Post",
+    "path": "/api/v1/companies/{companyId}/purchases/{purchaseId}/posting-plans/{planId}/post"
+  },
+  {
+    "service": "Purchase",
+    "controller": "PurchasePostingController",
     "method": "Get",
-    "path": "/api/v1/companies/{companyId}/payments/{paymentId}/corrections/{id}"
+    "path": "/api/v1/companies/{companyId}/purchases/{purchaseId}/posting-status"
   },
   {
-    "service": "Sales",
-    "controller": "PaymentController",
-    "method": "Post",
-    "path": "/api/v1/companies/{companyId}/payments"
-  },
-  {
-    "service": "Sales",
-    "controller": "PaymentController",
+    "service": "Purchase",
+    "controller": "PurchasePostingController",
     "method": "Get",
-    "path": "/api/v1/companies/{companyId}/payments"
-  },
-  {
-    "service": "Sales",
-    "controller": "PaymentController",
-    "method": "Get",
-    "path": "/api/v1/companies/{companyId}/payments/{id}"
-  },
-  {
-    "service": "Sales",
-    "controller": "PaymentController",
-    "method": "Post",
-    "path": "/api/v1/companies/{companyId}/payments/{id}/approve"
-  },
-  {
-    "service": "Sales",
-    "controller": "PaymentController",
-    "method": "Post",
-    "path": "/api/v1/companies/{companyId}/payments/{id}/cancel"
-  },
-  {
-    "service": "Sales",
-    "controller": "PaymentController",
-    "method": "Post",
-    "path": "/api/v1/companies/{companyId}/payments/{id}/allocate"
-  },
-  {
-    "service": "Sales",
-    "controller": "PaymentController",
-    "method": "Get",
-    "path": "/api/v1/companies/{companyId}/customers/{customerId}/receivables"
-  },
-  {
-    "service": "Company",
-    "controller": "FiscalPeriodsController",
-    "method": "Post",
-    "path": "/api/v1/companies/{companyId}/periods"
-  },
-  {
-    "service": "Company",
-    "controller": "FiscalPeriodsController",
-    "method": "Get",
-    "path": "/api/v1/companies/{companyId}/periods"
-  },
-  {
-    "service": "Company",
-    "controller": "FiscalPeriodsController",
-    "method": "Get",
-    "path": "/api/v1/companies/{companyId}/periods/{id}"
-  },
-  {
-    "service": "Company",
-    "controller": "FiscalPeriodsController",
-    "method": "Post",
-    "path": "/api/v1/companies/{companyId}/periods/{id}/request-close"
-  },
-  {
-    "service": "Company",
-    "controller": "FiscalPeriodsController",
-    "method": "Post",
-    "path": "/api/v1/companies/{companyId}/periods/{id}/close"
-  },
-  {
-    "service": "Company",
-    "controller": "FiscalPeriodsController",
-    "method": "Post",
-    "path": "/api/v1/companies/{companyId}/periods/{id}/cancel-close"
+    "path": "/api/v1/companies/{companyId}/purchases/{purchaseId}/reconciliation"
   },
   {
     "service": "Purchase",
@@ -252,136 +456,16 @@
     "path": "/api/v1/companies/{companyId}/purchases/{purchaseId}/reversals/{id}/cancel"
   },
   {
-    "service": "Purchase",
-    "controller": "PurchaseReversalsController",
-    "method": "Post",
-    "path": "/api/v1/companies/{companyId}/purchases/{purchaseId}/cancel-unposted"
-  },
-  {
-    "service": "MasterData",
-    "controller": "MasterDataController",
-    "method": "Post",
-    "path": "/api/v1/companies/{companyId}/products"
-  },
-  {
-    "service": "MasterData",
-    "controller": "MasterDataController",
+    "service": "Reporting",
+    "controller": "CustomerReportingController",
     "method": "Get",
-    "path": "/api/v1/companies/{companyId}/products"
-  },
-  {
-    "service": "MasterData",
-    "controller": "MasterDataController",
-    "method": "Get",
-    "path": "/api/v1/companies/{companyId}/products/{id}"
-  },
-  {
-    "service": "MasterData",
-    "controller": "MasterDataController",
-    "method": "Post",
-    "path": "/api/v1/companies/{companyId}/suppliers"
-  },
-  {
-    "service": "MasterData",
-    "controller": "MasterDataController",
-    "method": "Get",
-    "path": "/api/v1/companies/{companyId}/suppliers"
-  },
-  {
-    "service": "MasterData",
-    "controller": "MasterDataController",
-    "method": "Get",
-    "path": "/api/v1/companies/{companyId}/suppliers/{id}"
-  },
-  {
-    "service": "Inventory",
-    "controller": "InventoryController",
-    "method": "Post",
-    "path": "/api/v1/companies/{companyId}/warehouses"
-  },
-  {
-    "service": "Inventory",
-    "controller": "InventoryController",
-    "method": "Get",
-    "path": "/api/v1/companies/{companyId}/warehouses/{id}"
-  },
-  {
-    "service": "Inventory",
-    "controller": "InventoryController",
-    "method": "Get",
-    "path": "/api/v1/companies/{companyId}/inventory/balances"
-  },
-  {
-    "service": "VatEngine",
-    "controller": "TaxController",
-    "method": "Post",
-    "path": "/api/v1/companies/{companyId}/tax/rules"
-  },
-  {
-    "service": "VatEngine",
-    "controller": "TaxController",
-    "method": "Post",
-    "path": "/api/v1/companies/{companyId}/tax/rules/{id}/publish"
-  },
-  {
-    "service": "VatEngine",
-    "controller": "TaxController",
-    "method": "Get",
-    "path": "/api/v1/companies/{companyId}/tax/rules/{id}"
-  },
-  {
-    "service": "VatEngine",
-    "controller": "TaxController",
-    "method": "Get",
-    "path": "/api/v1/companies/{companyId}/tax/ledger"
-  },
-  {
-    "service": "Purchase",
-    "controller": "PurchasePostingController",
-    "method": "Post",
-    "path": "/api/v1/companies/{companyId}/purchases/{purchaseId}/posting-plans"
-  },
-  {
-    "service": "Purchase",
-    "controller": "PurchasePostingController",
-    "method": "Get",
-    "path": "/api/v1/companies/{companyId}/purchases/{purchaseId}/posting-plans/{planId}"
-  },
-  {
-    "service": "Purchase",
-    "controller": "PurchasePostingController",
-    "method": "Post",
-    "path": "/api/v1/companies/{companyId}/purchases/{purchaseId}/posting-plans/{planId}/post"
-  },
-  {
-    "service": "Purchase",
-    "controller": "PurchasePostingController",
-    "method": "Post",
-    "path": "/api/v1/companies/{companyId}/purchases/{purchaseId}/posting-plans/{planId}/cancel"
-  },
-  {
-    "service": "Purchase",
-    "controller": "PurchasePostingController",
-    "method": "Get",
-    "path": "/api/v1/companies/{companyId}/purchases/{purchaseId}/posting-status"
-  },
-  {
-    "service": "Purchase",
-    "controller": "PurchasePostingController",
-    "method": "Get",
-    "path": "/api/v1/companies/{companyId}/purchases/{purchaseId}/reconciliation"
+    "path": "/api/v1/companies/{companyId}/customers/{customerId}/ageing"
   },
   {
     "service": "Reporting",
-    "controller": "ReportsController",
+    "controller": "CustomerReportingController",
     "method": "Get",
-    "path": "/api/v1/companies/{companyId}/reports/financial-summary"
-  },
-  {
-    "service": "Reporting",
-    "controller": "ReportsController",
-    "method": "Get",
-    "path": "/api/v1/companies/{companyId}/reports/financial-entries"
+    "path": "/api/v1/companies/{companyId}/customers/{customerId}/statement"
   },
   {
     "service": "Reporting",
@@ -392,55 +476,211 @@
   {
     "service": "Reporting",
     "controller": "ReportsController",
+    "method": "Get",
+    "path": "/api/v1/companies/{companyId}/reports/financial-entries"
+  },
+  {
+    "service": "Reporting",
+    "controller": "ReportsController",
+    "method": "Get",
+    "path": "/api/v1/companies/{companyId}/reports/financial-summary"
+  },
+  {
+    "service": "Reporting",
+    "controller": "ReportsController",
     "method": "Post",
     "path": "/api/v1/companies/{companyId}/reports/rebuild"
   },
   {
-    "service": "Integration",
-    "controller": "MessagingController",
+    "service": "Sales",
+    "controller": "PaymentController",
     "method": "Get",
-    "path": "/api/v1/companies/{companyId}/messaging/outbox"
+    "path": "/api/v1/companies/{companyId}/customers/{customerId}/receivables"
   },
   {
-    "service": "Integration",
-    "controller": "MessagingController",
-    "method": "Post",
-    "path": "/api/v1/companies/{companyId}/messaging/outbox/{id}/retry"
-  },
-  {
-    "service": "Integration",
-    "controller": "MessagingController",
+    "service": "Sales",
+    "controller": "PaymentController",
     "method": "Get",
-    "path": "/api/v1/companies/{companyId}/messaging/dead-letters"
+    "path": "/api/v1/companies/{companyId}/payments"
   },
   {
-    "service": "Integration",
-    "controller": "MessagingController",
+    "service": "Sales",
+    "controller": "PaymentController",
     "method": "Post",
-    "path": "/api/v1/companies/{companyId}/messaging/dead-letters/{id}/replay"
+    "path": "/api/v1/companies/{companyId}/payments"
+  },
+  {
+    "service": "Sales",
+    "controller": "PaymentController",
+    "method": "Get",
+    "path": "/api/v1/companies/{companyId}/payments/{id}"
+  },
+  {
+    "service": "Sales",
+    "controller": "PaymentController",
+    "method": "Post",
+    "path": "/api/v1/companies/{companyId}/payments/{id}/allocate"
+  },
+  {
+    "service": "Sales",
+    "controller": "PaymentController",
+    "method": "Post",
+    "path": "/api/v1/companies/{companyId}/payments/{id}/approve"
+  },
+  {
+    "service": "Sales",
+    "controller": "PaymentController",
+    "method": "Post",
+    "path": "/api/v1/companies/{companyId}/payments/{id}/cancel"
+  },
+  {
+    "service": "Sales",
+    "controller": "PaymentController",
+    "method": "Post",
+    "path": "/api/v1/companies/{companyId}/payments/{id}/post"
+  },
+  {
+    "service": "Sales",
+    "controller": "PaymentCorrectionController",
+    "method": "Get",
+    "path": "/api/v1/companies/{companyId}/payments/{paymentId}/corrections"
+  },
+  {
+    "service": "Sales",
+    "controller": "PaymentCorrectionController",
+    "method": "Get",
+    "path": "/api/v1/companies/{companyId}/payments/{paymentId}/corrections/{id}"
+  },
+  {
+    "service": "Sales",
+    "controller": "PaymentCorrectionController",
+    "method": "Post",
+    "path": "/api/v1/companies/{companyId}/payments/{paymentId}/refunds"
+  },
+  {
+    "service": "Sales",
+    "controller": "PaymentCorrectionController",
+    "method": "Post",
+    "path": "/api/v1/companies/{companyId}/payments/{paymentId}/refunds/{id}/approve"
+  },
+  {
+    "service": "Sales",
+    "controller": "PaymentCorrectionController",
+    "method": "Post",
+    "path": "/api/v1/companies/{companyId}/payments/{paymentId}/refunds/{id}/cancel"
+  },
+  {
+    "service": "Sales",
+    "controller": "PaymentCorrectionController",
+    "method": "Post",
+    "path": "/api/v1/companies/{companyId}/payments/{paymentId}/reversals"
+  },
+  {
+    "service": "Sales",
+    "controller": "PaymentCorrectionController",
+    "method": "Post",
+    "path": "/api/v1/companies/{companyId}/payments/{paymentId}/reversals/{id}/approve"
+  },
+  {
+    "service": "Sales",
+    "controller": "PaymentCorrectionController",
+    "method": "Post",
+    "path": "/api/v1/companies/{companyId}/payments/{paymentId}/reversals/{id}/cancel"
+  },
+  {
+    "service": "Sales",
+    "controller": "SalesController",
+    "method": "Get",
+    "path": "/api/v1/companies/{companyId}/sales"
+  },
+  {
+    "service": "Sales",
+    "controller": "SalesController",
+    "method": "Post",
+    "path": "/api/v1/companies/{companyId}/sales"
+  },
+  {
+    "service": "Sales",
+    "controller": "SalesPostingController",
+    "method": "Get",
+    "path": "/api/v1/companies/{companyId}/sales/ledger"
+  },
+  {
+    "service": "Sales",
+    "controller": "SalesPostingController",
+    "method": "Get",
+    "path": "/api/v1/companies/{companyId}/sales/summary"
+  },
+  {
+    "service": "Sales",
+    "controller": "SalesController",
+    "method": "Get",
+    "path": "/api/v1/companies/{companyId}/sales/{id}"
+  },
+  {
+    "service": "Sales",
+    "controller": "SalesController",
+    "method": "Post",
+    "path": "/api/v1/companies/{companyId}/sales/{id}/approve"
+  },
+  {
+    "service": "Sales",
+    "controller": "SalesController",
+    "method": "Post",
+    "path": "/api/v1/companies/{companyId}/sales/{id}/cancel"
+  },
+  {
+    "service": "Sales",
+    "controller": "SalesPostingController",
+    "method": "Get",
+    "path": "/api/v1/companies/{companyId}/sales/{id}/fulfillment"
+  },
+  {
+    "service": "Sales",
+    "controller": "SalesPostingController",
+    "method": "Post",
+    "path": "/api/v1/companies/{companyId}/sales/{id}/post"
+  },
+  {
+    "service": "Sales",
+    "controller": "RetiredPostingShortcutController",
+    "method": "Post",
+    "path": "/api/v1/companies/{companyId}/sales/{id}/post-ledger"
+  },
+  {
+    "service": "Sales",
+    "controller": "SalesPostingController",
+    "method": "Get",
+    "path": "/api/v1/companies/{companyId}/sales/{id}/reconciliation"
+  },
+  {
+    "service": "Sales",
+    "controller": "SalesController",
+    "method": "Post",
+    "path": "/api/v1/companies/{companyId}/sales/{id}/reject"
+  },
+  {
+    "service": "Sales",
+    "controller": "SalesPostingController",
+    "method": "Post",
+    "path": "/api/v1/companies/{companyId}/sales/{id}/reserve"
+  },
+  {
+    "service": "Sales",
+    "controller": "SalesController",
+    "method": "Post",
+    "path": "/api/v1/companies/{companyId}/sales/{id}/submit"
   },
   {
     "service": "Sales",
     "controller": "SalesCreditController",
     "method": "Get",
-    "path": "/api/v1/companies/{companyId}/sales/{invoiceId}/returnable-lines"
-  },
-  {
-    "service": "Sales",
-    "controller": "SalesCreditController",
-    "method": "Post",
-    "path": "/api/v1/companies/{companyId}/sales/{invoiceId}/price-credits"
-  },
-  {
-    "service": "Sales",
-    "controller": "SalesCreditController",
-    "method": "Post",
     "path": "/api/v1/companies/{companyId}/sales/{invoiceId}/credit-notes"
   },
   {
     "service": "Sales",
     "controller": "SalesCreditController",
-    "method": "Get",
+    "method": "Post",
     "path": "/api/v1/companies/{companyId}/sales/{invoiceId}/credit-notes"
   },
   {
@@ -464,13 +704,13 @@
   {
     "service": "Sales",
     "controller": "SalesDebitController",
-    "method": "Post",
+    "method": "Get",
     "path": "/api/v1/companies/{companyId}/sales/{invoiceId}/debit-notes"
   },
   {
     "service": "Sales",
     "controller": "SalesDebitController",
-    "method": "Get",
+    "method": "Post",
     "path": "/api/v1/companies/{companyId}/sales/{invoiceId}/debit-notes"
   },
   {
@@ -493,117 +733,39 @@
   },
   {
     "service": "Sales",
-    "controller": "SalesController",
+    "controller": "SalesCreditController",
     "method": "Post",
-    "path": "/api/v1/companies/{companyId}/sales"
+    "path": "/api/v1/companies/{companyId}/sales/{invoiceId}/price-credits"
   },
   {
     "service": "Sales",
-    "controller": "SalesController",
+    "controller": "SalesCreditController",
     "method": "Get",
-    "path": "/api/v1/companies/{companyId}/sales"
+    "path": "/api/v1/companies/{companyId}/sales/{invoiceId}/returnable-lines"
   },
   {
-    "service": "Sales",
-    "controller": "SalesController",
+    "service": "VatEngine",
+    "controller": "TaxController",
     "method": "Get",
-    "path": "/api/v1/companies/{companyId}/sales/{id}"
+    "path": "/api/v1/companies/{companyId}/tax/ledger"
   },
   {
-    "service": "Sales",
-    "controller": "SalesController",
+    "service": "VatEngine",
+    "controller": "TaxController",
     "method": "Post",
-    "path": "/api/v1/companies/{companyId}/sales/{id}/submit"
+    "path": "/api/v1/companies/{companyId}/tax/rules"
   },
   {
-    "service": "Sales",
-    "controller": "SalesController",
+    "service": "VatEngine",
+    "controller": "TaxController",
+    "method": "Get",
+    "path": "/api/v1/companies/{companyId}/tax/rules/{id}"
+  },
+  {
+    "service": "VatEngine",
+    "controller": "TaxController",
     "method": "Post",
-    "path": "/api/v1/companies/{companyId}/sales/{id}/approve"
-  },
-  {
-    "service": "Sales",
-    "controller": "SalesController",
-    "method": "Post",
-    "path": "/api/v1/companies/{companyId}/sales/{id}/reject"
-  },
-  {
-    "service": "Sales",
-    "controller": "SalesController",
-    "method": "Post",
-    "path": "/api/v1/companies/{companyId}/sales/{id}/cancel"
-  },
-  {
-    "service": "Sales",
-    "controller": "SalesPostingController",
-    "method": "Post",
-    "path": "/api/v1/companies/{companyId}/sales/{id}/reserve"
-  },
-  {
-    "service": "Sales",
-    "controller": "SalesPostingController",
-    "method": "Post",
-    "path": "/api/v1/companies/{companyId}/sales/{id}/post"
-  },
-  {
-    "service": "Sales",
-    "controller": "SalesPostingController",
-    "method": "Get",
-    "path": "/api/v1/companies/{companyId}/sales/{id}/fulfillment"
-  },
-  {
-    "service": "Sales",
-    "controller": "SalesPostingController",
-    "method": "Get",
-    "path": "/api/v1/companies/{companyId}/sales/{id}/reconciliation"
-  },
-  {
-    "service": "Sales",
-    "controller": "SalesPostingController",
-    "method": "Get",
-    "path": "/api/v1/companies/{companyId}/sales/ledger"
-  },
-  {
-    "service": "Sales",
-    "controller": "SalesPostingController",
-    "method": "Get",
-    "path": "/api/v1/companies/{companyId}/sales/summary"
-  },
-  {
-    "service": "Identity",
-    "controller": "IdentityController",
-    "method": "Get",
-    "path": "/api/v1/companies/{companyId}/identity/roles"
-  },
-  {
-    "service": "Manufacturing",
-    "controller": "ManufacturingController",
-    "method": "Get",
-    "path": "/api/v1/companies/{companyId}/manufacturing/production-orders"
-  },
-  {
-    "service": "Manufacturing",
-    "controller": "ManufacturingController",
-    "method": "Get",
-    "path": "/api/v1/companies/{companyId}/manufacturing/coefficients"
-  },
-  {
-    "service": "Manufacturing",
-    "controller": "ManufacturingController",
-    "method": "Post",
-    "path": "/api/v1/companies/{companyId}/manufacturing/coefficients"
-  },
-  {
-    "service": "Manufacturing",
-    "controller": "ManufacturingController",
-    "method": "Put",
-    "path": "/api/v1/companies/{companyId}/manufacturing/coefficients/{id}/approve"
-  },
-  {
-    "service": "Compliance",
-    "controller": "ComplianceController",
-    "method": "Get",
-    "path": "/api/v1/companies/{companyId}/compliance/returns"
+    "path": "/api/v1/companies/{companyId}/tax/rules/{id}/publish"
   },
   {
     "service": "Workflow",
@@ -612,111 +774,21 @@
     "path": "/api/v1/companies/{companyId}/workflow/tasks"
   },
   {
-    "service": "Integration",
-    "controller": "IntegrationController",
-    "method": "Get",
-    "path": "/api/v1/companies/{companyId}/integration/connections"
-  },
-  {
-    "service": "Identity",
-    "controller": "ProfileController",
-    "method": "Get",
-    "path": "/api/v1/identity/me"
-  },
-  {
-    "service": "Identity",
-    "controller": "Retired",
-    "method": "Get",
-    "path": "/api/v1/auth/dev-token"
-  },
-  {
-    "service": "Purchase",
-    "controller": "Retired",
-    "method": "Post",
-    "path": "/api/v1/companies/{companyId}/purchases/{purchaseId}/post-ledger"
-  },
-  {
-    "service": "Sales",
-    "controller": "Retired",
-    "method": "Post",
-    "path": "/api/v1/companies/{companyId}/sales/{id}/post-ledger"
-  },
-  {
     "service": "Workflow",
-    "controller": "Retired",
+    "controller": "RetiredWorkbenchController",
     "method": "Get",
     "path": "/api/v1/companies/{companyId}/workflows/my-tasks"
   },
   {
     "service": "Workflow",
-    "controller": "Retired",
+    "controller": "RetiredWorkbenchController",
     "method": "Post",
     "path": "/api/v1/companies/{companyId}/workflows/tasks/{id}/approve"
   },
   {
     "service": "Workflow",
-    "controller": "Retired",
+    "controller": "RetiredWorkbenchController",
     "method": "Post",
     "path": "/api/v1/companies/{companyId}/workflows/tasks/{id}/reject"
-  },
-  {
-    "service": "Inventory",
-    "controller": "InventoryController",
-    "method": "Get",
-    "path": "/api/v1/companies/{companyId}/warehouses"
-  },
-  {
-    "service": "Inventory",
-    "controller": "InventoryController",
-    "method": "Get",
-    "path": "/api/v1/companies/{companyId}/inventory/all-balances"
-  },
-  {
-    "service": "Inventory",
-    "controller": "InventoryController",
-    "method": "Post",
-    "path": "/api/v1/companies/{companyId}/transfers"
-  },
-  {
-    "service": "Inventory",
-    "controller": "InventoryController",
-    "method": "Get",
-    "path": "/api/v1/companies/{companyId}/transfers"
-  },
-  {
-    "service": "Inventory",
-    "controller": "InventoryController",
-    "method": "Post",
-    "path": "/api/v1/companies/{companyId}/transfers/{id}/submit"
-  },
-  {
-    "service": "Inventory",
-    "controller": "InventoryController",
-    "method": "Post",
-    "path": "/api/v1/companies/{companyId}/transfers/{id}/approve"
-  },
-  {
-    "service": "Inventory",
-    "controller": "InventoryController",
-    "method": "Post",
-    "path": "/api/v1/companies/{companyId}/transfers/{id}/post"
-  },
-  {
-    "service": "Inventory",
-    "controller": "InventoryController",
-    "method": "Post",
-    "path": "/api/v1/companies/{companyId}/transfers/{id}/cancel"
-  },
-  {
-    "service": "Manufacturing",
-    "controller": "ManufacturingController",
-    "method": "Post",
-    "path": "/api/v1/companies/{companyId}/manufacturing/coefficients/{id}/submit"
-  },
-  {
-    "service": "Manufacturing",
-    "controller": "ManufacturingController",
-    "method": "Post",
-    "path": "/api/v1/companies/{companyId}/manufacturing/coefficients/{id}/cancel"
   }
 ]

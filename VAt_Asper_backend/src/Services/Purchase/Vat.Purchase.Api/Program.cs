@@ -1,20 +1,9 @@
-using Microsoft.EntityFrameworkCore;
-using Vat.Services.Purchase.Infrastructure;
-using Vat.Web;
+using Vat.Hosting;
 
 var builder = WebApplication.CreateBuilder(args);
-builder.AddVatHttp("Purchase");
-builder.Services.AddPurchasePersistence(builder.Configuration);
-builder.Services.AddScoped<IBackendReadiness, PurchaseReadiness>();
-
+builder.AddVatBackend("Purchase");
 var app = builder.Build();
-app.MapVatHttp();
-await app.ApplyPurchaseMigrationsAsync();
+app.MapVatBackend();
 app.Run();
 
 public partial class Program;
-
-public sealed class PurchaseReadiness(PurchaseDbContext db) : IBackendReadiness
-{
-    public async Task<bool> IsReady(CancellationToken ct) => !(await db.Database.GetPendingMigrationsAsync(ct)).Any();
-}

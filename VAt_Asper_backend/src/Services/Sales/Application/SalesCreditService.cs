@@ -84,6 +84,8 @@ public sealed class SalesCreditService(ISalesInvoiceStore invoices, ISalesPostin
         TransitionRequest request, string correlation, CancellationToken ct)
     {
         actor.RequireCompany(companyId);
+        Vat.Domain.FinancialBoundary.RequireAvailable();
+        actor.RequireCompany(companyId);
         if (!policy.Enabled) throw new DomainException("posting_disabled", "Financial posting is disabled.", 409);
         var note = await Note(actor, companyId, invoiceId, id, ct);
         await periods.RequireOpen(actor.TenantId, companyId, note.CorrectionDate, ct);

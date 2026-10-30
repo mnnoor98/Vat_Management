@@ -32,6 +32,8 @@ public sealed class CompanyCommandExecutor(CompanyDbContext db, TimeProvider clo
 
         if (existing is not null)
         {
+            if (existing.Actor != actor.Subject)
+                throw new DomainException("idempotency_owner_conflict", "This key belongs to a different actor.", 409);
             if (existing.RequestHash != hash)
                 throw new DomainException("idempotency_key_reused", "Idempotency-Key has been used with a different request payload.", 422);
             await tx.RollbackAsync(ct);

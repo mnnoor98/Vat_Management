@@ -9,7 +9,7 @@ namespace Vat.Services.Inventory.Infrastructure;
 
 public sealed class InventoryPeriodGuard : IPeriodGuard
 {
-    public Task RequireOpen(Guid tenantId, Guid companyId, DateOnly businessDate, CancellationToken ct) => Task.CompletedTask;
+    public Task RequireOpen(Guid tenantId, Guid companyId, DateOnly businessDate, CancellationToken ct) => Task.FromException(new Vat.Domain.DomainException("financial_boundary_unavailable", "Verified period admission and financial coordination are required.", 503));
 }
 
 public sealed class InventoryRecordWriters(InventoryDbContext db, TimeProvider clock) : IAuditWriter, IEventWriter
@@ -46,7 +46,8 @@ public static class InventoryPersistence
     public static IServiceCollection AddInventoryPersistence(this IServiceCollection services, IConfiguration config)
     {
         var cs = config.GetConnectionString("InventoryDatabase")
-            ?? "Host=127.0.0.1;Port=5432;Database=vat_inventory;Username=postgres;Password=123456;";
+            ?? throw new InvalidOperationException("Configure ConnectionStrings:InventoryDatabase.");
+        if (string.IsNullOrWhiteSpace(cs)) throw new InvalidOperationException("Configure ConnectionStrings:InventoryDatabase.");
         services.AddDbContext<InventoryDbContext>(options => Configure(options, cs));
         services.AddSingleton(TimeProvider.System);
         services.AddScoped<IPeriodGuard, InventoryPeriodGuard>();

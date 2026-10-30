@@ -1,4 +1,4 @@
-name: Backend checks
+name: Project checks
 on:
   push:
   pull_request:
@@ -7,6 +7,9 @@ permissions:
 jobs:
   build-and-test:
     runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: VAt_Asper_backend
     services:
       rabbitmq:
         image: rabbitmq:4-management
@@ -31,6 +34,13 @@ jobs:
           --health-timeout 5s
           --health-retries 12
     env:
+      ConnectionStrings__CompanyDatabase: Host=localhost;Port=5432;Database=postgres;Username=vat_test;Password=ci-disposable-only
+      ConnectionStrings__MasterDataDatabase: Host=localhost;Port=5432;Database=postgres;Username=vat_test;Password=ci-disposable-only
+      ConnectionStrings__PurchaseDatabase: Host=localhost;Port=5432;Database=postgres;Username=vat_test;Password=ci-disposable-only
+      ConnectionStrings__SalesDatabase: Host=localhost;Port=5432;Database=postgres;Username=vat_test;Password=ci-disposable-only
+      ConnectionStrings__InventoryDatabase: Host=localhost;Port=5432;Database=postgres;Username=vat_test;Password=ci-disposable-only
+      ConnectionStrings__VatEngineDatabase: Host=localhost;Port=5432;Database=postgres;Username=vat_test;Password=ci-disposable-only
+      ConnectionStrings__ReportingDatabase: Host=localhost;Port=5432;Database=postgres;Username=vat_test;Password=ci-disposable-only
       VAT_TEST_RABBITMQ_URI: amqp://guest:guest@localhost:5672/%2F
       VAT_TEST_POSTGRES: Host=localhost;Port=5432;Database=postgres;Username=vat_test;Password=ci-disposable-only
       ConnectionStrings__IntegrationDatabase: Host=localhost;Port=5432;Database=postgres;Username=vat_test;Password=ci-disposable-only
@@ -43,7 +53,7 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-dotnet@v4
         with:
-          global-json-file: global.json
+          global-json-file: VAt_Asper_backend/global.json
       - run: dotnet restore EnterpriseVat.sln -p:NuGetAuditMode=all
       - run: dotnet build EnterpriseVat.sln --configuration Release --no-restore -warnaserror
       - run: dotnet tool restore
@@ -69,9 +79,27 @@ jobs:
       - uses: actions/upload-artifact@v4
         with:
           name: backend-packages
-          path: artifacts/publish/
+          path: VAt_Asper_backend/artifacts/publish/
       - uses: actions/upload-artifact@v4
         if: always()
         with:
           name: test-results
-          path: TestResults/*.trx
+          path: VAt_Asper_backend/TestResults/*.trx
+
+  frontend:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: Vat_Fontend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: Vat_Fontend/package-lock.json
+      - run: npm ci
+      - run: npm run typecheck
+      - run: npm test
+      - run: npm run test:api
+      - run: npm run build -- --configuration production

@@ -1,3 +1,4 @@
+import { environment } from '../../../environments/environment';
 import { Injectable } from '@angular/core';
 import {
   Company, Branch, FiscalPeriod, UserProfile, MenuItem,
@@ -788,6 +789,16 @@ export class MockDataService {
   };
 
   // Helper calculation method
+  constructor() {
+    if (!environment.useMockData) {
+      // In live mode these arrays are caches populated only by verified API responses.
+      this.companies.length = 0; this.branches.length = 0; this.fiscalPeriods.length = 0;
+      this.availableUsers.length = 0; this.products.length = 0; this.parties.length = 0;
+      this.purchaseInvoices.length = 0; this.salesInvoices.length = 0;
+      this.approvalTasks.length = 0; this.coefficient43List.length = 0;
+    }
+  }
+
   public calculateVat(taxableAmount: number, vatRatePercent: number = 15, isVdsApplicable: boolean = false): { vatAmount: number; vdsAmount: number; grandTotal: number } {
     const vatAmount = Math.round((taxableAmount * (vatRatePercent / 100)) * 100) / 100;
     const vdsAmount = isVdsApplicable ? Math.round((vatAmount * 0.5) * 100) / 100 : 0; // standard 50% or full

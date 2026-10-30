@@ -45,6 +45,8 @@ public sealed class SalesInvoiceService(ISalesInvoiceStore invoices, IAuditWrite
     public async Task<CommandOutcome> Approve(Actor actor, Guid companyId, Guid id, TransitionRequest request,
         string correlationId, CancellationToken ct)
     {
+        actor.RequireCompany(companyId);
+        Vat.Domain.FinancialBoundary.RequireAvailable();
         var invoice = await RequireSalesInvoice(actor, companyId, id, ct);
         invoice.Approve(actor.Subject, request.ExpectedVersion, clock.GetUtcNow());
         events.Append(actor.TenantId, companyId, id, invoice.Version, "SalesInvoiceApprovedV1", correlationId,

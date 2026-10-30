@@ -24,12 +24,6 @@ public static class ManufacturingDataTransfer
             string.Equals(sourceSettings.Database, targetSettings.Database, StringComparison.OrdinalIgnoreCase))
             throw new InvalidOperationException("Source and Manufacturing target must have distinct database names.");
 
-        await using (var targetSetup = new NpgsqlConnection(targetConnection))
-        {
-            await targetSetup.OpenAsync(ct);
-            await Execute(targetSetup, "CREATE SCHEMA IF NOT EXISTS manufacturing;", ct);
-        }
-
         var options = new DbContextOptionsBuilder<ManufacturingDbContext>();
         ManufacturingPersistence.Configure(options, targetConnection);
         await using var db = new ManufacturingDbContext(options.Options);
@@ -43,76 +37,40 @@ public static class ManufacturingDataTransfer
         await using var targetTransaction = await target.BeginTransactionAsync(ct);
         // Stable snapshots and fixed lock order prevent copying concurrent changes.
         var tableList = string.Join(", ", Tables.Select(x => $"manufacturing.\"{x}\""));
-        try
-        {
-            await Execute(source, $"SET LOCAL lock_timeout = '15s'; SET LOCAL TIME ZONE 'UTC'; LOCK TABLE {tableList} IN SHARE MODE", ct);
-            await Execute(target, $"SET LOCAL lock_timeout = '15s'; SET LOCAL TIME ZONE 'UTC'; LOCK TABLE {tableList} IN ACCESS EXCLUSIVE MODE", ct);
-        }
-        catch
-        {
-        }
-
+        await Execute(source, $"SET LOCAL lock_timeout = '15s'; SET LOCAL TIME ZONE 'UTC'; LOCK TABLE {tableList} IN SHARE MODE", ct);
+        var workflowTables = "manufacturing.coefficient_documents, manufacturing.coefficient_commands, manufacturing.coefficient_audit";
+        await Execute(target, $"SET LOCAL lock_timeout = '15s'; SET LOCAL TIME ZONE 'UTC'; LOCK TABLE {tableList}, {workflowTables} IN ACCESS EXCLUSIVE MODE", ct);
+        await using (var active = new NpgsqlCommand("SELECT EXISTS (SELECT 1 FROM manufacturing.coefficient_documents) OR EXISTS (SELECT 1 FROM manufacturing.coefficient_commands) OR EXISTS (SELECT 1 FROM manufacturing.coefficient_audit)", target))
+            if ((bool)(await active.ExecuteScalarAsync(ct))!)
+                throw new InvalidOperationException("Manufacturing target has active coefficient workflow history; metadata import is refused.");
         var expected = await State(source, ct);
         var existing = await State(target, ct);
-        var matched = expected.Count == existing.Count && expected.Zip(existing).All(pair =>
-            pair.First.Table == pair.Second.Table &&
-            pair.First.Rows == pair.Second.Rows &&
-            pair.First.Fingerprint == pair.Second.Fingerprint);
-
+        var matched = expected.SequenceEqual(existing);
         if (!matched && existing.Any(x => x.Rows != 0))
-        {
-            // Truncate existing in target if re-running
-            foreach (var table in Tables.Reverse())
-            {
-                try
-                {
-                    await Execute(target, $"TRUNCATE TABLE manufacturing.\"{table}\" CASCADE", ct);
-                }
-                catch
-                {
-                }
-            }
-        }
+            throw new InvalidOperationException("Manufacturing target contains different data; automatic overwrite is refused.");
 
         if (!matched)
         {
             foreach (var table in Tables)
             {
-                var entity = db.Model.GetEntityTypes().FirstOrDefault(x => x.GetTableName() == table && x.GetSchema() == "manufacturing");
-                if (entity == null) continue;
-
+                var entity = db.Model.GetEntityTypes().Single(x => x.GetTableName() == table && x.GetSchema() == "manufacturing");
                 var store = StoreObjectIdentifier.Table(table, "manufacturing");
                 var columns = string.Join(", ", entity.GetProperties().Select(x => x.GetColumnName(store)!)
-                    .Where(x => !string.IsNullOrEmpty(x))
                     .Order(StringComparer.Ordinal).Select(x => '"' + x.Replace("\"", "\"\"") + '"'));
                 var relation = $"manufacturing.\"{table}\" ({columns})";
-
-                try
-                {
-                    await using var read = await source.BeginRawBinaryCopyAsync($"COPY {relation} TO STDOUT (FORMAT BINARY)", ct);
-                    await using var write = await target.BeginRawBinaryCopyAsync($"COPY {relation} FROM STDIN (FORMAT BINARY)", ct);
+                // PostgreSQL binary COPY preserves UUIDs, timestamps, nulls, escaped text
+                // and versions without converting private data through log/files.
+                await using (var read = await source.BeginRawBinaryCopyAsync($"COPY {relation} TO STDOUT (FORMAT BINARY)", ct))
+                await using (var write = await target.BeginRawBinaryCopyAsync($"COPY {relation} FROM STDIN (FORMAT BINARY)", ct))
                     await read.CopyToAsync(write, ct);
-                }
-                catch (Exception ex)
-                {
-                    Console.WriteLine($"Binary copy warning for table {table}: {ex.Message}");
-                }
             }
-
             var actual = await State(target, ct);
-            var mismatch = expected.Zip(actual).Where(p => p.First.Rows != p.Second.Rows || p.First.Fingerprint != p.Second.Fingerprint).ToList();
-            if (mismatch.Count > 0)
-            {
-                var diff = string.Join("; ", mismatch.Select(p => $"{p.First.Table}: expected ({p.First.Rows}, {p.First.Fingerprint}) vs actual ({p.Second.Rows}, {p.Second.Fingerprint})"));
-                Console.WriteLine($"Detailed verification differences: {diff}");
-                if (mismatch.Any(p => p.First.Rows != p.Second.Rows))
-                    throw new InvalidOperationException($"Manufacturing copy verification failed due to row count mismatch: {diff}; target data transaction will roll back.");
-            }
+            if (!expected.SequenceEqual(actual))
+                throw new InvalidOperationException("Manufacturing copy verification failed; target data transaction will roll back.");
         }
         await targetTransaction.CommitAsync(ct);
         await sourceTransaction.CommitAsync(ct);
-        var verified = await State(target, ct);
-        return new(sourceSettings.Database, targetSettings.Database, matched, verified);
+        return new(sourceSettings.Database, targetSettings.Database, matched, expected);
     }
 
     private static async Task<IReadOnlyList<ManufacturingTableState>> State(NpgsqlConnection connection, CancellationToken ct)
@@ -120,20 +78,14 @@ public static class ManufacturingDataTransfer
         var rows = new List<ManufacturingTableState>();
         foreach (var table in Tables)
         {
-            var sql = $"SELECT count(*)::bigint, coalesce(md5(string_agg(t::text, '' ORDER BY t.*)), 'empty') FROM (SELECT * FROM manufacturing.\"{table}\") t";
-            try
-            {
-                await using var command = new NpgsqlCommand(sql, connection);
-                await using var reader = await command.ExecuteReaderAsync(ct);
-                if (await reader.ReadAsync(ct))
-                {
-                    rows.Add(new(table, reader.GetInt64(0), reader.GetString(1)));
-                }
-            }
-            catch
-            {
-                rows.Add(new(table, 0, "none"));
-            }
+            await using var command = new NpgsqlCommand($"""
+                SELECT count(*), md5(coalesce(string_agg(to_jsonb(t)::text, E'\n'
+                    ORDER BY t."TenantId", t."CompanyId", t."Id"), ''))
+                FROM manufacturing."{table}" t
+                """, connection);
+            await using var reader = await command.ExecuteReaderAsync(ct);
+            await reader.ReadAsync(ct);
+            rows.Add(new(table, reader.GetInt64(0), reader.GetString(1)));
         }
         return rows;
     }

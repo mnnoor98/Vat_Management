@@ -52,6 +52,8 @@ public sealed class SalesDebitService(ISalesInvoiceStore invoices, ISalesPosting
     public async Task<CommandOutcome> Approve(Actor actor, Guid companyId, Guid invoiceId, Guid id, TransitionRequest request, string correlation, CancellationToken ct)
     {
         actor.RequireCompany(companyId);
+        Vat.Domain.FinancialBoundary.RequireAvailable();
+        actor.RequireCompany(companyId);
         var note = await Note(actor, companyId, invoiceId, id, ct);
         if (!policy.Enabled) throw new DomainException("posting_disabled", "Financial posting is disabled.", 409);
         await periods.RequireOpen(actor.TenantId, companyId, note.CorrectionDate, ct);

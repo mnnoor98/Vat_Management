@@ -1,3 +1,5 @@
+Current financial runtime (30 October 2026): [coordinated transaction boundary](architecture/0034-coordinated-financial-boundary.md). `services.json` is the executable ownership/connection catalogue: seven financial APIs use `VatDbContext` and `VatDatabase`; five metadata owners retain independent persistence. Staged financial contexts are not active writers. No deployed database merge or cutover is implied.
+
 # Service core and database ownership
 
 Status on 2026-10-24: all twelve APIs are independently hosted. **Identity, Workflow, Compliance, Manufacturing and Integration have independent application/domain/persistence projects and owned databases. Five of twelve services now have independent core/data ownership; seven financial participants remain coordinated.** See [Integration operator cutover](architecture/0025-independent-integration-operators.md).

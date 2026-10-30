@@ -1,10 +1,11 @@
+using Vat.Application;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Vat.Api.Security;
 using Vat.Application.Security;
-using Vat.Services.MasterData.Contracts;
+using Vat.Application.Contracts;
 
-namespace Vat.Services.MasterData.Controllers;
+namespace Vat.Coordinated.MasterData.Controllers;
 
 public static class MasterDataApiCommands
 {
@@ -30,7 +31,7 @@ public sealed class CustomerController : ControllerBase
 {
     [HttpGet("/api/v1/companies/{companyId:guid}/customers")]
     [Authorize(Policy = Permissions.MasterDataRead)]
-    public async Task<IActionResult> List([FromRoute] Guid companyId, [FromQuery] Guid? before, [FromQuery] int? take, [FromServices] MasterDataCustomerService service, CancellationToken ct)
+    public async Task<IActionResult> List([FromRoute] Guid companyId, [FromQuery] Guid? before, [FromQuery] int? take, [FromServices] CustomerService service, CancellationToken ct)
     {
         var ctx = HttpContext;
         return Ok(await service.List(ctx.GetActor(), companyId, before, take ?? 25, ct));
@@ -38,7 +39,7 @@ public sealed class CustomerController : ControllerBase
 
     [HttpGet("/api/v1/companies/{companyId:guid}/customers/{id:guid}")]
     [Authorize(Policy = Permissions.MasterDataRead)]
-    public async Task<IActionResult> Get([FromRoute] Guid companyId, [FromRoute] Guid id, [FromServices] MasterDataCustomerService service, CancellationToken ct)
+    public async Task<IActionResult> Get([FromRoute] Guid companyId, [FromRoute] Guid id, [FromServices] CustomerService service, CancellationToken ct)
     {
         var ctx = HttpContext;
         return Ok(await service.Get(ctx.GetActor(), companyId, id, ct));
@@ -47,7 +48,7 @@ public sealed class CustomerController : ControllerBase
     [HttpPost("/api/v1/companies/{companyId:guid}/customers")]
     [Authorize(Policy = Permissions.MasterDataManage)]
     [ProducesResponseType(typeof(CustomerResponse), 201)]
-    public async Task<IActionResult> Create([FromRoute] Guid companyId, [FromBody] CreateCustomerRequest request, [FromServices] MasterDataCustomerService service, [FromServices] ICommandExecutor commands, CancellationToken ct)
+    public async Task<IActionResult> Create([FromRoute] Guid companyId, [FromBody] CreateCustomerRequest request, [FromServices] CustomerService service, [FromServices] ICommandExecutor commands, CancellationToken ct)
     {
         var ctx = HttpContext;
         return await MasterDataApiCommands.Execute(ctx, commands, companyId, "customer.create", request,
@@ -57,7 +58,7 @@ public sealed class CustomerController : ControllerBase
     [HttpPost("/api/v1/companies/{companyId:guid}/customers/{id:guid}/update")]
     [Authorize(Policy = Permissions.MasterDataManage)]
     [ProducesResponseType(typeof(CustomerResponse), 200)]
-    public async Task<IActionResult> Update([FromRoute] Guid companyId, [FromRoute] Guid id, [FromBody] UpdateCustomerRequest request, [FromServices] MasterDataCustomerService service, [FromServices] ICommandExecutor commands, CancellationToken ct)
+    public async Task<IActionResult> Update([FromRoute] Guid companyId, [FromRoute] Guid id, [FromBody] UpdateCustomerRequest request, [FromServices] CustomerService service, [FromServices] ICommandExecutor commands, CancellationToken ct)
     {
         var ctx = HttpContext;
         return await MasterDataApiCommands.Execute(ctx, commands, companyId, $"customer.update:{id}", request,

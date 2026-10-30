@@ -6,14 +6,20 @@
 [CmdletBinding()]
 param(
     [string]$Configuration = "Debug",
-    [string]$Authority = "https://localhost:5080",
+    [string]$Authority = $env:VAT_OIDC_AUTHORITY,
     [string]$HostServer = "127.0.0.1",
     [int]$DbPort = 5432,
-    [string]$Username = "postgres",
-    [string]$Password = "123456"
+    [string]$Username = $env:VAT_DB_USERNAME,
+    [string]$Password = $env:VAT_DB_PASSWORD
 )
 
 $ErrorActionPreference = "Stop"
+if ([string]::IsNullOrWhiteSpace($Authority)) {
+    throw "Configure VAT_OIDC_AUTHORITY or pass -Authority for the actual HTTPS identity provider."
+}
+if ([string]::IsNullOrWhiteSpace($Username) -or [string]::IsNullOrWhiteSpace($Password)) {
+    throw "Configure VAT_DB_USERNAME and VAT_DB_PASSWORD or pass explicit local runtime credentials; no privileged defaults are provided."
+}
 $scriptRoot = $PSScriptRoot
 $repoRoot = Split-Path -Parent $scriptRoot
 $logsDir = Join-Path $repoRoot ("artifacts/services/" + [Guid]::NewGuid().ToString("N"))

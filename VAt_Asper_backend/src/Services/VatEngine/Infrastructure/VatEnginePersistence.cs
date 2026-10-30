@@ -43,7 +43,8 @@ public static class VatEnginePersistence
     public static IServiceCollection AddVatEnginePersistence(this IServiceCollection services, IConfiguration config)
     {
         var cs = config.GetConnectionString("VatEngineDatabase")
-            ?? "Host=127.0.0.1;Port=5432;Database=vat_vatengine;Username=postgres;Password=123456;";
+            ?? throw new InvalidOperationException("Configure ConnectionStrings:VatEngineDatabase.");
+        if (string.IsNullOrWhiteSpace(cs)) throw new InvalidOperationException("Configure ConnectionStrings:VatEngineDatabase.");
         services.AddDbContext<VatEngineDbContext>(options => Configure(options, cs));
         services.AddSingleton(TimeProvider.System);
         services.AddScoped<VatEngineStore>();

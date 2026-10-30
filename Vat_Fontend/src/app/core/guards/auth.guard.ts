@@ -7,11 +7,12 @@ import { AuthService } from '../services/auth.service';
  * Protects routes requiring authentication. If the user is not authenticated,
  * redirects them to the login page with a returnUrl parameter.
  */
-export const authGuard: CanActivateFn = (route, state) => {
+export const authGuard: CanActivateFn = async (route, state) => {
   const authService = inject(AuthService);
   const router = inject(Router);
 
-  if (authService.isAuthenticated()) {
+  await authService.ready;
+  if (authService.hasValidSession()) {
     return true;
   }
 
@@ -26,11 +27,12 @@ export const authGuard: CanActivateFn = (route, state) => {
  * Protects login/register routes. If the user is already authenticated,
  * redirects them to the dashboard.
  */
-export const guestGuard: CanActivateFn = () => {
+export const guestGuard: CanActivateFn = async () => {
   const authService = inject(AuthService);
   const router = inject(Router);
 
-  if (authService.isAuthenticated()) {
+  await authService.ready;
+  if (authService.hasValidSession()) {
     return router.createUrlTree(['/app/dashboard']);
   }
 

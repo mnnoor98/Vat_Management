@@ -1,3 +1,4 @@
+import { throwError } from 'rxjs';
 import { Injectable, inject } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable, of, delay, catchError } from 'rxjs';
@@ -23,10 +24,7 @@ export class ComplianceApiService {
       return of({ ...this.mockData.currentReturn91 }).pipe(delay(90));
     }
     return this.http.get<Mushak91Return>(`${this.baseUrl}/returns/9-1?period=${fiscalPeriod}`).pipe(
-      catchError(err => {
-        console.warn('Backend reporting endpoint unavailable, using local mock data:', err);
-        return of({ ...this.mockData.currentReturn91 });
-      })
+      catchError(error => throwError(() => error))
     );
   }
 
@@ -36,10 +34,7 @@ export class ComplianceApiService {
       return of({ success: true, status: 'Submitted' }).pipe(delay(200));
     }
     return this.http.post<any>(`${this.baseUrl}/returns/9-1/submit`, returnDoc).pipe(
-      catchError(() => {
-        this.mockData.currentReturn91.status = 'Submitted';
-        return of({ success: true, status: 'Submitted' });
-      })
+      catchError(error => throwError(() => error))
     );
   }
 
@@ -48,7 +43,7 @@ export class ComplianceApiService {
       return of([...this.mockData.coefficient43List]).pipe(delay(60));
     }
     return this.http.get<Coefficient43[]>(`${this.baseUrl}/coefficients/4-3`).pipe(
-      catchError(() => of([...this.mockData.coefficient43List]))
+      catchError(error => throwError(() => error))
     );
   }
 
@@ -82,7 +77,7 @@ export class ComplianceApiService {
   public getVdsCertificates(period?: string): Observable<VdsCertificate[]> {
     const url = period ? `${this.baseUrl}/vds-certificates?period=${period}` : `${this.baseUrl}/vds-certificates`;
     return this.http.get<VdsCertificate[]>(url).pipe(
-      catchError(() => of([]))
+      catchError(error => throwError(() => error))
     );
   }
 

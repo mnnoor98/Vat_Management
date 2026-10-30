@@ -16,6 +16,7 @@ import { NbrValidators } from '../../../shared/validators/nbr-validators';
   standalone: true,
   imports: [CommonModule, ReactiveFormsModule, RouterModule, BdtCurrencyPipe],
   template: `
+    <p class="vat-card">Draft tax amounts are estimates only. The server calculates applicable tax during posting preparation; review that snapshot before authorization.</p>
     <div class="purchase-entry-page">
       <!-- Breadcrumb & Header -->
       <div class="page-header">
@@ -112,7 +113,7 @@ import { NbrValidators } from '../../../shared/validators/nbr-validators';
               </option>
             </select>
             <div *ngIf="selectedSupplier" class="supplier-meta-badge">
-              <span class="font-mono text-emerald">BIN: {{ selectedSupplier.bin }}</span> | 
+              <span class="font-mono text-emerald">BIN: {{ selectedSupplier.bin || 'Not supplied' }}</span> |
               <span class="text-dim">{{ selectedSupplier.address }}</span>
             </div>
             <div *ngIf="isFieldInvalid('supplierId')" class="vat-field-error">
@@ -222,7 +223,7 @@ import { NbrValidators } from '../../../shared/validators/nbr-validators';
               [class.is-invalid]="isLineFieldInvalid('productId')">
               <option value="">-- Choose Item ({{ products.length }} from DB) --</option>
               <option *ngFor="let p of products" [value]="p.id">
-                {{ p.name }} (HS: {{ p.hsCode }})
+                {{ p.name }} ({{ p.code }} | {{ p.uom }})
               </option>
             </select>
           </div>
@@ -722,8 +723,8 @@ export class PurchaseEntryComponent implements OnInit {
     const prod = this.products.find(p => p.id === prodId);
     if (prod) {
       this.lineDraftForm.patchValue({
-        unitPrice: prod.standardCost || 140,
-        vatRate: prod.vatRatePercent || 15
+        unitPrice: prod.standardCost ?? 0,
+        vatRate: prod.vatRatePercent ?? 0
       });
     }
   }
@@ -774,6 +775,7 @@ export class PurchaseEntryComponent implements OnInit {
     const line: PurchaseLine = {
       id: `PL-${Date.now()}`,
       productId: prod.id,
+      productReference: prod.code,
       productName: prod.name,
       productNameBn: prod.nameBn,
       hsCode: prod.hsCode,
@@ -858,7 +860,7 @@ export class PurchaseEntryComponent implements OnInit {
     const branchIdGuid = this.context.resolveBranchGuid(formVal.selectedBranchId || this.context.activeBranch().id);
 
     const invoice: Partial<PurchaseInvoice> = {
-      supplierId: supplier.id,
+      supplierId: supplier.code,
       supplierName: supplier.name,
       supplierBin: supplier.bin,
       supplierInvoiceNumber: formVal.supplierInvoiceNumber || 'INV-' + Math.floor(1000 + Math.random() * 9000),

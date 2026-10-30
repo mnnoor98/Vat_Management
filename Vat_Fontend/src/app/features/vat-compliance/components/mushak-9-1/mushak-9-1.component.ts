@@ -16,11 +16,11 @@ import { Mushak91Return, PurchaseInvoice, SalesInvoice } from '../../../../core/
   standalone: true,
   imports: [CommonModule, FormsModule, BdtCurrencyPipe],
   template: `
-    <div class="mushak-9-1-container">
+    <div class="mushak-9-1-container" *ngIf="returnDoc; else unavailable">
       <div class="action-bar no-print">
         <div class="action-bar-left">
           <span class="status-indicator-badge" [ngClass]="returnDoc.status === 'Submitted' ? 'badge-success' : 'badge-warning'">
-            {{ returnDoc.status === 'Submitted' ? '✅ NBR দাখিলকৃত (Submitted)' : '📝 খসড়া দাখিলপত্র (Draft)' }}
+            {{ returnDoc.status === 'Submitted' ? 'Local submission; filing receipt required' : '📝 খসড়া দাখিলপত্র (Draft)' }}
           </span>
           <span class="revision-chip" *ngIf="returnDoc.revision && returnDoc.revision > 1">
             Revision {{ returnDoc.revision }}
@@ -52,7 +52,7 @@ import { Mushak91Return, PurchaseInvoice, SalesInvoice } from '../../../../core/
             Download PDF
           </button>
           <button class="btn btn-primary btn-sm" (click)="submitReturn()">
-            {{ (returnDoc && returnDoc.status === 'Submitted') ? 'Submit Amended Return (সংশোধিত দাখিল)' : 'Final Submit to NBR' }}
+            External filing unavailable
           </button>
         </div>
       </div>
@@ -82,7 +82,7 @@ import { Mushak91Return, PurchaseInvoice, SalesInvoice } from '../../../../core/
           </div>
           <div class="meta-row">
             <span class="meta-label">দাখিলের অবস্থা:</span>
-            <span><strong [ngClass]="returnDoc.status === 'Submitted' ? 'text-emerald' : 'text-amber'">{{ returnDoc.status === 'Submitted' ? '✅ দাখিল সম্পন্ন (Submitted to NBR)' : '📝 খসড়া (Draft)' }}</strong></span>
+            <span><strong>{{ returnDoc.status === 'Submitted' ? 'Local submission; not proof of external filing' : '📝 খসড়া (Draft)' }}</strong></span>
           </div>
           <div class="meta-row">
             <span class="meta-label">দাখিলের শেষ সময়:</span>
@@ -216,6 +216,7 @@ import { Mushak91Return, PurchaseInvoice, SalesInvoice } from '../../../../core/
         </div>
       </div>
     </div>
+    <ng-template #unavailable><p role="status">{{ loadMessage }}</p></ng-template>
   `,
   styles: [`
     .action-bar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; flex-wrap: wrap; gap: 12px; }
@@ -258,19 +259,21 @@ export class Mushak91Component implements OnInit {
   public context = inject(CompanyContextService);
 
   public returnDoc!: Mushak91Return;
+  public loadMessage = 'Loading verified return data…';
   public livePurchases: PurchaseInvoice[] = [];
   public liveSales: SalesInvoice[] = [];
 
   ngOnInit(): void {
     this.loadReturnDoc();
-    this.loadPurchases();
-    this.loadSales();
+
   }
 
   public loadReturnDoc(): void {
-    this.complianceApi.getReturn91('2026-10').subscribe(data => {
-      this.returnDoc = data;
-      this.recalculateReturn();
+    const period = this.context.activeFiscalPeriod().periodCode;
+    if (!period) { this.loadMessage = 'Select a verified fiscal period. Return calculation and external filing are currently unavailable.'; return; }
+    this.complianceApi.getReturn91(period).subscribe({
+      next: data => { this.returnDoc = data; },
+      error: () => { this.loadMessage = 'Verified return data is unavailable. No return has been filed.'; }
     });
   }
 
@@ -321,38 +324,21 @@ export class Mushak91Component implements OnInit {
   }
 
   public submitReturn(): void {
-    if (!this.context.hasPermission('compliance.return.submit')) {
-      this.toast.error(
-        `ভ্যাট রিটার্ন এনবিআরে দাখিল করার অনুমতি আপনার বর্তমান ভূমিকা (${this.context.userRole()}) তে নেই। অনুমোদন ও দাখিল শুধুমাত্র TaxManager করতে পারেন।`,
-        'অননুমোদিত অ্যাকশন (RBAC Restriction)'
-      );
-      return;
-    }
-
-    this.returnDoc.branchId = this.context.branchGuid();
-    this.returnDoc.branchName = this.context.activeBranch().name;
-    this.complianceApi.submitReturn91(this.returnDoc).subscribe((res: any) => {
-      this.returnDoc.status = 'Submitted';
-      if (res && res.revision) {
-        this.returnDoc.revision = res.revision;
-        this.returnDoc.returnType = res.revision > 1 ? 'Amended' : 'Main';
-      }
-      this.toast.success(
-        'মূসক ৯.১ মাসিক রিটার্ন এনবিআর ই-ভ্যাট পোর্টালে সফলভাবে দাখিল ও স্বাক্ষরিত হয়েছে!',
-        'রিটার্ন দাখিল সম্পন্ন (NBR Submission Success)'
-      );
-    });
+    this.toast.warning('External filing is unavailable until validated mappings and an official filing receipt are configured. No return has been filed.');
   }
 
   public downloadPdf(): void {
+    if (!this.returnDoc) return;
     this.pdfExport.downloadElementAsPdf('mushak-9-1-print-doc', 'Mushak_9_1_Monthly_VAT_Return_October_2026');
   }
 
   public printDocument(): void {
+    if (!this.returnDoc) return;
     this.pdfExport.printClean();
   }
 
   public exportToCsv(): void {
+    if (!this.returnDoc) return;
     const compId = this.context.activeCompany().id;
     const period = this.context.activeFiscalPeriod().periodCode;
     const headers = ['Tax Note / Line Ref', 'Description', 'Declared Amount (BDT)'];

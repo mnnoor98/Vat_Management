@@ -28,10 +28,11 @@ public sealed class PeriodGuard(IPeriodStore periods) : IPeriodGuard
 {
     public async Task<FiscalPeriod> RequireOpen(Guid tenantId, Guid companyId, DateOnly date, CancellationToken ct)
     {
+        await periods.LockCompany(tenantId, companyId, false, ct);
         var period = await periods.ForDate(tenantId, companyId, date, ct)
-            ?? throw new Vat.Domain.DomainException("period_not_found", $"No fiscal period contains {date:yyyy-MM-dd}.", 422);
+            ?? throw new Vat.Domain.DomainException("period_not_found", $"No fiscal period contains {date:yyyy-MM-dd}.", 409);
         if (period.Status != FiscalPeriodStatus.Open)
-            throw new Vat.Domain.DomainException("period_closed", $"Fiscal period '{period.Name}' is {period.Status.ToString().ToLowerInvariant()}.", 422);
+            throw new Vat.Domain.DomainException("period_closed", $"Fiscal period '{period.Name}' is {period.Status.ToString().ToLowerInvariant()}.", 409);
         return period;
     }
 

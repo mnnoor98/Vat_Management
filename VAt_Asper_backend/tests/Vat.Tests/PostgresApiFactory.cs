@@ -35,10 +35,18 @@ public sealed class PostgresApiFactory : WebApplicationFactory<Program>, IAsyncL
         {
             ["ConnectionStrings:VatDatabase"] = _connection,
             ["ConnectionStrings:IdentityDatabase"] = _connection,
-                ["ConnectionStrings:IntegrationDatabase"] = _connection,
-                ["ConnectionStrings:ManufacturingDatabase"] = _connection,
-                ["ConnectionStrings:ComplianceDatabase"] = _connection,
-                ["ConnectionStrings:WorkflowDatabase"] = _connection,
+            ["ConnectionStrings:CompanyDatabase"] = _connection,
+            ["ConnectionStrings:MasterDataDatabase"] = _connection,
+            ["ConnectionStrings:PurchaseDatabase"] = _connection,
+            ["ConnectionStrings:SalesDatabase"] = _connection,
+            ["ConnectionStrings:InventoryDatabase"] = _connection,
+            ["ConnectionStrings:ManufacturingDatabase"] = _connection,
+            ["ConnectionStrings:VatEngineDatabase"] = _connection,
+            ["ConnectionStrings:ComplianceDatabase"] = _connection,
+            ["ConnectionStrings:WorkflowDatabase"] = _connection,
+            ["ConnectionStrings:ReportingDatabase"] = _connection,
+            ["ConnectionStrings:IntegrationDatabase"] = _connection,
+
             ["Authentication:Authority"] = Issuer,
             ["Authentication:Audience"] = Audience,
             ["Posting:Enabled"] = "true",
@@ -67,6 +75,11 @@ public sealed class PostgresApiFactory : WebApplicationFactory<Program>, IAsyncL
             await command.ExecuteNonQueryAsync();
         }
         using var scope = Services.CreateScope();
+        var effectiveConnections = scope.ServiceProvider.GetRequiredService<IConfiguration>()
+            .GetSection("ConnectionStrings").GetChildren().ToArray();
+        Assert.NotEmpty(effectiveConnections);
+        Assert.All(effectiveConnections, entry => Assert.Equal(_connection, entry.Value));
+
         var db = scope.ServiceProvider.GetRequiredService<VatDbContext>();
         await db.Database.MigrateAsync();
     }

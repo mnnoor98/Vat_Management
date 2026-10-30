@@ -2,10 +2,10 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Vat.Api.Security;
 using Vat.Application.Security;
-using Vat.Services.Sales;
-using Vat.Services.Sales.Contracts;
+using Vat.Application;
+using Vat.Application.Contracts;
 
-namespace Vat.Services.Sales.Controllers;
+namespace Vat.Coordinated.Sales.Controllers;
 
 public static class SalesApiCommands
 {

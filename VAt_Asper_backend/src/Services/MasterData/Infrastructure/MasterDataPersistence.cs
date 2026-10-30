@@ -17,7 +17,8 @@ public static class MasterDataPersistence
     public static IServiceCollection AddMasterDataPersistence(this IServiceCollection services, IConfiguration config)
     {
         var cs = config.GetConnectionString("MasterDataDatabase")
-            ?? "Host=127.0.0.1;Port=5432;Database=vat_masterdata;Username=postgres;Password=123456;";
+            ?? throw new InvalidOperationException("Configure ConnectionStrings:MasterDataDatabase.");
+        if (string.IsNullOrWhiteSpace(cs)) throw new InvalidOperationException("Configure ConnectionStrings:MasterDataDatabase.");
         services.AddDbContext<MasterDataDbContext>(options => Configure(options, cs));
         services.AddScoped<MasterDataStore>();
         services.AddScoped<IMasterDataStore>(sp => sp.GetRequiredService<MasterDataStore>());

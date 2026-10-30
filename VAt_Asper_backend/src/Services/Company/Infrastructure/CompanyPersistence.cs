@@ -17,7 +17,8 @@ public static class CompanyPersistence
     public static IServiceCollection AddCompanyPersistence(this IServiceCollection services, IConfiguration config)
     {
         var cs = config.GetConnectionString("CompanyDatabase")
-            ?? "Host=127.0.0.1;Port=5432;Database=vat_company;Username=postgres;Password=123456;";
+            ?? throw new InvalidOperationException("Configure ConnectionStrings:CompanyDatabase.");
+        if (string.IsNullOrWhiteSpace(cs)) throw new InvalidOperationException("Configure ConnectionStrings:CompanyDatabase.");
         services.AddDbContext<CompanyDbContext>(options => Configure(options, cs));
         services.AddScoped<ICompanyStore, CompanyStore>();
         services.AddScoped<IPeriodStore, CompanyPeriodStore>();

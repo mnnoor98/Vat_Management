@@ -30,6 +30,8 @@ public static class VatBackend
         builder.Services.AddScoped<IEventWriter>(sp => sp.GetRequiredService<RecordWriters>());
         builder.Services.AddScoped<IAuditWriter>(sp => sp.GetRequiredService<RecordWriters>());
         builder.Services.AddScoped<ICommandExecutor, CommandExecutor>();
+        builder.Services.AddScoped<CompanyService>();
+        builder.Services.AddScoped<PeriodService>();
         builder.Services.AddScoped<PurchaseService>();
         builder.Services.AddScoped<SalesInvoiceService>();
         builder.Services.AddScoped<CustomerService>();
@@ -54,6 +56,7 @@ public static class VatBackend
         builder.Services.AddScoped<ReferenceDataService>();
         builder.Services.AddScoped<IInventoryReadStore, InventoryReadStore>();
         builder.Services.AddScoped<InventoryReadService>();
+        builder.Services.AddScoped<FinancialInventoryQueries>();
         builder.Services.AddScoped<ITransferStore, TransferStore>();
         builder.Services.AddScoped<TransferService>();
         builder.Services.AddScoped<PostingService>();

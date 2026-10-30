@@ -1,3 +1,4 @@
+import { environment } from '../../../environments/environment';
 import { Injectable, signal, computed, inject } from '@angular/core';
 import { Company, Branch, FiscalPeriod, UserProfile } from '../models/vat-models';
 import { MockDataService } from './mock-data.service';
@@ -9,10 +10,10 @@ export class CompanyContextService {
   private mockData = inject(MockDataService);
 
   // Signals for state
-  public readonly activeCompany = signal<Company>(this.mockData.companies[0]);
-  public readonly activeBranch = signal<Branch>(this.mockData.branches[0]);
-  public readonly activeFiscalPeriod = signal<FiscalPeriod>(this.mockData.fiscalPeriods[0]);
-  public readonly currentUser = signal<UserProfile>(this.mockData.availableUsers[0]);
+  public readonly activeCompany = signal<Company>(this.mockData.companies[0] || { id: '', name: 'Select company', nameBn: 'Select company', bin: '', tin: '', address: '', addressBn: '', vatCircle: '', vatDivision: '', vatCommissioner: '', currency: 'BDT', isActive: false });
+  public readonly activeBranch = signal<Branch>(this.mockData.branches[0] || { id: '', companyId: '', code: '', name: 'Select branch', nameBn: 'Select branch', binExtension: '', address: '', isHeadOffice: false });
+  public readonly activeFiscalPeriod = signal<FiscalPeriod>(this.mockData.fiscalPeriods[0] || { id: '', fiscalYear: '', month: 'Select period', monthBn: 'Select period', periodCode: '', startDate: '', endDate: '', isClosed: true, dueDate: '' });
+  public readonly currentUser = signal<UserProfile>(this.mockData.availableUsers[0] || { id: '', username: '', fullName: '', fullNameBn: '', email: '', role: 'Maker', accessibleCompanyIds: [], permissions: [], assignedModuleCodes: [] });
   public readonly locale = signal<'en' | 'bn'>('en');
 
   // Computed properties
@@ -52,23 +53,38 @@ export class CompanyContextService {
     return this.userRoles().includes('SuperAdmin');
   });
 
-  public readonly companyGuid = computed(() => {
-    const id = this.activeCompany().id;
-    if (/^[0-9a-fA-F-]{36}$/.test(id)) return id;
-    if (id === 'COMP-002') return '22222222-2222-2222-2222-222222222222';
-    return '11111111-1111-1111-1111-111111111111';
-  });
+  public readonly companyGuid = computed(() => this.activeCompany().id);
 
   public resolveBranchGuid(branchIdOrCode?: string): string {
-    if (!branchIdOrCode) return '33333333-3333-3333-3333-333333333331';
-    if (/^[0-9a-fA-F-]{36}$/.test(branchIdOrCode)) return branchIdOrCode;
-    if (branchIdOrCode === 'BR-02' || branchIdOrCode.includes('CTG') || branchIdOrCode.includes('32')) {
-      return '33333333-3333-3333-3333-333333333332';
+    const id = branchIdOrCode || this.activeBranch().id;
+    if (/^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/.test(id)) return id;
+    throw new Error('Select a verified company branch before saving this document.');
+  }
+
+  async loadVerifiedCompanies(token: string, companyIds: string[]): Promise<void> {
+    this.mockData.companies.length = 0; this.mockData.branches.length = 0; this.mockData.fiscalPeriods.length = 0;
+    for (const id of companyIds) {
+      const response = await fetch(`${environment.apiGatewayUrl}/companies/${encodeURIComponent(id)}`, {
+        headers: { Authorization: `Bearer ${token}` }, cache: 'no-store'
+      });
+      if (!response.ok) continue;
+      const value = await response.json() as { id: string; name: string; registrationReference: string };
+      if (value.id !== id) throw new Error('Company response does not match the verified grant.');
+      this.mockData.companies.push({ id: value.id, name: value.name, nameBn: value.name,
+        bin: value.registrationReference, tin: '', address: '', addressBn: '', vatCircle: '', vatDivision: '',
+        vatCommissioner: '', currency: 'BDT', isActive: true });
+      const branches = await fetch(`${environment.apiGatewayUrl}/companies/${id}/branches`, {
+        headers: { Authorization: `Bearer ${token}` }, cache: 'no-store'
+      });
+      if (branches.ok) {
+        const values = await branches.json() as { id: string; companyId: string; name: string }[];
+        this.mockData.branches.push(...values.filter(b => b.companyId === id).map(b => ({
+          id: b.id, companyId: id, name: b.name, nameBn: b.name, code: '', binExtension: '', address: '', isHeadOffice: false
+        })));
+      }
     }
-    if (branchIdOrCode === 'BR-03' || branchIdOrCode.includes('BGR') || branchIdOrCode.includes('33')) {
-      return '33333333-3333-3333-3333-333333333333';
-    }
-    return '33333333-3333-3333-3333-333333333331';
+    const first = this.mockData.companies[0];
+    if (first) this.switchCompany(first.id);
   }
 
   public readonly branchGuid = computed(() => {
@@ -77,7 +93,7 @@ export class CompanyContextService {
 
   public switchCompany(companyId: string): void {
     // If not super admin, non-super users can only be in their assigned company
-    if (!this.isSuperAdmin() && this.currentUser().accessibleCompanyIds?.length) {
+    if (this.currentUser().accessibleCompanyIds?.length) {
       if (!this.currentUser().accessibleCompanyIds.includes(companyId)) {
         return;
       }
@@ -85,27 +101,13 @@ export class CompanyContextService {
     const found = this.mockData.companies.find(c => c.id === companyId);
     if (found) {
       this.activeCompany.set(found);
-      const firstBranch = this.mockData.branches.find(b => b.companyId === found.id) || this.mockData.branches[0];
+      const firstBranch = this.mockData.branches.find(b => b.companyId === found.id) || { id: '', companyId: found.id, code: '', name: 'Select branch', nameBn: 'Select branch', binExtension: '', address: '', isHeadOffice: false };
       this.activeBranch.set(firstBranch);
     }
   }
 
   public switchBranch(branchId: string): void {
-    // If not super admin, non-super users are strictly locked to their assigned branch
-    if (!this.isSuperAdmin() && this.currentUser().branchId) {
-      const allowed = this.currentUser().branchId;
-      if (allowed !== branchId && 
-          !(allowed?.includes('31') && branchId === 'BR-01') && 
-          !(allowed?.includes('32') && branchId === 'BR-02') &&
-          !(allowed?.includes('33') && branchId === 'BR-03')) {
-        return;
-      }
-    }
-    const found = this.mockData.branches.find(b => b.id === branchId || 
-      (branchId.includes('33') ? b.id === 'BR-03' : 
-       branchId.includes('32') ? b.id === 'BR-02' : 
-       branchId.includes('31') ? b.id === 'BR-01' : false)
-    );
+    const found = this.mockData.branches.find(b => b.id === branchId && b.companyId === this.activeCompany().id);
     if (found) {
       this.activeBranch.set(found);
     }
@@ -126,7 +128,7 @@ export class CompanyContextService {
   }
 
   public hasPermission(permission: string): boolean {
-    if (this.isSuperAdmin() || this.currentUser().permissions?.includes('all')) return true;
+    if (this.currentUser().permissions?.includes('all')) return true;
     return this.currentUser().permissions?.includes(permission) || false;
   }
 

@@ -13,6 +13,8 @@ public sealed class PurchasePostingService(IPurchaseStore purchases, IPurchasePo
         PreparePostingRequest request, string correlationId, CancellationToken ct)
     {
         actor.RequireCompany(companyId);
+        Vat.Domain.FinancialBoundary.RequireAvailable();
+        actor.RequireCompany(companyId);
         var purchase = await RequirePurchase(actor, companyId, purchaseId, ct);
         var now = clock.GetUtcNow();
         var calculatedLines = purchase.Lines.Select(l => new CalculatedLine(
@@ -56,6 +58,8 @@ public sealed class PurchasePostingService(IPurchaseStore purchases, IPurchasePo
     public async Task<CommandOutcome> Post(Actor actor, Guid companyId, Guid purchaseId, Guid planId,
         TransitionRequest request, string correlationId, CancellationToken ct)
     {
+        actor.RequireCompany(companyId);
+        Vat.Domain.FinancialBoundary.RequireAvailable();
         actor.RequireCompany(companyId);
         var purchase = await RequirePurchase(actor, companyId, purchaseId, ct);
         var plan = await plans.FindPlan(actor.TenantId, companyId, purchaseId, planId, ct)

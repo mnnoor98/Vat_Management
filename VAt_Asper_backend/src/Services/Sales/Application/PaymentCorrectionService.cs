@@ -58,6 +58,8 @@ public sealed class PaymentCorrectionService(IPaymentStore payments, IPaymentCor
     }
     public async Task<CommandOutcome> Approve(Actor actor, Guid company, Guid paymentId, Guid id, string mode, TransitionRequest request, string correlation, CancellationToken ct)
     {
+        actor.RequireCompany(company);
+        Vat.Domain.FinancialBoundary.RequireAvailable();
         var p = await Payment(actor, company, paymentId, ct);
         var n = await Note(actor, company, paymentId, id, mode, ct);
         if (!policy.Enabled) throw new DomainException("posting_disabled", "Financial posting is disabled.", 409);

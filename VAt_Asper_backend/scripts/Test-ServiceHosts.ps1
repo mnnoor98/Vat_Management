@@ -13,6 +13,7 @@ $previousComplianceConnection = $env:ConnectionStrings__ComplianceDatabase
 $previousManufacturingConnection = $env:ConnectionStrings__ManufacturingDatabase
 $previousIntegrationConnection = $env:ConnectionStrings__IntegrationDatabase
 $previousAuthority = $env:Authentication__Authority
+$previousAudience = $env:Authentication__Audience
 $previousMessaging = $env:Messaging__Enabled
 if ($DatabaseReady -and (!$previousConnection -or !$previousIdentityConnection -or !$previousWorkflowConnection -or !$previousComplianceConnection -or !$previousManufacturingConnection -or !$previousIntegrationConnection)) { throw 'Set ConnectionStrings__VatDatabase, ConnectionStrings__IdentityDatabase, ConnectionStrings__WorkflowDatabase, ConnectionStrings__ComplianceDatabase, ConnectionStrings__ManufacturingDatabase and ConnectionStrings__IntegrationDatabase before checking database readiness.' }
 try {
@@ -26,6 +27,7 @@ try {
     $env:ConnectionStrings__ManufacturingDatabase = if ($DatabaseReady) { $previousManufacturingConnection } else { 'Host=127.0.0.1;Port=1;Database=unused;Username=unused' }
     $env:ConnectionStrings__IntegrationDatabase = if ($DatabaseReady) { $previousIntegrationConnection } else { 'Host=127.0.0.1;Port=1;Database=unused;Username=unused' }
     $env:Authentication__Authority = 'https://issuer.example.invalid'
+    $env:Authentication__Audience = 'vat-api-smoke'
     $env:Messaging__Enabled = 'false'
     foreach ($item in $catalogue) {
         $listener = [Net.Sockets.TcpListener]::new([Net.IPAddress]::Loopback, 0)
@@ -75,5 +77,6 @@ try {
     $env:ConnectionStrings__ManufacturingDatabase = $previousManufacturingConnection
     $env:ConnectionStrings__IntegrationDatabase = $previousIntegrationConnection
     $env:Authentication__Authority = $previousAuthority
+    $env:Authentication__Audience = $previousAudience
     $env:Messaging__Enabled = $previousMessaging
 }

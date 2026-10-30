@@ -2,10 +2,10 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Vat.Api.Security;
 using Vat.Application.Security;
-using Vat.Services.Sales;
-using Vat.Services.Sales.Contracts;
+using Vat.Application;
+using Vat.Application.Contracts;
 
-namespace Vat.Services.Sales.Controllers;
+namespace Vat.Coordinated.Sales.Controllers;
 
 [ApiController]
 [Tags("Sales")]
@@ -37,6 +37,7 @@ public sealed class PaymentController : ControllerBase
         return Ok(await service.Get(ctx.GetActor(), companyId, id, ct));
     }
 
+    [HttpPost("/api/v1/companies/{companyId:guid}/payments/{id:guid}/approve")]
     [HttpPost("/api/v1/companies/{companyId:guid}/payments/{id:guid}/post")]
     [Authorize(Policy = Permissions.PaymentApprove)]
     public async Task<IActionResult> Post([FromRoute] Guid companyId, [FromRoute] Guid id, [FromBody] TransitionRequest request, [FromServices] PaymentService service, [FromServices] ICommandExecutor commands, CancellationToken ct)
@@ -47,7 +48,7 @@ public sealed class PaymentController : ControllerBase
     }
 
     [HttpPost("/api/v1/companies/{companyId:guid}/payments/{id:guid}/allocate")]
-    [Authorize(Policy = Permissions.PaymentRequest)]
+    [Authorize(Policy = Permissions.PaymentAllocate)]
     public async Task<IActionResult> Allocate([FromRoute] Guid companyId, [FromRoute] Guid id, [FromBody] AllocatePaymentRequest request, [FromServices] PaymentService service, [FromServices] ICommandExecutor commands, CancellationToken ct)
     {
         var ctx = HttpContext;

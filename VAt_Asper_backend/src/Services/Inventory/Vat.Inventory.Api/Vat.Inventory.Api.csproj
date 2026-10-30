@@ -3,4 +3,5 @@
     <ProjectReference Include="../Infrastructure/Vat.Inventory.Infrastructure.csproj" />
     <ProjectReference Include="../../../Vat.Web/Vat.Web.csproj" />
   </ItemGroup>
+  <ItemGroup><ProjectReference Include="../../../Vat.Hosting/Vat.Hosting.csproj" /></ItemGroup>
 </Project>

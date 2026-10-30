@@ -15,22 +15,24 @@ import { CompanyContextService } from '../../core/services/company-context.servi
             {{ context.locale() === 'bn' ? 'সংবিধিবদ্ধ ভ্যাট রিপোর্ট ও অডিট সেন্টার' : 'Statutory VAT Reports & Audit Hub' }}
           </h1>
           <p class="page-subtitle">
-            Download certified PDF/Excel registers for NBR tax audit, reconciliation, and internal governance
+            Open register previews for review. Availability depends on verified source data; previews do not certify statutory compliance.
           </p>
         </div>
       </div>
 
+      <a routerLink="/app/reports/net-ledger" class="btn btn-primary">Correction-inclusive net ledger and summary</a>
       <div class="reports-grid">
+      <a routerLink="/app/sales/payments" class="btn btn-secondary">Payments and customer receivables</a>
         <!-- Mushak 6.1 Report Card -->
         <div class="vat-card report-card">
           <div class="report-badge">মূসক-৬.১</div>
           <h3 class="report-title">Purchase Register (ক্রয় হিসাব পুস্তক)</h3>
-          <p class="report-desc">Raw materials and commercial goods purchase records, supplier BIN validation, and Section 46 input tax credit claims.</p>
+          <p class="report-desc">Original purchase posting snapshots across all loaded pages. Later reversals are separate.</p>
           <div class="report-actions">
             <a routerLink="/app/purchases/mushak-6-1" class="btn btn-secondary btn-sm">Interactive View</a>
             <button class="btn btn-primary btn-sm" (click)="downloadReport('6.1')">
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
-              View & PDF
+              Review sources
             </button>
           </div>
         </div>
@@ -39,12 +41,12 @@ import { CompanyContextService } from '../../core/services/company-context.servi
         <div class="vat-card report-card">
           <div class="report-badge">মূসক-৬.২</div>
           <h3 class="report-title">Sales Register (বিক্রয় হিসাব পুস্তক)</h3>
-          <p class="report-desc">Finished goods and commercial sales ledger, customer BIN logs, sequential challan audit, and output VAT reconciliations.</p>
+          <p class="report-desc">Original sales posting snapshots across all loaded pages. Credit/debit notes and payments are separate.</p>
           <div class="report-actions">
             <a routerLink="/app/sales/mushak-6-2" class="btn btn-secondary btn-sm">Interactive View</a>
             <button class="btn btn-primary btn-sm" (click)="downloadReport('6.2')">
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
-              View & PDF
+              Review sources
             </button>
           </div>
         </div>
@@ -53,12 +55,12 @@ import { CompanyContextService } from '../../core/services/company-context.servi
         <div class="vat-card report-card">
           <div class="report-badge">মূসক-৬.৩</div>
           <h3 class="report-title">VAT Tax Invoice (কর চালানপত্র)</h3>
-          <p class="report-desc">Official 2-ply tax invoice required prior to dispatch. Complete with QR code verification and Bangla typography.</p>
+          <p class="report-desc">Choose a sales invoice for operational review. Statutory invoice certification requires validated document mapping.</p>
           <div class="report-actions">
-            <a routerLink="/app/sales/challan-preview" class="btn btn-secondary btn-sm">Preview 6.3</a>
+            <a routerLink="/app/sales/invoices" class="btn btn-secondary btn-sm">Choose invoice</a>
             <button class="btn btn-primary btn-sm" (click)="downloadReport('6.3')">
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
-              View & PDF
+              Review sources
             </button>
           </div>
         </div>
@@ -67,12 +69,12 @@ import { CompanyContextService } from '../../core/services/company-context.servi
         <div class="vat-card report-card">
           <div class="report-badge">মূসক-৪.৩</div>
           <h3 class="report-title">Input-Output Coefficient (সহগ ঘোষণা)</h3>
-          <p class="report-desc">Manufacturing BOM ratio declaration, raw material loss/wastage percentages, direct labor, utilities and margin breakdown.</p>
+          <p class="report-desc">Saved manufacturing material/cost snapshots and internal approval workflow.</p>
           <div class="report-actions">
             <a routerLink="/app/manufacturing/coefficient-4-3" class="btn btn-secondary btn-sm">View Declaration</a>
             <button class="btn btn-primary btn-sm" (click)="downloadReport('4.3')">
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
-              View & PDF
+              Review sources
             </button>
           </div>
         </div>
@@ -81,12 +83,12 @@ import { CompanyContextService } from '../../core/services/company-context.servi
         <div class="vat-card report-card">
           <div class="report-badge">মূসক-৯.১</div>
           <h3 class="report-title">Monthly VAT Return (মাসিক দাখিলপত্র)</h3>
-          <p class="report-desc">Comprehensive monthly VAT return with Part 1 through Part 12, increasing/decreasing adjustments, and e-Challan deposit slip.</p>
+          <p class="report-desc">Review available return source data. External filing is unavailable until its integration and mapping are validated.</p>
           <div class="report-actions">
-            <a routerLink="/app/compliance/return-9-1" class="btn btn-secondary btn-sm">Filing Engine</a>
+            <a routerLink="/app/compliance/return-9-1" class="btn btn-secondary btn-sm">Return review</a>
             <button class="btn btn-primary btn-sm" (click)="downloadReport('9.1')">
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
-              View & PDF
+              Review sources
             </button>
           </div>
         </div>
@@ -95,12 +97,12 @@ import { CompanyContextService } from '../../core/services/company-context.servi
         <div class="vat-card report-card">
           <div class="report-badge">মূসক-৬.৬</div>
           <h3 class="report-title">VDS Certificate (উৎসে কর্তন সনদপত্র)</h3>
-          <p class="report-desc">Section 49 deduction at source certificates with government treasury code tracking and vendor issuance records.</p>
+          <p class="report-desc">Review available withholding records. Certificate issuance requires validated source data and mapping.</p>
           <div class="report-actions">
             <a routerLink="/app/compliance/vds-certificates" class="btn btn-secondary btn-sm">VDS Register</a>
             <button class="btn btn-primary btn-sm" (click)="downloadReport('6.6')">
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
-              View & PDF
+              Review sources
             </button>
           </div>
         </div>
@@ -132,7 +134,7 @@ export class ReportsComponent implements OnInit {
     const routes: Record<string, string> = {
       '6.1': '/app/purchases/mushak-6-1',
       '6.2': '/app/sales/mushak-6-2',
-      '6.3': '/app/sales/challan-preview',
+      '6.3': '/app/sales/invoices',
       '4.3': '/app/manufacturing/coefficient-4-3',
       '9.1': '/app/compliance/return-9-1',
       '6.6': '/app/compliance/vds-66'

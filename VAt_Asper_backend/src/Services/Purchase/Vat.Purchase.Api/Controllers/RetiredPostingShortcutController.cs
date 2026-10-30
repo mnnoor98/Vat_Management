@@ -1,8 +1,10 @@
+using Vat.Application.Contracts;
+using Vat.Application;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Vat.Application.Security;
 
-namespace Vat.Services.Purchase.Controllers;
+namespace Vat.Coordinated.Purchase.Controllers;
 
 [ApiController]
 public sealed class RetiredPostingShortcutController : ControllerBase

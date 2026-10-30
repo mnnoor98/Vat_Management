@@ -1,4 +1,5 @@
-import { Component, OnInit, inject } from '@angular/core';
+import { FinancialPostingComponent } from '../../../shared/components/financial-posting.component';
+import { Component, OnInit, inject, ChangeDetectorRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterModule } from '@angular/router';
 import { FormsModule } from '@angular/forms';
@@ -14,9 +15,18 @@ import { MockDataService } from '../../../core/services/mock-data.service';
 @Component({
   selector: 'app-sales-list',
   standalone: true,
-  imports: [CommonModule, RouterModule, FormsModule, BdtCurrencyPipe, StatusBadgeComponent],
+  imports: [FinancialPostingComponent, CommonModule, RouterModule, FormsModule, BdtCurrencyPipe, StatusBadgeComponent],
   template: `
     <div class="sales-page">
+      <a routerLink="/app/sales/payments" class="btn btn-secondary">Payments and customer receivables</a>
+      <app-financial-posting *ngIf="postingInvoice as invoice" [invoice]="invoice" kind="sales" (changed)="loadInvoices()" (closed)="postingInvoice = null"></app-financial-posting>
+      <p *ngIf="loadError" role="alert">{{ loadError }} <button (click)="loadInvoices()">Retry</button></p>
+      <div class="header-actions">
+        <button class="btn btn-secondary" [disabled]="loading || pageIndex === 0" (click)="changePage(-1)">Previous</button>
+        <span>Page {{ pageIndex + 1 }} ? Filters and export apply to this page</span>
+        <button class="btn btn-secondary" [disabled]="loading || !hasNextPage" (click)="changePage(1)">Next</button>
+      </div>
+      <p>Tax is pending until a server calculation is prepared. Amounts before preparation exclude tax. Posted amounts show the original posting snapshot; subsequent corrections remain separate.</p>
       <!-- Breadcrumb & Header -->
       <div class="page-header">
         <div>
@@ -128,16 +138,17 @@ import { MockDataService } from '../../../core/services/mock-data.service';
                 </td>
                 <td>{{ s.deliveryDate }} <br><small class="text-dim">{{ s.deliveryTime }}</small></td>
                 <td class="text-right numeric">{{ s.subTotal | bdtCurrency:false }}</td>
-                <td class="text-right numeric text-rose font-bold">{{ s.totalVat | bdtCurrency:false }}</td>
-                <td class="text-right numeric font-bold">{{ s.grandTotal | bdtCurrency:false }}</td>
+                <td class="text-right numeric text-rose font-bold">{{ s.taxCalculated ? (s.totalVat | bdtCurrency:false) : "Pending" }}</td>
+                <td class="text-right numeric font-bold">{{ s.taxCalculated ? (s.grandTotal | bdtCurrency:false) : "Pending tax" }}</td>
                 <td><app-status-badge [status]="s.status"></app-status-badge></td>
                 <td class="text-right">
                   <div class="row-actions">
                     <a [routerLink]="['/app/sales/challan-preview']" [queryParams]="{ id: s.id }" class="btn-action" title="View Mushak 6.3">View</a>
+                    <button class="btn-action" *ngIf="s.status === 'Draft' && context.hasPermission('sales.submit')" (click)="submitInvoice(s.id)">Submit draft</button>
                     <button *ngIf="s.status === 'Submitted' && canApprove()" class="btn-action btn-approve" (click)="approveInvoice(s.id)" title="Approve Challan">
                       Approve
                     </button>
-                    <button *ngIf="s.status === 'Approved' && canPost()" class="btn-action btn-post" (click)="postInvoiceToLedger(s.id)" title="Post to VAT & Sales Ledger">
+                    <button *ngIf="(s.status === 'Approved' || s.status === 'Reserved') && canPost()" class="btn-action btn-post" (click)="postInvoiceToLedger(s.id)" title="Post to VAT & Sales Ledger">
                       Post to Ledger
                     </button>
                     <a [routerLink]="['/app/sales/challan-preview']" [queryParams]="{ id: s.id }" class="btn-action print-action" title="Print Mushak 6.3">
@@ -286,6 +297,14 @@ import { MockDataService } from '../../../core/services/mock-data.service';
   `]
 })
 export class SalesListComponent implements OnInit {
+  public postingInvoice: SalesInvoice | null = null;
+  public loading = false;
+  public loadError = '';
+  public readonly pageSize = 25;
+  public pageIndex = 0;
+  public hasNextPage = false;
+  private cursors: (string | undefined)[] = [undefined];
+  private cdr = inject(ChangeDetectorRef);
   public invoices: SalesInvoice[] = [];
   public filteredInvoices: SalesInvoice[] = [];
   public branches: Branch[] = [];
@@ -309,36 +328,29 @@ export class SalesListComponent implements OnInit {
   }
 
   loadInvoices(): void {
-    this.salesApi.getInvoices().subscribe(data => {
-      this.invoices = data;
-      this.applyFilters();
+    this.loading = true; this.loadError = '';
+    this.salesApi.getInvoices({ before: this.cursors[this.pageIndex], take: this.pageSize }).subscribe({
+      next: data => {
+        this.invoices = data; this.hasNextPage = data.length === this.pageSize;
+        this.loading = false; this.applyFilters(); this.cdr.markForCheck();
+      },
+      error: e => { this.loading = false; this.loadError = e?.message || 'Unable to load invoices.'; this.invoices = []; this.filteredInvoices = []; this.hasNextPage = false; this.cdr.markForCheck(); }
     });
+  }
+
+  changePage(direction: number): void {
+    if (this.loading || (direction < 0 && this.pageIndex === 0) || (direction > 0 && !this.hasNextPage)) return;
+    if (direction > 0) this.cursors[this.pageIndex + 1] = this.invoices[this.invoices.length - 1].id;
+    this.pageIndex += direction; this.loadInvoices();
   }
 
   applyFilters(): void {
     let result = [...this.invoices];
 
-    // Branch isolation: Non-superadmin users only see sales invoices for their assigned branch
     if (!this.context.isSuperAdmin()) {
-      const curBranchId = this.context.activeBranch().id;
-      const curBranchGuid = this.context.branchGuid();
-      result = result.filter(s => 
-        !s.branchId || 
-        s.branchId === curBranchId || 
-        s.branchId === curBranchGuid ||
-        (curBranchId === 'BR-01' && s.branchId.includes('31')) ||
-        (curBranchId === 'BR-02' && s.branchId.includes('32')) ||
-        (curBranchId === 'BR-03' && s.branchId.includes('33'))
-      );
+      result = result.filter(i => i.branchId === this.context.branchGuid());
     } else if (this.selectedBranchFilter !== 'All') {
-      const targetGuid = this.context.resolveBranchGuid(this.selectedBranchFilter);
-      result = result.filter(s => 
-        s.branchId === this.selectedBranchFilter || 
-        s.branchId === targetGuid ||
-        (this.selectedBranchFilter === 'BR-01' && s.branchId?.includes('31')) ||
-        (this.selectedBranchFilter === 'BR-02' && s.branchId?.includes('32')) ||
-        (this.selectedBranchFilter === 'BR-03' && s.branchId?.includes('33'))
-      );
+      result = result.filter(i => i.branchId === this.context.resolveBranchGuid(this.selectedBranchFilter));
     }
 
     if (this.searchQuery.trim()) {
@@ -359,50 +371,25 @@ export class SalesListComponent implements OnInit {
   }
 
   getBranchName(branchId?: string): string {
-    if (!branchId) return 'Dhaka HQ';
-    if (branchId === 'BR-02' || branchId.includes('32')) return 'Chittagong Depot';
-    if (branchId === 'BR-03' || branchId.includes('33')) return 'Bogura Warehouse';
-    return 'Dhaka HQ';
+    return this.branches.find(b => b.id === branchId)?.name || branchId || 'Unspecified';
   }
 
-  canApprove(): boolean {
-    const roles = this.context.userRoles();
-    return this.context.hasPermission('sales.invoice.approve') ||
-      this.context.isSuperAdmin() ||
-      roles.includes('TaxManager') ||
-      roles.includes('Checker') ||
-      roles.includes('Approver');
-  }
+  canApprove(): boolean { return this.context.hasPermission('sales.approve'); }
 
   canPost(): boolean {
-    const roles = this.context.userRoles();
-    return this.context.isSuperAdmin() ||
-      roles.includes('TaxManager') ||
-      roles.includes('Checker') ||
-      roles.includes('Approver');
+    return this.context.hasPermission('sales.post') || this.context.hasPermission('sales.reserve');
   }
 
   postInvoiceToLedger(id: string): void {
-    if (!this.canPost()) {
-      this.toast.error(
-        this.context.locale() === 'bn' ? 'লেজারে পোস্ট করার অনুমতি নেই।' : 'Access Denied: You lack permissions to post to ledger.',
-        'অননুমোদিত অ্যাকশন (RBAC Restriction)'
-      );
-      return;
-    }
+    this.postingInvoice = this.invoices.find(i => i.id === id) || null;
+  }
 
-    const isBn = this.context.locale() === 'bn';
-    this.salesApi.postSalesInvoice(id).subscribe({
-      next: () => {
-        this.toast.success(
-          isBn ? `বিক্রয় চালান ${id} সফলভাবে ভ্যাট ও সেলস লেজারে পোস্ট করা হয়েছে!` : `Sales Challan ${id} successfully posted to VAT ledger!`,
-          isBn ? 'পোস্টিং সম্পন্ন (Posted)' : 'Ledger Posting Complete'
-        );
-        this.loadInvoices();
-      },
-      error: (err) => {
-        this.toast.error(err?.message || 'Posting failed', 'পোস্টিং ব্যর্থ');
-      }
+  submitInvoice(id: string): void {
+    const invoice = this.invoices.find(i => i.id === id);
+    if (!invoice || !Number.isSafeInteger(invoice.version)) { this.toast.error('Reload the invoice to obtain its current version.'); return; }
+    this.salesApi.submitTransition(id, invoice.version!).subscribe({
+      next: () => this.loadInvoices(),
+      error: e => { this.toast.error(e?.message || 'Submission failed. Reload the invoice.'); this.loadInvoices(); }
     });
   }
 
@@ -417,8 +404,6 @@ export class SalesListComponent implements OnInit {
       return;
     }
 
-    const isGuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id);
-
     const onApproved = () => {
       this.toast.success(
         this.context.locale() === 'bn'
@@ -429,21 +414,12 @@ export class SalesListComponent implements OnInit {
       this.loadInvoices();
     };
 
-    if (isGuid) {
-      this.salesApi.approveTransition(id, 2).subscribe({
-        next: onApproved,
-        error: () => {
-          this.salesApi.approveTransition(id, 1).subscribe({
-            next: onApproved,
-            error: () => {
-              this.salesApi.updateStatus(id, 'Approved').subscribe(onApproved);
-            }
-          });
-        }
-      });
-    } else {
-      this.salesApi.updateStatus(id, 'Approved').subscribe(onApproved);
-    }
+    const invoice = this.invoices.find(i => i.id === id);
+    if (!Number.isSafeInteger(invoice?.version)) { this.toast.error('Reload the invoice to obtain its current version.'); return; }
+    this.salesApi.approveTransition(id, invoice!.version!).subscribe({
+      next: onApproved,
+      error: e => { this.toast.error(e?.message || 'Approval failed. Reload the invoice.'); this.loadInvoices(); }
+    });
   }
 
   exportToCsv(): void {
@@ -476,10 +452,10 @@ export class SalesListComponent implements OnInit {
       s.vehicleTypeAndNo || '',
       s.destinationAddress,
       s.subTotal,
-      s.totalVat,
+      s.taxCalculated ? s.totalVat : 'Pending',
       s.totalSupplementaryDuty || 0,
       s.totalVdsDeducted || 0,
-      s.grandTotal,
+      s.taxCalculated ? s.grandTotal : 'Pending tax',
       s.status
     ]);
 

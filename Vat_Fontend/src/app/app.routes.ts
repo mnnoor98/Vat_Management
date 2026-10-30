@@ -1,3 +1,5 @@
+import { PaymentsComponent } from './features/payments/payments.component';
+import { NetLedgerComponent } from './features/reports/net-ledger.component';
 import { Routes } from '@angular/router';
 import { AppShellComponent } from './layout/app-shell/app-shell.component';
 import { DashboardComponent } from './features/dashboard/dashboard.component';
@@ -27,11 +29,8 @@ export const routes: Routes = [
     component: LoginComponent,
     canActivate: [guestGuard]
   },
-  {
-    path: 'register',
-    component: RegisterComponent,
-    canActivate: [guestGuard]
-  },
+  { path: 'register', redirectTo: 'login', pathMatch: 'full' },
+  { path: 'auth/callback', component: LoginComponent },
   {
     path: '',
     redirectTo: '/app/portal',
@@ -55,6 +54,7 @@ export const routes: Routes = [
 
       // Sales & Billing (Mushak 6.3)
       { path: 'sales', redirectTo: 'sales/invoices', pathMatch: 'full' },
+      { path: 'sales/payments', component: PaymentsComponent },
       { path: 'sales/invoices', component: SalesListComponent },
       { path: 'sales/new', component: SalesEntryComponent },
       { path: 'sales/challan-preview', component: Mushak63ChallanComponent },
@@ -87,6 +87,7 @@ export const routes: Routes = [
       { path: 'master-data/new-product', component: MasterDataComponent },
       { path: 'master-data/parties', component: MasterDataComponent },
       { path: 'master-data/new-party', component: MasterDataComponent },
+      { path: 'reports/net-ledger', component: NetLedgerComponent },
       { path: 'reports', component: ReportsComponent },
       { path: 'admin', component: AdminComponent }
     ]

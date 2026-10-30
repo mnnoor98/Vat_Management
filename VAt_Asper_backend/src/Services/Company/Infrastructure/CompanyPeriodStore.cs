@@ -27,7 +27,7 @@ public sealed class CompanyPeriodStore(CompanyDbContext db) : IPeriodStore
     public Task<bool> Overlaps(FiscalPeriod period, CancellationToken ct) => db.FiscalPeriods.AnyAsync(x =>
         x.TenantId == period.TenantId && x.CompanyId == period.CompanyId && x.From < period.Until && period.From < x.Until, ct);
 
-    public Task<bool> HasPending(FiscalPeriod period, CancellationToken ct) => Task.FromResult(false);
+    public Task<bool> HasPending(FiscalPeriod period, CancellationToken ct) => Task.FromException<bool>(new Vat.Domain.DomainException("period_close_unavailable", "Verified cross-owner reconciliation is required before closing a period.", 503));
 
     public Task<IReadOnlyList<Guid>> FinancialPurchaseIds(FiscalPeriod period, CancellationToken ct) =>
         Task.FromResult<IReadOnlyList<Guid>>(Array.Empty<Guid>());
@@ -35,7 +35,7 @@ public sealed class CompanyPeriodStore(CompanyDbContext db) : IPeriodStore
     public Task<IReadOnlyList<Guid>> FinancialSalesIds(FiscalPeriod period, CancellationToken ct) =>
         Task.FromResult<IReadOnlyList<Guid>>(Array.Empty<Guid>());
 
-    public Task<bool> BalancesReconcile(Guid tenantId, Guid companyId, CancellationToken ct) => Task.FromResult(true);
+    public Task<bool> BalancesReconcile(Guid tenantId, Guid companyId, CancellationToken ct) => Task.FromException<bool>(new Vat.Domain.DomainException("period_close_unavailable", "Verified reconciliation is unavailable.", 503));
 
     public Task<PeriodCloseSnapshot> Snapshot(FiscalPeriod period, DateTimeOffset now, CancellationToken ct) =>
         Task.FromResult(new PeriodCloseSnapshot(period.Id, period.From, period.Until, now,
