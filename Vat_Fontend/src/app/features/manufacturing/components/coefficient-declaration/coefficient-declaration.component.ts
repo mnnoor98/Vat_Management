@@ -19,18 +19,18 @@ import { Coefficient43 } from '../../../../core/models/vat-models';
       <div class="declaration-selector-card no-print" *ngIf="declarations.length > 0">
         <div class="selector-left">
           <label class="vat-label-inline font-bengali">সহগ ঘোষণা নির্বাচন করুন:</label>
-          <select class="vat-select" [ngModel]="activeDeclaration?.declarationNumber" (ngModelChange)="onSelectDeclaration($event)">
+          <select class="vat-select" [ngModel]="activeDeclaration.declarationNumber" (ngModelChange)="onSelectDeclaration($event)">
             <option *ngFor="let d of declarations" [value]="d.declarationNumber">
               📜 {{ d.declarationNumber }} — {{ d.finishedProductName }} ({{ d.batchSize }} {{ d.uom }}) — [{{ d.status }}]
             </option>
           </select>
         </div>
         <div class="selector-right">
-          <span class="status-badge" [class.approved]="activeDeclaration?.status === 'Approved'" [class.submitted]="activeDeclaration?.status === 'Submitted'">
-            {{ activeDeclaration?.status || 'Approved' }}
+          <span class="status-badge" [class.approved]="activeDeclaration.status === 'Approved'" [class.submitted]="activeDeclaration.status === 'Submitted'">
+            {{ activeDeclaration.status || 'Approved' }}
           </span>
           <button 
-            *ngIf="activeDeclaration?.status === 'Submitted' && canApprove()" 
+            *ngIf="activeDeclaration.status === 'Submitted' && canApprove()" 
             class="btn btn-sm btn-approve" 
             (click)="approveActiveDeclaration()"
           >

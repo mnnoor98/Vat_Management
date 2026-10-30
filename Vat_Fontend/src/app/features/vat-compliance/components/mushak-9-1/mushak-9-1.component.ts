@@ -19,10 +19,10 @@ import { Mushak91Return, PurchaseInvoice, SalesInvoice } from '../../../../core/
     <div class="mushak-9-1-container">
       <div class="action-bar no-print">
         <div class="action-bar-left">
-          <span class="status-indicator-badge" [ngClass]="returnDoc?.status === 'Submitted' ? 'badge-success' : 'badge-warning'">
-            {{ returnDoc?.status === 'Submitted' ? '✅ NBR দাখিলকৃত (Submitted)' : '📝 খসড়া দাখিলপত্র (Draft)' }}
+          <span class="status-indicator-badge" [ngClass]="returnDoc.status === 'Submitted' ? 'badge-success' : 'badge-warning'">
+            {{ returnDoc.status === 'Submitted' ? '✅ NBR দাখিলকৃত (Submitted)' : '📝 খসড়া দাখিলপত্র (Draft)' }}
           </span>
-          <span class="revision-chip" *ngIf="returnDoc?.revision && returnDoc.revision > 1">
+          <span class="revision-chip" *ngIf="returnDoc.revision && returnDoc.revision > 1">
             Revision {{ returnDoc.revision }}
           </span>
         </div>

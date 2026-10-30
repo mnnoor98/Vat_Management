@@ -142,8 +142,10 @@ public static class VatHttp
         app.UseAuthentication();
         app.UseAuthorization();
         app.MapGet("/health/live", (BackendIdentity identity) => Results.Ok(new { status = "Healthy", service = identity.Name })).AllowAnonymous();
-        app.MapGet("/health/ready", async (IBackendReadiness readiness, CancellationToken ct) =>
+        app.MapGet("/health/ready", async (IServiceProvider sp, CancellationToken ct) =>
         {
+            var readiness = sp.GetService<IBackendReadiness>();
+            if (readiness == null) return Results.Ok(new { status = "Healthy" });
             try
             {
                 return await readiness.IsReady(ct) ? Results.Ok(new { status = "Healthy" })
