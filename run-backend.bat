@@ -5,6 +5,10 @@ echo ============================================================
 echo   Starting Enterprise VAT Management - Backend Services
 echo ============================================================
 echo.
+echo   API Gateway: http://localhost:5080
+echo   Swagger UI:  http://localhost:5080/swagger
+echo   Scalar Docs: http://localhost:5080/scalar/v1
+echo.
 
 cd /d "%~dp0VAt_Asper_backend"
 

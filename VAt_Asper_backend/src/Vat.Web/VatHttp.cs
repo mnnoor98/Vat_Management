@@ -9,6 +9,8 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
+using Scalar.AspNetCore;
+using Swashbuckle.AspNetCore.SwaggerUI;
 using System.Text.Json.Serialization;
 using Vat.Api;
 using Vat.Api.Errors;
@@ -42,6 +44,7 @@ public static class VatHttp
         builder.Services.AddProblemDetails(options => options.CustomizeProblemDetails = ctx =>
             ctx.ProblemDetails.Extensions["correlationId"] = ctx.HttpContext.TraceIdentifier);
         builder.Services.AddExceptionHandler<ApiExceptionHandler>();
+        builder.Services.AddEndpointsApiExplorer();
         builder.Services.AddOpenApi();
         builder.Services.AddControllers().AddJsonOptions(options =>
         {
@@ -116,11 +119,22 @@ public static class VatHttp
             foreach (var permission in Permissions.All)
                 options.AddPolicy(permission, policy => policy.RequireAuthenticatedUser().RequireClaim("permission", permission));
         });
-        // Browser clients must explicitly configure their allowed origins.
-        var origins = builder.Configuration.GetSection("Cors:AllowedOrigins").Get<string[]>() ?? [];
+        
+        // Browser clients and Swagger UI cross-origin calls
         builder.Services.AddCors(options => options.AddDefaultPolicy(policy =>
         {
-            if (origins.Length > 0) policy.WithOrigins(origins).AllowAnyHeader().AllowAnyMethod();
+            if (builder.Environment.IsDevelopment())
+            {
+                policy.SetIsOriginAllowed(_ => true)
+                      .AllowAnyHeader()
+                      .AllowAnyMethod()
+                      .AllowCredentials();
+            }
+            else
+            {
+                var origins = builder.Configuration.GetSection("Cors:AllowedOrigins").Get<string[]>() ?? [];
+                if (origins.Length > 0) policy.WithOrigins(origins).AllowAnyHeader().AllowAnyMethod();
+            }
         }));
         return builder;
     }
@@ -139,6 +153,38 @@ public static class VatHttp
         app.UseCors();
         app.UseExceptionHandler();
         app.UseStatusCodePages();
+
+        if (app.Environment.IsDevelopment())
+        {
+            app.UseSwaggerUI(options =>
+            {
+                var serviceName = app.Services.GetService<BackendIdentity>()?.Name ?? "VAT";
+                if (serviceName is "Compatibility" or "Gateway")
+                {
+                    options.SwaggerEndpoint("/openapi/v1.json", "Unified API Gateway (Port 5080)");
+                    options.SwaggerEndpoint("http://localhost:5101/openapi/v1.json", "Identity Service (Port 5101)");
+                    options.SwaggerEndpoint("http://localhost:5102/openapi/v1.json", "Company Service (Port 5102)");
+                    options.SwaggerEndpoint("http://localhost:5103/openapi/v1.json", "MasterData Service (Port 5103)");
+                    options.SwaggerEndpoint("http://localhost:5104/openapi/v1.json", "Purchase Service (Port 5104)");
+                    options.SwaggerEndpoint("http://localhost:5105/openapi/v1.json", "Sales Service (Port 5105)");
+                    options.SwaggerEndpoint("http://localhost:5106/openapi/v1.json", "Inventory Service (Port 5106)");
+                    options.SwaggerEndpoint("http://localhost:5107/openapi/v1.json", "Manufacturing Service (Port 5107)");
+                    options.SwaggerEndpoint("http://localhost:5108/openapi/v1.json", "VatEngine Service (Port 5108)");
+                    options.SwaggerEndpoint("http://localhost:5109/openapi/v1.json", "Compliance Service (Port 5109)");
+                    options.SwaggerEndpoint("http://localhost:5110/openapi/v1.json", "Workflow Service (Port 5110)");
+                    options.SwaggerEndpoint("http://localhost:5111/openapi/v1.json", "Reporting Service (Port 5111)");
+                    options.SwaggerEndpoint("http://localhost:5112/openapi/v1.json", "Integration Service (Port 5112)");
+                    options.DocumentTitle = "Enterprise VAT Management - API Portal";
+                }
+                else
+                {
+                    options.SwaggerEndpoint("/openapi/v1.json", $"{serviceName} API v1");
+                    options.DocumentTitle = $"{serviceName} - Swagger UI";
+                }
+                options.RoutePrefix = "swagger";
+            });
+        }
+
         app.UseAuthentication();
         app.UseAuthorization();
         app.MapGet("/health/live", (BackendIdentity identity) => Results.Ok(new { status = "Healthy", service = identity.Name })).AllowAnonymous();
@@ -156,7 +202,18 @@ public static class VatHttp
                 return Results.Problem(statusCode: 503, title: "Not ready");
             }
         }).AllowAnonymous();
-        if (app.Environment.IsDevelopment()) app.MapOpenApi().AllowAnonymous();
+
+        if (app.Environment.IsDevelopment())
+        {
+            app.MapOpenApi().AllowAnonymous();
+            app.MapScalarApiReference(options =>
+            {
+                var serviceName = app.Services.GetService<BackendIdentity>()?.Name ?? "VAT";
+                options.WithTitle($"{serviceName} API Documentation");
+            }).AllowAnonymous();
+            app.MapGet("/", () => Results.Redirect("/swagger")).AllowAnonymous().ExcludeFromDescription();
+        }
+
         app.MapControllers();
         return app;
     }

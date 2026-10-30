@@ -143,8 +143,17 @@ try {
     Write-Host " ALL BACKEND SERVICES ARE RUNNING! " -ForegroundColor Green
     Write-Host "==========================================================" -ForegroundColor Green
     Write-Host "Gateway:       http://localhost:5080 (Proxied for Angular /api and /health)"
+    Write-Host "Swagger UI:    http://localhost:5080/swagger"
+    Write-Host "Scalar Docs:   http://localhost:5080/scalar/v1"
     Write-Host "Microservices: Ports 5101 to 5112"
     Write-Host "Logs Location: $logsDir"
+
+    # Automatically launch Swagger UI in the default browser
+    try {
+        Start-Process "http://localhost:5080/swagger"
+    } catch {
+        # ignore browser launch errors in headless or background environments
+    }
 
     # Keep alive
     while ($true) {

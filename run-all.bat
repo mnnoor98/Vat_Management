@@ -21,8 +21,11 @@ echo ============================================================
 echo   All services launched!
 echo   Frontend UI: http://localhost:4200
 echo   API Gateway: http://localhost:5080
+echo   Swagger UI:  http://localhost:5080/swagger
+echo   Scalar Docs: http://localhost:5080/scalar/v1
 echo ============================================================
 echo.
 timeout /t 3 /nobreak >nul
 start http://localhost:4200
+start http://localhost:5080/swagger
 exit

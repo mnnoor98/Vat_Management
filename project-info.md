@@ -155,11 +155,29 @@ Vat_Management/
 
 ### 6.0 One-Click Batch Launchers (ডাবল-ক্লিক ব্যাচ ফাইল)
 প্রজেক্টের রুট ফোল্ডারে (`G:\dotnetproject\Vat_Management\`) নিচের রেডি ব্যাচ ফাইলগুলো রয়েছে:
-- **`run-all.bat`**: এক ক্লিকে ব্যাকএন্ড (পোর্ট ৫০৮০ ও ৫১০১–৫১১২) এবং ফ্রন্টএন্ড (পোর্ট ৪২০০) রান করে স্বয়ংক্রিয়ভাবে ব্রাউজারে `http://localhost:4200` ওপেন করবে।
-- **`run-backend.bat`**: শুধুমাত্র ব্যাকএন্ড মাইক্রোসার্ভিস ও গেটওয়ে রান করবে।
+- **`run-all.bat`**: এক ক্লিকে ব্যাকএন্ড (পোর্ট ৫০৮০ ও ৫১০১–৫১১২) এবং ফ্রন্টএন্ড (পোর্ট ৪২০০) রান করবে এবং স্বয়ংক্রিয়ভাবে ব্রাউজারে ফ্রন্টএন্ড UI (`http://localhost:4200`) এবং সোয়েগার API পোর্টাল (`http://localhost:5080/swagger`) উভয়ই ওপেন করবে।
+- **`run-backend.bat`**: সমস্ত ব্যাকএন্ড মাইক্রোসার্ভিস ও গেটওয়ে রান করবে এবং সার্ভিসগুলো চালু হতেই স্বয়ংক্রিয়ভাবে সোয়েগার UI (`http://localhost:5080/swagger`) ওপেন করবে।
 - **`run-frontend.bat`**: শুধুমাত্র Angular ফ্রন্টএন্ড রান করবে।
+- **`open-swagger.bat`**: ব্যাকএন্ড চালু থাকা অবস্থায় সরাসরি এক ক্লিকে সোয়েগার API পোর্টাল ওপেন করবে।
 - **`migrate-all.bat`**: সব ১২টি মাইক্রোসার্ভিসের ডাটাবেজ এক ক্লিকে মাইগ্রেট ও ওনারশিপ ভেরিফাই করবে।
 - **`stop-all.bat`**: ব্যাকএন্ড ও ফ্রন্টএন্ডের সমস্ত চালু প্রসেস এক ক্লিকে বন্ধ/কিল করবে।
+- **`push-git.bat`**: এক ক্লিকে গিট কমিট ও পুশ করবে।
+
+### 6.0.1 Swagger & OpenAPI Documentation Endpoints (সোয়েগার ডক ইউআরএল তালিকা)
+- **Unified API Gateway (সব এন্ডিং ও ড্রপডাউন সহ)**: `http://localhost:5080/swagger`
+- **Scalar Modern Interactive Docs**: `http://localhost:5080/scalar/v1`
+- **Identity Microservice Swagger**: `http://localhost:5101/swagger`
+- **Company Microservice Swagger**: `http://localhost:5102/swagger`
+- **MasterData Microservice Swagger**: `http://localhost:5103/swagger`
+- **Purchase Microservice Swagger**: `http://localhost:5104/swagger`
+- **Sales Microservice Swagger**: `http://localhost:5105/swagger`
+- **Inventory Microservice Swagger**: `http://localhost:5106/swagger`
+- **Manufacturing Microservice Swagger**: `http://localhost:5107/swagger`
+- **VatEngine Microservice Swagger**: `http://localhost:5108/swagger`
+- **Compliance Microservice Swagger**: `http://localhost:5109/swagger`
+- **Workflow Microservice Swagger**: `http://localhost:5110/swagger`
+- **Reporting Microservice Swagger**: `http://localhost:5111/swagger`
+- **Integration Microservice Swagger**: `http://localhost:5112/swagger`
 
 ### 6.1 Database Migration (সকল ডাটাবেজ এক ক্লিকে মাইগ্রেশন)
 সব ১২টি ডাটাবেজ তৈরি, স্কিমা তৈরি এবং ডাটা ভেরিফিকেশন রান করতে:
