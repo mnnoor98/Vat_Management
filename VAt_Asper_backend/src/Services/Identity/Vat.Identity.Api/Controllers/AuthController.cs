@@ -52,23 +52,25 @@ public sealed class AuthController : ControllerBase
         var uname = request.Username.Trim().ToLowerInvariant();
         var pwd = request.Password;
 
-        // Supported seeded accounts: admin, maker, checker, auditor
+        // Supported seeded accounts: imran, admin, maker, checker, auditor (ACI Limited)
         string displayName;
         string[] roles;
         string[] permissions;
         Guid userId;
 
-        if ((uname == "admin" || uname == "admin@padma-vat.com" || uname == "admin@enterprise.vat") && (pwd == "Admin@123456" || pwd == "Admin@12345" || pwd == "admin123" || pwd == "123456"))
+        if ((uname == "imran" || uname == "imran@aci-bd.com" || uname == "admin" || uname == "admin@aci-bd.com" || uname == "admin@padma-vat.com" || uname == "admin@enterprise.vat") && 
+            (pwd == "Admin@123456" || pwd == "Admin@12345" || pwd == "admin123" || pwd == "123456"))
         {
             userId = Guid.Parse("99999999-1111-1111-1111-111111111111");
-            displayName = "System Administrator";
+            displayName = "Imran Hossain (Head of VAT & Tax - ACI)";
             roles = ["Admin"];
             permissions = Permissions.All;
         }
-        else if ((uname == "maker" || uname == "maker@padma-vat.com" || uname == "maker@enterprise.vat") && (pwd == "Maker@123456" || pwd == "Maker@12345" || pwd == "maker123" || pwd == "123456"))
+        else if ((uname == "maker" || uname == "tanvir" || uname == "tanvir.maker@aci-bd.com" || uname == "maker@padma-vat.com" || uname == "maker@enterprise.vat") && 
+                 (pwd == "Maker@123456" || pwd == "Maker@12345" || pwd == "maker123" || pwd == "123456"))
         {
             userId = Guid.Parse("99999999-2222-2222-2222-222222222222");
-            displayName = "Rahim Ahmed (VAT Maker)";
+            displayName = "Tanvir Ahmed (VAT Maker - ACI)";
             roles = ["Maker"];
             permissions = [
                 Permissions.PurchaseRead, Permissions.PurchaseCreate, Permissions.PurchaseSubmit, Permissions.PurchasePrepare, Permissions.PurchaseCancel,
@@ -82,10 +84,11 @@ public sealed class AuthController : ControllerBase
                 Permissions.ComplianceRead, Permissions.WorkflowRead, Permissions.IdentityRead
             ];
         }
-        else if ((uname == "checker" || uname == "checker@padma-vat.com" || uname == "checker@enterprise.vat") && (pwd == "Checker@123456" || pwd == "Checker@12345" || pwd == "checker123" || pwd == "123456"))
+        else if ((uname == "checker" || uname == "farhana" || uname == "farhana.checker@aci-bd.com" || uname == "checker@padma-vat.com" || uname == "checker@enterprise.vat") && 
+                 (pwd == "Checker@123456" || pwd == "Checker@12345" || pwd == "checker123" || pwd == "123456"))
         {
             userId = Guid.Parse("99999999-3333-3333-3333-333333333333");
-            displayName = "Karim Ullah (VAT Checker)";
+            displayName = "Farhana Yasmin (VAT Checker - ACI)";
             roles = ["Checker"];
             permissions = [
                 Permissions.PurchaseRead, Permissions.PurchaseApprove, Permissions.PurchasePost, Permissions.PurchaseCancel, Permissions.PurchaseReverseApprove,
@@ -99,10 +102,11 @@ public sealed class AuthController : ControllerBase
                 Permissions.MasterDataRead, Permissions.CompanyRead, Permissions.TaxRead, Permissions.ReportRead, Permissions.WorkflowRead, Permissions.IdentityRead
             ];
         }
-        else if ((uname == "auditor" || uname == "auditor@padma-vat.com" || uname == "auditor@enterprise.vat") && (pwd == "Auditor@123456" || pwd == "Auditor@12345" || pwd == "auditor123" || pwd == "123456"))
+        else if ((uname == "auditor" || uname == "shafiqul" || uname == "shafiqul.auditor@aci-bd.com" || uname == "auditor@padma-vat.com" || uname == "auditor@enterprise.vat") && 
+                 (pwd == "Auditor@123456" || pwd == "Auditor@12345" || pwd == "auditor123" || pwd == "123456"))
         {
             userId = Guid.Parse("99999999-4444-4444-4444-444444444444");
-            displayName = "Nasreen Akter (Auditor)";
+            displayName = "Shafiqul Islam, FCA (Internal Auditor - ACI)";
             roles = ["Auditor"];
             permissions = [
                 Permissions.CompanyRead, Permissions.PeriodRead, Permissions.MasterDataRead, Permissions.PurchaseRead, Permissions.SalesInvoiceRead,

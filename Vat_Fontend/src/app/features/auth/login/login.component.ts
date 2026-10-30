@@ -105,9 +105,9 @@ interface DemoAccount {
         <!-- Footer Info -->
         <div class="login-footer">
           <p class="credential-info">
-            ডিফল্ট পাসওয়ার্ড: <code>Admin&#64;123456</code> / <code>Maker&#64;123456</code> / <code>Checker&#64;123456</code>
+            লগইন পাসওয়ার্ড: <code>Admin&#64;123456</code> (Imran) / <code>Maker&#64;123456</code> / <code>Checker&#64;123456</code>
           </p>
-          <p class="system-meta">Padma Consumer Goods & Manufacturing Ltd (BIN: 001234567-0101)</p>
+          <p class="system-meta">ACI Limited (Advanced Chemical Industries Ltd) — BIN: 000124578-0101</p>
         </div>
       </div>
     </div>
@@ -362,16 +362,16 @@ export class LoginComponent implements OnInit {
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
 
-  username = 'admin';
+  username = 'imran';
   password = 'Admin@123456';
   isLoading = false;
   errorMessage = '';
 
   readonly demoAccounts: DemoAccount[] = [
-    { username: 'admin', roleTitle: 'Admin', roleBn: 'প্রশাসক', description: 'Full Control', color: '#10b981' },
-    { username: 'maker', roleTitle: 'Maker', roleBn: 'প্রস্তুতকারী', description: 'Invoices & Entries', color: '#38bdf8' },
-    { username: 'checker', roleTitle: 'Checker', roleBn: 'যাচাইকারী', description: 'Approve & File', color: '#f59e0b' },
-    { username: 'auditor', roleTitle: 'Auditor', roleBn: 'নিরীক্ষক', description: 'Read & Reports', color: '#a855f7' }
+    { username: 'imran', roleTitle: 'Imran (Admin)', roleBn: 'প্রশাসক - ভ্যাট প্রধান', description: 'Full Control', color: '#10b981' },
+    { username: 'maker', roleTitle: 'Tanvir (Maker)', roleBn: 'প্রস্তুতকারী', description: 'Invoices & Entries', color: '#38bdf8' },
+    { username: 'checker', roleTitle: 'Farhana (Checker)', roleBn: 'যাচাইকারী', description: 'Approve & File', color: '#f59e0b' },
+    { username: 'auditor', roleTitle: 'Shafiqul (Auditor)', roleBn: 'নিরীক্ষক', description: 'Read & Reports', color: '#a855f7' }
   ];
 
   async ngOnInit(): Promise<void> {
@@ -390,6 +390,7 @@ export class LoginComponent implements OnInit {
   selectAccount(uname: string): void {
     this.username = uname;
     const pwdMap: Record<string, string> = {
+      imran: 'Admin@123456',
       admin: 'Admin@123456',
       maker: 'Maker@123456',
       checker: 'Checker@123456',

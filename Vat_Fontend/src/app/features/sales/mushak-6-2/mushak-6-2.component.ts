@@ -118,17 +118,17 @@ export interface Mushak62Row {
           <div class="meta-row">
             <div class="meta-item">
               <span class="meta-label font-bengali">করদাতার নাম:</span>
-              <strong class="font-bengali text-highlight">{{ context.activeCompany().nameBn || 'পদ্মা কনজিউমার গুডস অ্যান্ড ম্যানুফ্যাকচারিং লিমিটেড' }}</strong>
+              <strong class="font-bengali text-highlight">{{ context.activeCompany().nameBn || 'এসিআই লিমিটেড (অ্যাডভান্সড কেমিক্যাল ইন্ডাস্ট্রিজ লিমিটেড)' }}</strong>
             </div>
             <div class="meta-item">
               <span class="meta-label">BIN (বিআইএন):</span>
-              <strong class="font-mono text-highlight">{{ context.activeCompany().bin || '001234567-0101' }}</strong>
+              <strong class="font-mono text-highlight">{{ context.activeCompany().bin || '000124578-0101' }}</strong>
             </div>
           </div>
           <div class="meta-row">
             <div class="meta-item">
               <span class="meta-label font-bengali">কারখানা / ব্যবসার স্থান:</span>
-              <span class="font-bengali">{{ context.activeBranch().address || 'প্লট #৪২-৪৪, তেজগাঁও শিল্প এলাকা, ঢাকা-১২০৮' }}</span>
+              <span class="font-bengali">{{ context.activeBranch().address || 'এসিআই সেন্টার, ২৪৫ তেজগাঁও শিল্প এলাকা, ঢাকা-১২০৮' }}</span>
             </div>
             <div class="meta-item">
               <span class="meta-label font-bengali">কর মেয়াদ:</span>

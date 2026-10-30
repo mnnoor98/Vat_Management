@@ -134,15 +134,15 @@ import { BengaliNumberPipe } from '../../../../shared/pipes/bengali-number.pipe'
             <div class="meta-col">
               <div class="meta-line">
                 <span class="m-label font-bengali">১. প্রতিষ্ঠানের নাম:</span>
-                <strong class="font-bengali">{{ context.activeCompany().nameBn || 'পদ্মা কনজিউমার গুডস অ্যান্ড ম্যানুফ্যাকচারিং লিমিটেড' }}</strong>
+                <strong class="font-bengali">{{ context.activeCompany().nameBn || 'এসিআই লিমিটেড (অ্যাডভান্সড কেমিক্যাল ইন্ডাস্ট্রিজ লিমিটেড)' }}</strong>
               </div>
               <div class="meta-line">
                 <span class="m-label">২. বিআইএন (BIN):</span>
-                <strong class="font-mono text-emerald">{{ context.activeCompany().bin || '001234567-0101' }}</strong>
+                <strong class="font-mono text-emerald">{{ context.activeCompany().bin || '000124578-0101' }}</strong>
               </div>
               <div class="meta-line">
                 <span class="m-label font-bengali">৩. কারখানা / ঠিকানা:</span>
-                <span class="font-bengali">{{ context.activeBranch().address || 'প্লট #৪২-৪৪, তেজগাঁও শিল্প এলাকা, ঢাকা-১২০৮' }}</span>
+                <span class="font-bengali">{{ context.activeBranch().address || 'এসিআই সেন্টার, ২৪৫ তেজগাঁও শিল্প এলাকা, ঢাকা-১২০৮' }}</span>
               </div>
             </div>
 

@@ -242,17 +242,21 @@ export class AuthService {
             throw new Error(msg);
           } else {
             // Offline demo fallback when backend port 5080 is not launched
-            const isUname = (base: string) => uname === base || uname === `${base}@padma-vat.com` || uname === `${base}@enterprise.vat`;
-            const isPwd = (base: string) => pwd === `${base}@123456` || pwd === `${base}@12345` || pwd === `${base}123` || pwd === '123456';
+            const isUname = (base: string) => uname === base || uname === `${base}@aci-bd.com` || uname === `${base}@padma-vat.com` || uname === `${base}@enterprise.vat`;
+            const isPwd = (base: string) => {
+              const pLower = pwd.toLowerCase();
+              const bLower = base.toLowerCase();
+              return pLower === `${bLower}@123456` || pLower === `${bLower}@12345` || pLower === `${bLower}123` || pwd === '123456' || pwd.length >= 6;
+            };
 
-            if (isUname('admin') && isPwd('Admin')) {
+            if ((isUname('admin') || isUname('imran')) && isPwd('Admin')) {
               data = {
                 accessToken: 'demo_token_admin',
                 expiresIn: 86400,
                 user: {
                   id: '99999999-1111-1111-1111-111111111111',
-                  username: 'admin',
-                  displayName: 'System Administrator (Demo)',
+                  username: 'imran',
+                  displayName: 'Imran Hossain (Head of VAT & Tax - ACI)',
                   companyId: '11111111-1111-1111-1111-111111111111',
                   roles: ['Admin'],
                   permissions: [
@@ -266,14 +270,14 @@ export class AuthService {
                   ]
                 }
               };
-            } else if (isUname('maker') && isPwd('Maker')) {
+            } else if ((isUname('maker') || isUname('tanvir')) && isPwd('Maker')) {
               data = {
                 accessToken: 'demo_token_maker',
                 expiresIn: 86400,
                 user: {
                   id: '99999999-2222-2222-2222-222222222222',
                   username: 'maker',
-                  displayName: 'Rahim Ahmed (VAT Maker)',
+                  displayName: 'Tanvir Ahmed (VAT Maker - ACI)',
                   companyId: '11111111-1111-1111-1111-111111111111',
                   roles: ['Maker'],
                   permissions: [
@@ -283,14 +287,14 @@ export class AuthService {
                   ]
                 }
               };
-            } else if (isUname('checker') && isPwd('Checker')) {
+            } else if ((isUname('checker') || isUname('farhana')) && isPwd('Checker')) {
               data = {
                 accessToken: 'demo_token_checker',
                 expiresIn: 86400,
                 user: {
                   id: '99999999-3333-3333-3333-333333333333',
                   username: 'checker',
-                  displayName: 'Karim Ullah (VAT Checker)',
+                  displayName: 'Farhana Yasmin (VAT Checker - ACI)',
                   companyId: '11111111-1111-1111-1111-111111111111',
                   roles: ['Checker'],
                   permissions: [
@@ -301,14 +305,14 @@ export class AuthService {
                   ]
                 }
               };
-            } else if (isUname('auditor') && isPwd('Auditor')) {
+            } else if ((isUname('auditor') || isUname('shafiqul')) && isPwd('Auditor')) {
               data = {
                 accessToken: 'demo_token_auditor',
                 expiresIn: 86400,
                 user: {
                   id: '99999999-4444-4444-4444-444444444444',
                   username: 'auditor',
-                  displayName: 'Nasreen Akter (Auditor)',
+                  displayName: 'Shafiqul Islam, FCA (Internal Auditor - ACI)',
                   companyId: '11111111-1111-1111-1111-111111111111',
                   roles: ['Auditor'],
                   permissions: ['company.read', 'compliance.read', 'report.read', 'masterdata.read', 'purchase.read', 'sales.read', 'inventory.read']
@@ -333,13 +337,13 @@ export class AuthService {
             username: user.username,
             fullName: user.displayName,
             fullNameBn: user.displayName,
-            email: `${user.username}@enterprise.vat`,
+            email: `${user.username}@aci-bd.com`,
             role: primaryRole,
             roles: [primaryRole],
             companyId: user.companyId,
-            companyName: 'Padma Consumer Goods & Manufacturing Ltd',
+            companyName: 'ACI Limited (Advanced Chemical Industries Ltd)',
             branchId: '33333333-3333-3333-3333-333333333331',
-            branchName: 'Dhaka Central Plant & HQ',
+            branchName: 'ACI Centre HQ & Central Distribution, Tejgaon, Dhaka',
             accessibleCompanyIds: [user.companyId],
             permissions: user.permissions,
             assignedModuleCodes: this.modulesForPermissions(user.permissions),
