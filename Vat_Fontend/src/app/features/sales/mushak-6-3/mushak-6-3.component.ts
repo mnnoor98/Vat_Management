@@ -465,16 +465,31 @@ import { PdfExportService } from '../../../core/services/pdf-export.service';
     }
 
     @media print {
+      @page {
+        size: A4 portrait;
+        margin: 8mm 10mm;
+      }
+      .mushak-challan-page {
+        gap: 0 !important;
+      }
+      .no-print {
+        display: none !important;
+      }
       .challan-document {
         background: #ffffff !important;
         color: #000000 !important;
-        border: none !important;
-        padding: 0 !important;
+        border: 1px solid #000000 !important;
+        padding: 10mm !important;
+        box-shadow: none !important;
+        page-break-inside: avoid !important;
       }
       .parties-grid, .in-words-box, .challan-footer {
         background: #ffffff !important;
         border-color: #000000 !important;
         color: #000000 !important;
+      }
+      .challan-table {
+        border: 1px solid #000000 !important;
       }
       .challan-table th, .challan-table td {
         border: 1px solid #000000 !important;
@@ -482,11 +497,11 @@ import { PdfExportService } from '../../../core/services/pdf-export.service';
       }
       .copy-watermark {
         color: #000000 !important;
-        border-color: #000000 !important;
+        border: 1px solid #000000 !important;
       }
       .mushak-badge {
         color: #000000 !important;
-        border-color: #000000 !important;
+        border: 2px solid #000000 !important;
       }
       .sig-space {
         border-color: #000000 !important;
@@ -597,7 +612,7 @@ export class Mushak63ChallanComponent implements OnInit {
   downloadPdf(): void {
     if (!this.invoice) return;
     const filename = `Mushak_6_3_Challan_${this.invoice.challanNumber63}_${this.activeCopy}`;
-    this.pdfExport.downloadElementAsPdf('mushak-6-3-doc', filename);
+    this.pdfExport.downloadElementAsPdf('mushak-6-3-doc', filename, 'portrait');
   }
 
   printChallan(): void {
