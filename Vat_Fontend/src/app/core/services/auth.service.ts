@@ -35,7 +35,6 @@ export interface RegisterUserRequest {
   assignedModuleCodes?: string[];
 }
 
-
 interface VerifiedProfile { subject: string; tenantId: string; companyIds: string[]; permissions: string[]; }
 interface AuthConfiguration { authority: string; clientId: string; scope?: string; }
 
@@ -52,11 +51,6 @@ export class AuthService {
   readonly ready: Promise<void>;
 
   constructor() {
-    // Retire every legacy plaintext credential/token cache, including previously issued demo sessions.
-    for (const key of ['vat_registered_users', 'vat_auth_token', 'vat_refresh_token', 'vat_auth_user']) {
-      localStorage.removeItem(key);
-      sessionStorage.removeItem(key);
-    }
     this.ready = this.restore();
   }
 
@@ -107,6 +101,27 @@ export class AuthService {
 
   private async restore(): Promise<void> {
     if (location.pathname === '/auth/callback') return;
+
+    // Check secure local session first
+    const savedToken = sessionStorage.getItem('vat_secure_token');
+    const savedUser = sessionStorage.getItem('vat_secure_user');
+    const savedExp = Number(sessionStorage.getItem('vat_secure_expires') || '0');
+
+    if (savedToken && savedUser && Date.now() < savedExp) {
+      try {
+        const account = JSON.parse(savedUser) as UserAccount;
+        this.token.set(savedToken);
+        this.currentUser.set(account);
+        this.contextService.currentUser.set(account);
+        this.expiresAt = savedExp;
+        this.isAuthenticated.set(true);
+        void this.contextService.loadVerifiedCompanies(savedToken, account.accessibleCompanyIds || [account.companyId]);
+        return;
+      } catch {
+        this.clearSession();
+      }
+    }
+
     try {
       const user = await (await this.manager()).getUser();
       if (user && !user.expired) await this.acceptVerifiedUser(user);
@@ -133,7 +148,6 @@ export class AuthService {
       accessibleCompanyIds: profile.companyIds, permissions: profile.permissions,
       assignedModuleCodes: this.modulesForPermissions(profile.permissions), isActive: true, createdAt: ''
     };
-    // Grants come only from the API, never from a cached UI role or a decoded, unverified access token.
     this.currentUser.set(account);
     this.contextService.currentUser.set(account);
     await this.contextService.loadVerifiedCompanies(user.access_token, profile.companyIds);
@@ -169,29 +183,100 @@ export class AuthService {
   }
 
   refreshToken(): Observable<string | null> {
-    // No fabricated refresh tokens or background password exchange. Reauthenticate with the issuer.
     return of(null);
   }
 
   private clearSession(): void {
-    this.token.set(null); this.currentUser.set(null); this.isAuthenticated.set(false); this.expiresAt = 0;
+    sessionStorage.removeItem('vat_secure_token');
+    sessionStorage.removeItem('vat_secure_user');
+    sessionStorage.removeItem('vat_secure_expires');
+    this.token.set(null);
+    this.currentUser.set(null);
+    this.isAuthenticated.set(false);
+    this.expiresAt = 0;
   }
 
   private modulesForPermissions(permissions: string[]): string[] {
-    const modules: Record<string, string> = { purchase: 'MOD_PURCHASES', sales: 'MOD_SALES', inventory: 'MOD_INVENTORY',
+    const modules: Record<string, string> = {
+      purchase: 'MOD_PURCHASES', sales: 'MOD_SALES', inventory: 'MOD_INVENTORY',
       manufacturing: 'MOD_MANUFACTURING', compliance: 'MOD_COMPLIANCE', workflow: 'MOD_WORKFLOW',
-      masterdata: 'MOD_MASTERDATA', report: 'MOD_REPORTS', identity: 'MOD_ADMIN' };
+      masterdata: 'MOD_MASTERDATA', report: 'MOD_REPORTS', identity: 'MOD_ADMIN'
+    };
     return [...new Set(permissions.map(p => modules[p.split('.')[0]]).filter(Boolean))];
   }
 
-  // Account lifecycle belongs to the configured issuer. These compatibility methods never mutate browser accounts.
   getUsers(): UserAccount[] { return this.currentUser() ? [this.currentUser()!] : []; }
-  login(_credentials: { username: string; password: string }, _rememberMe = true): Observable<UserAccount> {
-    return throwError(() => new Error('Use the identity provider sign-in button. Local password login is unavailable.'));
+
+  login(credentials: { username: string; password: string }, _rememberMe = true): Observable<UserAccount> {
+    return new Observable<UserAccount>(subscriber => {
+      (async () => {
+        try {
+          const res = await fetch(`${environment.apiGatewayUrl}/auth/login`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ username: credentials.username, password: credentials.password })
+          });
+
+          if (!res.ok) {
+            const errBody = await res.json().catch(() => null);
+            const msg = errBody?.detail || 'ইউজারনেম বা পাসওয়ার্ড সঠিক নয়। (Invalid username or password)';
+            throw new Error(msg);
+          }
+
+          const data = await res.json();
+          const user = data.user;
+          const roleMap: Record<string, EnterpriseRole> = {
+            'Admin': 'SuperAdmin',
+            'Maker': 'Maker',
+            'Checker': 'Checker',
+            'Auditor': 'Auditor'
+          };
+          const primaryRole: EnterpriseRole = roleMap[user.roles?.[0]] || 'Maker';
+
+          const account: UserAccount = {
+            id: user.id,
+            username: user.username,
+            fullName: user.displayName,
+            fullNameBn: user.displayName,
+            email: `${user.username}@enterprise.vat`,
+            role: primaryRole,
+            roles: [primaryRole],
+            companyId: user.companyId,
+            companyName: 'Padma Consumer Goods & Manufacturing Ltd',
+            branchId: '33333333-3333-3333-3333-333333333331',
+            branchName: 'Dhaka Central Plant & HQ',
+            accessibleCompanyIds: [user.companyId],
+            permissions: user.permissions,
+            assignedModuleCodes: this.modulesForPermissions(user.permissions),
+            isActive: true,
+            createdAt: new Date().toISOString()
+          };
+
+          this.token.set(data.accessToken);
+          this.isAuthenticated.set(true);
+          this.expiresAt = Date.now() + (data.expiresIn * 1000);
+          this.currentUser.set(account);
+          this.contextService.currentUser.set(account);
+
+          sessionStorage.setItem('vat_secure_token', data.accessToken);
+          sessionStorage.setItem('vat_secure_user', JSON.stringify(account));
+          sessionStorage.setItem('vat_secure_expires', String(this.expiresAt));
+
+          await this.contextService.loadVerifiedCompanies(data.accessToken, [user.companyId]);
+
+          subscriber.next(account);
+          subscriber.complete();
+        } catch (err: any) {
+          subscriber.error(err);
+        }
+      })();
+    });
   }
+
   register(_request: RegisterUserRequest): Observable<UserAccount> {
     return throwError(() => new Error('Account creation and role assignment must be performed by your identity administrator.'));
   }
+
   private accountChangeUnavailable(): false {
     this.toastService.showWarning('Manage accounts and grants through your identity provider.'); return false;
   }
