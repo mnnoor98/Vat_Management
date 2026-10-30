@@ -338,6 +338,29 @@ export interface StockBalance {
   standardCost?: number;
   totalValuation?: number;
   hsCode?: string;
+  costingMethod?: string;
+}
+
+export interface WarehouseValuationSummary {
+  warehouseId: string;
+  warehouseCode: string;
+  warehouseName: string;
+  branchId: string;
+  branchName: string;
+  itemsCount: number;
+  totalQuantity: number;
+  totalValuation: number;
+}
+
+export interface InventoryValuationSummary {
+  companyId: string;
+  costingMethod: 'WEIGHTED_AVERAGE' | 'FIFO' | string;
+  totalStockQuantity: number;
+  totalStockValuation: number;
+  totalWarehousesCount: number;
+  totalUniqueProductsCount: number;
+  warehouses: WarehouseValuationSummary[];
+  topValuedItems: StockBalance[];
 }
 
 export interface Mushak65TransferLine {

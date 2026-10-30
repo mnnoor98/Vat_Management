@@ -71,9 +71,19 @@ public sealed class InventoryController : ControllerBase
     [Authorize(Policy = Permissions.InventoryRead)]
     public async Task<IActionResult> GetAllStockBalances([FromRoute] Guid companyId,
         [FromQuery] Guid? warehouseId, [FromQuery] int? skip, [FromQuery] int? take,
+        [FromQuery] string? method,
         [FromServices] FinancialInventoryQueries service, CancellationToken ct)
     {
-        return Ok(await service.AllBalances(HttpContext.GetActor(), companyId, warehouseId, skip ?? 0, take ?? 100, ct));
+        return Ok(await service.AllBalances(HttpContext.GetActor(), companyId, warehouseId, method ?? "WEIGHTED_AVERAGE", skip ?? 0, take ?? 100, ct));
+    }
+
+    [HttpGet("/api/v1/companies/{companyId:guid}/inventory/valuation-summary", Name = "GetInventoryValuationSummary")]
+    [Authorize(Policy = Permissions.InventoryRead)]
+    public async Task<IActionResult> GetInventoryValuationSummary([FromRoute] Guid companyId,
+        [FromQuery] string? method,
+        [FromServices] FinancialInventoryQueries service, CancellationToken ct)
+    {
+        return Ok(await service.ValuationSummary(HttpContext.GetActor(), companyId, method ?? "WEIGHTED_AVERAGE", ct));
     }
 
     [HttpPost("/api/v1/companies/{companyId:guid}/transfers", Name = "CreateTransfer")]
