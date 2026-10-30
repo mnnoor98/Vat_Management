@@ -6,19 +6,22 @@
 [CmdletBinding()]
 param(
     [string]$Configuration = "Debug",
-    [string]$Authority = $env:VAT_OIDC_AUTHORITY,
+    [string]$Authority = $(if ($env:VAT_OIDC_AUTHORITY) { $env:VAT_OIDC_AUTHORITY } else { "https://localhost:5080" }),
     [string]$HostServer = "127.0.0.1",
     [int]$DbPort = 5432,
-    [string]$Username = $env:VAT_DB_USERNAME,
-    [string]$Password = $env:VAT_DB_PASSWORD
+    [string]$Username = $(if ($env:VAT_DB_USERNAME) { $env:VAT_DB_USERNAME } else { "postgres" }),
+    [string]$Password = $(if ($env:VAT_DB_PASSWORD) { $env:VAT_DB_PASSWORD } else { "123456" })
 )
 
 $ErrorActionPreference = "Stop"
 if ([string]::IsNullOrWhiteSpace($Authority)) {
-    throw "Configure VAT_OIDC_AUTHORITY or pass -Authority for the actual HTTPS identity provider."
+    $Authority = "https://localhost:5080"
 }
-if ([string]::IsNullOrWhiteSpace($Username) -or [string]::IsNullOrWhiteSpace($Password)) {
-    throw "Configure VAT_DB_USERNAME and VAT_DB_PASSWORD or pass explicit local runtime credentials; no privileged defaults are provided."
+if ([string]::IsNullOrWhiteSpace($Username)) {
+    $Username = "postgres"
+}
+if ([string]::IsNullOrWhiteSpace($Password)) {
+    $Password = "123456"
 }
 $scriptRoot = $PSScriptRoot
 $repoRoot = Split-Path -Parent $scriptRoot
@@ -178,4 +181,3 @@ try {
         }
     }
 }
-

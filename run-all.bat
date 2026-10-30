@@ -5,6 +5,12 @@ echo ============================================================
 echo   ENTERPRISE VAT MANAGEMENT SYSTEM - 1-CLICK LAUNCHER
 echo ============================================================
 echo.
+
+:: Set local development defaults if not explicitly configured
+if "%VAT_OIDC_AUTHORITY%"=="" set VAT_OIDC_AUTHORITY=https://localhost:5080
+if "%VAT_DB_USERNAME%"=="" set VAT_DB_USERNAME=postgres
+if "%VAT_DB_PASSWORD%"=="" set VAT_DB_PASSWORD=123456
+
 echo [1/3] Starting Backend Microservices and API Gateway...
 start "Enterprise VAT - Backend" cmd /c "%~dp0run-backend.bat"
 
