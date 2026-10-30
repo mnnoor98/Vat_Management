@@ -21,3 +21,4 @@ public static class DevSecurityKey
 
     public static RsaSecurityKey CreateSigningKey() => new(CreateRsa()) { KeyId = KeyId };
 }
+

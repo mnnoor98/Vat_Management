@@ -308,6 +308,7 @@ export interface Mushak91Return {
   treasuryChallanNo?: string;
   treasuryDepositDate?: string;
   closingBalance: number;
+  filingReference?: string;
 }
 
 export interface Warehouse {
@@ -421,6 +422,7 @@ export interface VatLedgerSummary {
   totalOutputTaxDebited: number;
   totalAdjustments: number;
   closingBalance: number;
+  filingReference?: string;
 }
 
 export interface VatLedgerResponse {

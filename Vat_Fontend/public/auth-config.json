@@ -1,5 +1,5 @@
 {
-  "authority": "",
-  "clientId": "",
+  "authority": "https://localhost:5080",
+  "clientId": "enterprise-vat-spa",
   "scope": "openid profile"
 }

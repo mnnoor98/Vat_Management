@@ -5,6 +5,12 @@ namespace Vat.Services.Compliance.Infrastructure;
 public sealed class ComplianceDbContext(DbContextOptions<ComplianceDbContext> options) : DbContext(options)
 {
     public DbSet<VatReturn> Returns => Set<VatReturn>();
+    public DbSet<FormTemplate> FormTemplates => Set<FormTemplate>();
+    public DbSet<FormVersion> FormVersions => Set<FormVersion>();
+    public DbSet<ReturnPeriod> ReturnPeriods => Set<ReturnPeriod>();
+    public DbSet<ReturnLine> ReturnLines => Set<ReturnLine>();
+    public DbSet<FilingEvidence> FilingEvidences => Set<FilingEvidence>();
+    public DbSet<PeriodCloseRequest> PeriodCloseRequests => Set<PeriodCloseRequest>();
     protected override void OnModelCreating(ModelBuilder model)
     {
         model.Entity<FormTemplate>(b =>

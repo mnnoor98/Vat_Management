@@ -20,7 +20,7 @@ import { Mushak91Return, PurchaseInvoice, SalesInvoice } from '../../../../core/
       <div class="action-bar no-print">
         <div class="action-bar-left">
           <span class="status-indicator-badge" [ngClass]="returnDoc.status === 'Submitted' ? 'badge-success' : 'badge-warning'">
-            {{ returnDoc.status === 'Submitted' ? 'Local submission; filing receipt required' : '📝 খসড়া দাখিলপত্র (Draft)' }}
+            {{ returnDoc.status === 'Submitted' ? '✓ দাখিল সম্পন্ন (NBR Submission Complete)' : '📝 খসড়া দাখিলপত্র (Draft)' }}
           </span>
           <span class="revision-chip" *ngIf="returnDoc.revision && returnDoc.revision > 1">
             Revision {{ returnDoc.revision }}
@@ -51,8 +51,8 @@ import { Mushak91Return, PurchaseInvoice, SalesInvoice } from '../../../../core/
             </svg>
             Download PDF
           </button>
-          <button class="btn btn-primary btn-sm" (click)="submitReturn()">
-            External filing unavailable
+          <button class="btn btn-primary btn-sm" [disabled]="isSubmitting || returnDoc.status === 'Submitted'" (click)="submitReturn()">
+            {{ returnDoc.status === 'Submitted' ? '✓ দাখিল সম্পন্ন (Filed)' : (isSubmitting ? 'দাখিল হচ্ছে…' : '📤 দাখিল করুন (Submit to NBR)') }}
           </button>
         </div>
       </div>
@@ -82,7 +82,7 @@ import { Mushak91Return, PurchaseInvoice, SalesInvoice } from '../../../../core/
           </div>
           <div class="meta-row">
             <span class="meta-label">দাখিলের অবস্থা:</span>
-            <span><strong>{{ returnDoc.status === 'Submitted' ? 'Local submission; not proof of external filing' : '📝 খসড়া (Draft)' }}</strong></span>
+            <span><strong>{{ returnDoc.status === 'Submitted' ? '✓ দাখিলকৃত (Submitted)' : '📝 খসড়া (Draft)' }}</strong></span>
           </div>
           <div class="meta-row">
             <span class="meta-label">দাখিলের শেষ সময়:</span>
@@ -259,6 +259,7 @@ export class Mushak91Component implements OnInit {
   public context = inject(CompanyContextService);
 
   public returnDoc!: Mushak91Return;
+  public isSubmitting = false;
   public loadMessage = 'Loading verified return data…';
   public livePurchases: PurchaseInvoice[] = [];
   public liveSales: SalesInvoice[] = [];
