@@ -4,8 +4,10 @@
    ========================================================================== */
 
 :root {
+  color-scheme: dark;
   /* Color Palette - Premium Enterprise Slate & Emerald Theme */
   --bg-app: #0f172a;
+  --bg-surface: #0f172a;
   --bg-sidebar: #090e17;
   --bg-sidebar-hover: #1e293b;
   --bg-topbar: rgba(15, 23, 42, 0.85);
@@ -79,6 +81,7 @@
 
 html, body {
   height: 100%;
+  color-scheme: dark;
   font-family: var(--font-body);
   background-color: var(--bg-app);
   color: var(--text-main);
@@ -257,22 +260,140 @@ h1, h2, h3, h4, h5, h6 {
 }
 
 /* Inputs & Form Controls */
-.vat-input, .vat-select {
+.vat-input,
+.form-control,
+input.vat-input,
+textarea.vat-input {
   width: 100%;
   padding: 10px 14px;
-  background: var(--bg-input);
-  border: 1px solid var(--border-subtle);
-  border-radius: var(--radius-md);
-  color: var(--text-main);
+  background-color: var(--bg-input, #0f172a);
+  border: 1px solid var(--border-subtle, #334155);
+  border-radius: var(--radius-md, 10px);
+  color: var(--text-main, #f8fafc);
   font-size: 0.875rem;
   font-family: var(--font-body);
-  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease, background-color 0.2s ease;
+  color-scheme: dark;
 }
 
-.vat-input:focus, .vat-select:focus {
+.vat-input:focus,
+.form-control:focus {
   outline: none;
-  border-color: var(--vat-emerald);
-  box-shadow: 0 0 0 3px var(--vat-emerald-glow);
+  border-color: var(--vat-emerald, #10b981);
+  box-shadow: 0 0 0 3px var(--vat-emerald-glow, rgba(16, 185, 129, 0.25));
+}
+
+/* Dedicated styling for ALL <select> dropdowns with custom emerald chevron */
+select,
+.vat-select,
+.form-select,
+.auth-select {
+  width: 100%;
+  padding: 10px 42px 10px 14px !important;
+  background-color: var(--bg-input, #0f172a) !important;
+  border: 1px solid var(--border-subtle, #334155) !important;
+  border-radius: var(--radius-md, 10px) !important;
+  color: var(--text-main, #f8fafc) !important;
+  font-size: 0.875rem !important;
+  font-family: var(--font-body);
+  cursor: pointer;
+  appearance: none !important;
+  -webkit-appearance: none !important;
+  -moz-appearance: none !important;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%2334d399' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E") !important;
+  background-repeat: no-repeat !important;
+  background-position: calc(100% - 14px) center !important;
+  background-size: 16px 16px !important;
+  color-scheme: dark !important;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+select:focus,
+.vat-select:focus,
+.form-select:focus,
+.auth-select:focus {
+  outline: none !important;
+  border-color: var(--vat-emerald, #10b981) !important;
+  box-shadow: 0 0 0 3px var(--vat-emerald-glow, rgba(16, 185, 129, 0.25)) !important;
+}
+
+select:hover:not(:disabled),
+.vat-select:hover:not(:disabled),
+.form-select:hover:not(:disabled) {
+  border-color: #475569 !important;
+}
+
+select:disabled,
+.vat-select:disabled,
+.vat-input:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  background-color: #0b1120 !important;
+  border-color: #1e293b !important;
+}
+
+/* Compact Selects for filters and inline tables */
+.vat-select.select-compact,
+.form-select.select-compact,
+select.select-compact {
+  padding: 6px 32px 6px 10px !important;
+  font-size: 0.8rem !important;
+  border-radius: var(--radius-sm, 6px) !important;
+  background-position: calc(100% - 10px) center !important;
+  background-size: 14px 14px !important;
+}
+
+/* Context pills in topbar */
+.topbar .context-select,
+.context-pill .context-select,
+.persona-select {
+  width: auto !important;
+  background-color: transparent !important;
+  border: none !important;
+  padding: 2px 24px 2px 4px !important;
+  background-position: calc(100% - 4px) center !important;
+  box-shadow: none !important;
+}
+
+/* Universal Dropdown Options Styling */
+select option,
+select optgroup,
+.vat-select option,
+.form-select option,
+.auth-select option,
+.context-select option,
+.persona-select option {
+  background-color: #1e293b !important;
+  color: #f8fafc !important;
+  padding: 10px 14px !important;
+  font-size: 0.875rem !important;
+  font-family: var(--font-body) !important;
+  border: none !important;
+}
+
+select option:checked,
+.vat-select option:checked,
+.form-select option:checked,
+.context-select option:checked {
+  background-color: #065f46 !important;
+  color: #34d399 !important;
+  font-weight: 600 !important;
+}
+
+select option:hover,
+select option:focus,
+.vat-select option:hover,
+.form-select option:hover {
+  background-color: #24344d !important;
+  color: #ffffff !important;
+}
+
+select option:disabled,
+.vat-select option:disabled {
+  color: #64748b !important;
+  background-color: #0f172a !important;
 }
 
 .vat-label {

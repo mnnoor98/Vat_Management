@@ -440,7 +440,9 @@ import { VdsCertificate, PurchaseInvoice } from '../../../../core/models/vat-mod
     .form-grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
     .form-group { display: flex; flex-direction: column; gap: 6px; }
     .form-label { font-size: 0.8rem; font-weight: 600; color: var(--text-muted); }
-    .form-control, .form-select { background: var(--bg-card-subtle); border: 1px solid var(--border-card); color: var(--text-main); border-radius: var(--radius-sm); padding: 8px 12px; font-size: 0.85rem; }
+    .form-control { background: var(--bg-card-subtle); border: 1px solid var(--border-card); color: var(--text-main); border-radius: var(--radius-sm); padding: 8px 12px; font-size: 0.85rem; color-scheme: dark; }
+    .form-select { background-color: var(--bg-card-subtle, #162032); border: 1px solid var(--border-card, #293548); color: var(--text-main, #f8fafc); border-radius: var(--radius-sm); padding: 8px 36px 8px 12px; font-size: 0.85rem; appearance: none; -webkit-appearance: none; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%2334d399' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: calc(100% - 10px) center; background-size: 14px 14px; cursor: pointer; color-scheme: dark; }
+    .form-select option { background-color: #1e293b; color: #f8fafc; padding: 8px 12px; }
     .vds-info-notice { background: rgba(16, 185, 129, 0.08); border-left: 3px solid var(--vat-emerald); padding: 10px 14px; border-radius: var(--radius-sm); font-size: 0.82rem; color: var(--text-muted); }
     .deposit-cert-summary { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 10px; background: var(--bg-card-subtle); padding: 12px; border-radius: var(--radius-md); border: 1px solid var(--border-card); font-size: 0.85rem; }
     .ml-1 { margin-left: 6px; }

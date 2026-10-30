@@ -382,7 +382,7 @@ import { CompanyContextService } from '../../../core/services/company-context.se
       color: #cbd5e1;
     }
 
-    .auth-input, .auth-select {
+    .auth-input {
       width: 100%;
       background: rgba(2, 6, 23, 0.7);
       border: 1px solid rgba(255, 255, 255, 0.12);
@@ -391,6 +391,26 @@ import { CompanyContextService } from '../../../core/services/company-context.se
       color: #f8fafc;
       font-size: 0.88rem;
       outline: none;
+      transition: all 0.2s;
+      color-scheme: dark;
+    }
+    .auth-select {
+      width: 100%;
+      background-color: rgba(2, 6, 23, 0.7);
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      border-radius: 10px;
+      padding: 10px 38px 10px 14px;
+      color: #f8fafc;
+      font-size: 0.88rem;
+      outline: none;
+      appearance: none;
+      -webkit-appearance: none;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%2334d399' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
+      background-repeat: no-repeat;
+      background-position: calc(100% - 12px) center;
+      background-size: 16px 16px;
+      cursor: pointer;
+      color-scheme: dark;
       transition: all 0.2s;
     }
 

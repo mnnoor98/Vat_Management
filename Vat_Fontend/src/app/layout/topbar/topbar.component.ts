@@ -82,7 +82,7 @@ import { BackendHealthService } from '../../core/services/backend-health.service
           </select>
           <div *ngIf="!contextService.isSuperAdmin()" class="locked-branch-badge" [title]="contextService.locale() === 'bn' ? 'শাখা লক করা (শুধুমাত্র সুপার অ্যাডমিন পরিবর্তন করতে পারে)' : 'Branch restricted to your assigned post'">
             <span class="lock-icon">🔒</span>
-            <span class="branch-name-text">{{ contextService.activeBranch().code }} ({{ contextService.activeBranch().binExtension }})</span>
+            <span class="branch-name-text">{{ contextService.activeBranch().code || 'ACI-HQ' }} ({{ contextService.activeBranch().binExtension || '0101' }})</span>
           </div>
         </div>
 

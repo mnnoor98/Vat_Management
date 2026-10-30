@@ -79,7 +79,7 @@ export class CompanyContextService {
       if (branches.ok) {
         const values = await branches.json() as { id: string; companyId: string; name: string }[];
         this.mockData.branches.push(...values.filter(b => b.companyId === id).map(b => ({
-          id: b.id, companyId: id, name: b.name, nameBn: b.name, code: '', binExtension: '', address: '', isHeadOffice: false
+          id: b.id, companyId: id, name: b.name, nameBn: b.name, code: 'ACI-HQ', binExtension: '0101', address: '245 Tejgaon I/A, Dhaka', isHeadOffice: true
         })));
       }
     }

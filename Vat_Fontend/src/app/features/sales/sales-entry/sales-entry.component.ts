@@ -405,25 +405,61 @@ import { NbrValidators } from '../../../shared/validators/nbr-validators';
       font-weight: 700;
     }
 
-    .vat-input, .vat-select {
+    .vat-input {
       width: 100%;
-      padding: 8px 12px;
-      background: var(--bg-surface);
-      border: 1px solid var(--border-subtle);
-      border-radius: 6px;
-      color: var(--text-main);
+      padding: 9px 12px;
+      background: var(--bg-input, #0f172a);
+      border: 1px solid var(--border-subtle, #334155);
+      border-radius: 8px;
+      color: var(--text-main, #f8fafc);
       font-size: 0.875rem;
-      transition: border-color 0.15s ease;
+      transition: border-color 0.15s ease, box-shadow 0.15s ease;
+      color-scheme: dark;
+    }
+
+    .vat-select {
+      width: 100%;
+      padding: 9px 40px 9px 12px;
+      background-color: var(--bg-input, #0f172a);
+      border: 1px solid var(--border-subtle, #334155);
+      border-radius: 8px;
+      color: var(--text-main, #f8fafc);
+      font-size: 0.875rem;
+      appearance: none;
+      -webkit-appearance: none;
+      -moz-appearance: none;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%2334d399' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
+      background-repeat: no-repeat;
+      background-position: calc(100% - 12px) center;
+      background-size: 16px 16px;
+      cursor: pointer;
+      color-scheme: dark;
+      transition: border-color 0.15s ease, box-shadow 0.15s ease;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .vat-select option {
+      background-color: #1e293b;
+      color: #f8fafc;
+      padding: 10px 14px;
+    }
+
+    .vat-select option:checked {
+      background-color: #065f46;
+      color: #34d399;
+      font-weight: 600;
     }
 
     .vat-input:focus, .vat-select:focus {
       outline: none;
-      border-color: var(--primary, #10b981);
+      border-color: var(--vat-emerald, #10b981);
+      box-shadow: 0 0 0 3px var(--vat-emerald-glow, rgba(16, 185, 129, 0.25));
     }
 
     .vat-input.is-invalid, .vat-select.is-invalid {
       border-color: #ef4444;
-      background: rgba(239, 68, 68, 0.03);
+      background: rgba(239, 68, 68, 0.05);
     }
 
     .vat-field-error {
