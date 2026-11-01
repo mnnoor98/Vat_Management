@@ -50,6 +50,29 @@ public sealed class StockCostState
         Quantity -= quantity; Value -= value; Check(); return chunks;
     }
 
+    public IReadOnlyList<CostChunk> ReverseReturn(IReadOnlyList<CostChunk> returned)
+    {
+        var quantity=returned.Sum(x=>x.Quantity);var value=returned.Sum(x=>x.Value);Valid(quantity,value);
+        if(Quantity<quantity||Value<value||(Quantity==quantity&&Value!=value))throw new DomainException("cost_return_consumed","Returned material has been consumed, transferred or mixed beyond exact reversal.",409);
+        if(Method=="WEIGHTED_AVERAGE")
+        {
+            Quantity-=quantity;Value-=value;Check();return[new(Guid.NewGuid(),Guid.Empty,quantity,value)];
+        }
+        var removed=new List<CostChunk>();
+        foreach(var group in returned.GroupBy(x=>x.Origin))
+        {
+            var needed=group.Sum(x=>x.Quantity);var expected=group.Sum(x=>x.Value);var candidates=Layers.Where(x=>x.Origin==group.Key).ToList();
+            if(candidates.Sum(x=>x.Quantity)<needed)throw new DomainException("cost_return_consumed","Returned material is no longer available in its original FIFO layers.",409);
+            var taken=Consume(candidates,needed);if(taken.Sum(x=>x.Value)!=expected)throw new DomainException("cost_return_value_changed","Returned material no longer carries its original FIFO value.",409);
+            foreach(var chunk in taken)
+            {
+                var index=Layers.FindIndex(x=>x.Id==chunk.Id);var layer=Layers[index];removed.Add(chunk);
+                if(layer.Quantity==chunk.Quantity)Layers.RemoveAt(index);else Layers[index]=layer with{Quantity=layer.Quantity-chunk.Quantity,Value=layer.Value-chunk.Value};
+            }
+        }
+        Quantity-=quantity;Value-=value;Check();return removed;
+    }
+
     public void Check()
     {
         if (Method is not ("FIFO" or "WEIGHTED_AVERAGE") || Quantity < 0 || Value < 0 || (Quantity == 0 && Value != 0) ||

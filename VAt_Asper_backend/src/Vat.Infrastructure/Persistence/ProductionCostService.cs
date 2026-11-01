@@ -121,6 +121,10 @@ public sealed class ProductionCostService(VatDbContext db,IProductionExecutionRe
                 var m=new ProductionStockMovement{TenantId=actor.TenantId,CompanyId=company,Id=Guid.CreateVersion7(),SessionId=session,OperationId=o.Id,Kind="ReceiptReversal",WarehouseId=receipt.WarehouseId,ProductId=receipt.ProductId,Quantity=-receipt.Quantity,Value=-receipt.Value,OriginalIssueId=receipt.Id,BusinessDate=o.BusinessDate};
                 _=await ledger.Production(m,ct);db.Add(m);await Physical(m,ct);if(original.Kind=="Receipt")h.ReceivedQuantity-=receipt.Quantity;
             }
+            if(original.Kind=="Return")foreach(var returned in await db.Set<ProductionStockMovement>().AsNoTracking().Where(x=>x.TenantId==actor.TenantId&&x.CompanyId==company&&x.OperationId==original.Id&&x.Kind=="Return").OrderBy(x=>x.Id).ToArrayAsync(ct)){
+                var m=new ProductionStockMovement{TenantId=actor.TenantId,CompanyId=company,Id=Guid.CreateVersion7(),SessionId=session,OperationId=o.Id,Kind="ReturnReversal",WarehouseId=returned.WarehouseId,ProductId=returned.ProductId,Quantity=-returned.Quantity,Value=-returned.Value,OriginalIssueId=returned.Id,BusinessDate=o.BusinessDate};
+                _=await ledger.Production(m,ct);db.Add(m);await Physical(m,ct);
+            }
         }
         if(h.WipValue+wipDelta<0)throw new DomainException("production_wip_insufficient","Return/loss exceeds the unreleased actual WIP pool.",409);
         if(o.Kind=="Close"){
@@ -158,7 +162,7 @@ public sealed class ProductionCostService(VatDbContext db,IProductionExecutionRe
     private static ProductionOperationView View(ProductionCostOperation o)=>new(o.Id,o.SessionId,o.Kind,o.BusinessDate,o.State,o.Version,o.SessionVersion,o.Evidence,JsonSerializer.Deserialize<ProductionLine[]>(o.Lines,Json)!.Select(x=>new ProductionLineInput(x.WarehouseId,x.ProductId,Q(x.Quantity),x.OriginalIssueId,x.Id,x.InputUnitOfMeasure,x.InputQuantity is null?null:Q(x.InputQuantity.Value))).ToArray(),V(o.Amount),Q(o.OutputQuantity),V(o.Labor),V(o.Utility),V(o.Overhead),V(o.PostedValue),o.CreatedBy,o.ApprovedBy,o.ReversesOperationId,o.OutputUnitOfMeasure,o.OutputInputQuantity is null?null:Q(o.OutputInputQuantity.Value),o.OutputProductId,o.OutputWarehouseId);
     private async Task<ProductionCostOperation> ReversalSource(Actor actor,Guid company,Guid session,Guid originalId,DateOnly date,CancellationToken ct){
         var original=await Operation(actor,company,session,originalId,ct);
-        if(original.State!="Posted"||original.Kind is not("Conversion" or "Loss" or "Receipt" or "ByProduct")||original.BusinessDate>date)throw new DomainException("production_reversal_source_invalid","Reverse an earlier posted conversion, loss or production output in this execution.",409);
+        if(original.State!="Posted"||original.Kind is not("Return" or "Conversion" or "Loss" or "Receipt" or "ByProduct")||original.BusinessDate>date)throw new DomainException("production_reversal_source_invalid","Reverse an earlier posted material return, conversion, loss or production output in this execution.",409);
         if(await db.Set<ProductionCostOperation>().AnyAsync(x=>x.TenantId==actor.TenantId&&x.CompanyId==company&&x.ReversesOperationId==originalId&&x.State=="Posted",ct))throw new DomainException("production_already_reversed","This operation already has a posted reversal.",409);
         return original;
     }

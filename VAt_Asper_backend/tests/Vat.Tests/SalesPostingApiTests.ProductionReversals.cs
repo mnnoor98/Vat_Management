@@ -17,6 +17,27 @@ public sealed partial class SalesPostingApiTests
     [Theory]
     [InlineData("FIFO")]
     [InlineData("WEIGHTED_AVERAGE")]
+    public async Task Production_material_return_reversal_restores_original_issue_cost(string method)
+    {
+        var s=await Setup();await ActivateCosting(s,method);
+        var fg=await Created<ProductResponse>(s.Maker,$"{s.Root}/products",new CreateProductRequest("RETURN-FG","Return test output","PCS","TEST-DOMESTIC"));
+        var purchase=await Approve(s,lines:[new PurchaseLineInput("ITEM","Raw",10,100)]);var plan=await Prepare(s,purchase.Id);await ApproveLanded(s,plan,"55.0000");
+        Assert.Equal(HttpStatusCode.OK,(await Post(s.Checker,$"{s.Purchase(purchase.Id)}/posting-plans/{plan.Id}/post",new TransitionRequest(4))).StatusCode);
+        var evidence=new ProductionOrderEvidence(Guid.NewGuid(),1,3,new string('B',64),s.Warehouse,"Main warehouse",new(2026,10,23),new(fg.Id,"RETURN-FG","PCS"),10,10,[new(new(s.Product,"ITEM","KG"),8,0)]);
+        var hash=Convert.ToHexString(System.Security.Cryptography.SHA256.HashData(System.Text.Json.JsonSerializer.SerializeToUtf8Bytes(evidence,new System.Text.Json.JsonSerializerOptions(System.Text.Json.JsonSerializerDefaults.Web))));
+        var source=new ProductionOrderSource(s.Tenant,s.Company,Guid.NewGuid(),3,"Approved","RETURN-CORRECTION","owner-maker","owner-checker",hash,evidence);ProductionSessionView head;
+        using(var host=factory.WithWebHostBuilder(b=>b.ConfigureTestServices(services=>services.AddSingleton<IProductionExecutionReferences>(new ApprovedProduction(source))))){using var client=host.CreateClient();client.DefaultRequestHeaders.Authorization=s.Maker.DefaultRequestHeaders.Authorization;head=(await (await Post(client,$"{s.Root}/inventory/production-executions",new ImportProductionRequest(source.OrderId))).Content.ReadFromJsonAsync<ProductionSessionView>())!;}
+        var root=$"{s.Root}/inventory/production-executions/{head.Id}";var issue=await ProductionDraft(s,head.Id,"Issue",[new(s.Warehouse,s.Product,"8")]);await PostProduction(s,head.Id,issue);
+        var returned=await ProductionDraft(s,head.Id,"Return",[new(s.Warehouse,s.Product,"2",issue.Lines.Single().Id)]);await PostProduction(s,head.Id,returned);
+        Assert.Equal("660.0000",(await s.Maker.GetFromJsonAsync<ProductionSessionView>(root))!.WipValue);
+        var reversal=await ProductionDraft(s,head.Id,"Reverse",reverses:returned.Id);await PostProduction(s,head.Id,reversal);
+        head=(await s.Maker.GetFromJsonAsync<ProductionSessionView>(root))!;Assert.Equal("880.0000",head.WipValue);Assert.Equal(4,head.Version);
+        Assert.Equal("220.0000",(await s.Maker.GetFromJsonAsync<CostLedgerStatus>($"{s.Root}/inventory/cost-ledger/status"))!.StockValue);
+        await factory.Inspect(async db=>{var movement=await db.Set<ProductionStockMovement>().SingleAsync(x=>x.OperationId==reversal.Id);Assert.Equal("ReturnReversal",movement.Kind);Assert.Equal(-2,movement.Quantity);Assert.Equal(-220,movement.Value);Assert.Equal(1,await db.Set<ProductionCostOperation>().CountAsync(x=>x.ReversesOperationId==returned.Id&&x.State=="Posted"));return 0;});
+    }
+    [Theory]
+    [InlineData("FIFO")]
+    [InlineData("WEIGHTED_AVERAGE")]
     public async Task Production_reversals_preserve_closed_periods_original_cost_and_atomic_stock(string method)
     {
         var s=await Setup(periodUntil:new(2026,11,1));await ActivateCosting(s,method);

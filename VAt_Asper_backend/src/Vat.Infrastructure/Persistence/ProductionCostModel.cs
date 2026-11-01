@@ -56,7 +56,7 @@ internal static class ProductionCostModel
             b.HasOne<ProductionCostSession>().WithMany().HasForeignKey(x=>new{x.TenantId,x.CompanyId,Id=x.SessionId}).OnDelete(DeleteBehavior.Restrict);
         });
         model.Entity<ProductionStockMovement>(b=>{
-            b.ToTable("production_stock_movements","inventory",t=>t.HasCheckConstraint("ck_production_movement_sign","(\"Kind\" IN ('Issue','ReceiptReversal') AND \"Quantity\"<0 AND \"Value\"<=0) OR (\"Kind\" IN ('Return','Receipt') AND \"Quantity\">0 AND \"Value\">=0)"));
+            b.ToTable("production_stock_movements","inventory",t=>t.HasCheckConstraint("ck_production_movement_sign","(\"Kind\" IN ('Issue','ReceiptReversal','ReturnReversal') AND \"Quantity\"<0 AND \"Value\"<=0) OR (\"Kind\" IN ('Return','Receipt') AND \"Quantity\">0 AND \"Value\">=0)"));
             b.HasKey(x=>new{x.TenantId,x.CompanyId,x.Id});b.Property(x=>x.Id).ValueGeneratedNever();b.Property(x=>x.Quantity).HasPrecision(24,6);b.Property(x=>x.Value).HasPrecision(24,4);
             b.HasIndex(x=>new{x.TenantId,x.CompanyId,x.WarehouseId,x.ProductId});b.HasOne<ProductionCostOperation>().WithMany().HasForeignKey(x=>new{x.TenantId,x.CompanyId,Id=x.OperationId}).OnDelete(DeleteBehavior.Restrict);
         });

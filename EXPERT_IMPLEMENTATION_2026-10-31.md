@@ -1,5 +1,9 @@
 # Expert implementation batch — 31 October 2026
 
+## 2026-11-01 milestone: production material-return reversal
+
+Material-return reversal removes the exact original returned quantity/value from FIFO layers or the Moving Weighted Average pool and restores that value to WIP. The original Return remains immutable; the correction requires an open date, open execution, source-linked Reverse document and independent approval. Consumed, transferred or value-mismatched returned stock is rejected. Migration `20261101071316_ProductionMaterialReturnReversals` extends database movement, cost-entry and source-evidence guards. Focused domain/API validation passed **4/4** across both costing methods.
+
 ## 2026-11-01 milestone: Manufacturing execution-status inbox
 
 Added a dedicated durable RabbitMQ queue and Manufacturing-owned inbox/checkpoint/dead-letter tables for financial production execution events. Inbox evidence, monotonic order projection and `Approved → Running → Completed` status changes commit atomically before broker acknowledgement. Exact redelivery is deduplicated; stale versions cannot roll status or totals backwards; malformed, unknown-order, conflicting-ID and second-session deliveries are quarantined without changing the projection. Migration: `20261101064158_ProductionExecutionInbox`. See [execution inbox guide](VAt_Asper_backend/docs/PRODUCTION_EXECUTION_INBOX.md).

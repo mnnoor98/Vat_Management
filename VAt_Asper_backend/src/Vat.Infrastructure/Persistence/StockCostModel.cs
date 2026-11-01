@@ -74,8 +74,8 @@ internal static class StockCostModel
         });
         model.Entity<StockCostEntry>(b => {
             b.ToTable("cost_entries", "inventory", t => {
-                t.HasCheckConstraint("ck_cost_entry_kind", "\"Kind\" IN ('Opening','Receipt','Issue','Return','Reversal','TransferOut','TransferIn','ProductionIssue','ProductionReturn','ProductionReceipt','ProductionReceiptReversal')");
-                t.HasCheckConstraint("ck_cost_entry_sign", "(\"Kind\" IN ('Opening','Receipt','Return','TransferIn','ProductionReturn','ProductionReceipt') AND \"Quantity\">0 AND \"Value\">=0) OR (\"Kind\" IN ('Issue','Reversal','TransferOut','ProductionIssue','ProductionReceiptReversal') AND \"Quantity\"<0 AND \"Value\"<=0)");
+                t.HasCheckConstraint("ck_cost_entry_kind", "\"Kind\" IN ('Opening','Receipt','Issue','Return','Reversal','TransferOut','TransferIn','ProductionIssue','ProductionReturn','ProductionReturnReversal','ProductionReceipt','ProductionReceiptReversal')");
+                t.HasCheckConstraint("ck_cost_entry_sign", "(\"Kind\" IN ('Opening','Receipt','Return','TransferIn','ProductionReturn','ProductionReceipt') AND \"Quantity\">0 AND \"Value\">=0) OR (\"Kind\" IN ('Issue','Reversal','TransferOut','ProductionIssue','ProductionReturnReversal','ProductionReceiptReversal') AND \"Quantity\"<0 AND \"Value\"<=0)");
             });
             b.HasKey(x => new { x.TenantId, x.CompanyId, x.Sequence }); b.Property(x => x.Sequence).ValueGeneratedNever();
             b.HasIndex(x => new { x.TenantId, x.CompanyId, x.Kind, x.SourceId, x.WarehouseId, x.ProductId }).IsUnique();

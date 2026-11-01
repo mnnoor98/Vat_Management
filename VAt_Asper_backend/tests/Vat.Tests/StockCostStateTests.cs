@@ -38,4 +38,14 @@ public sealed class StockCostStateTests
         Assert.Equal(0.0001m,one.Concat(two).Concat(three).Sum(x=>x.Value)); p.Add(one);p.Add(two);p.Add(three);
         Assert.Equal(0.0001m,p.Take(0.000003m).Sum(x=>x.Value)); Assert.Equal(0,p.Value);
     }
+    [Theory]
+    [InlineData("FIFO")]
+    [InlineData("WEIGHTED_AVERAGE")]
+    public void Material_return_reversal_removes_exact_returned_quantity_and_value(string method)
+    {
+        var state=new StockCostState{Method=method};var origin=Guid.NewGuid();state.Add([new(Guid.NewGuid(),origin,10,1000)]);
+        var issued=state.Take(6);var returned=issued.Take(1).Select(x=>x with{Quantity=2,Value=200}).ToArray();state.Add(returned);
+        var removed=state.ReverseReturn(returned);Assert.Equal(2,removed.Sum(x=>x.Quantity));Assert.Equal(200,removed.Sum(x=>x.Value));
+        Assert.Equal(4,state.Quantity);Assert.Equal(400,state.Value);
+    }
 }

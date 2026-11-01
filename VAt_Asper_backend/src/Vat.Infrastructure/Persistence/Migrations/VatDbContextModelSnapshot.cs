@@ -2440,7 +2440,7 @@ namespace Vat.Infrastructure.Persistence.Migrations
 
                     b.ToTable("production_stock_movements", "inventory", t =>
                         {
-                            t.HasCheckConstraint("ck_production_movement_sign", "(\"Kind\" IN ('Issue','ReceiptReversal') AND \"Quantity\"<0 AND \"Value\"<=0) OR (\"Kind\" IN ('Return','Receipt') AND \"Quantity\">0 AND \"Value\">=0)");
+                            t.HasCheckConstraint("ck_production_movement_sign", "(\"Kind\" IN ('Issue','ReceiptReversal','ReturnReversal') AND \"Quantity\"<0 AND \"Value\"<=0) OR (\"Kind\" IN ('Return','Receipt') AND \"Quantity\">0 AND \"Value\">=0)");
                         });
                 });
 
@@ -2713,9 +2713,9 @@ namespace Vat.Infrastructure.Persistence.Migrations
 
                     b.ToTable("cost_entries", "inventory", t =>
                         {
-                            t.HasCheckConstraint("ck_cost_entry_kind", "\"Kind\" IN ('Opening','Receipt','Issue','Return','Reversal','TransferOut','TransferIn','ProductionIssue','ProductionReturn','ProductionReceipt','ProductionReceiptReversal')");
+                            t.HasCheckConstraint("ck_cost_entry_kind", "\"Kind\" IN ('Opening','Receipt','Issue','Return','Reversal','TransferOut','TransferIn','ProductionIssue','ProductionReturn','ProductionReturnReversal','ProductionReceipt','ProductionReceiptReversal')");
 
-                            t.HasCheckConstraint("ck_cost_entry_sign", "(\"Kind\" IN ('Opening','Receipt','Return','TransferIn','ProductionReturn','ProductionReceipt') AND \"Quantity\">0 AND \"Value\">=0) OR (\"Kind\" IN ('Issue','Reversal','TransferOut','ProductionIssue','ProductionReceiptReversal') AND \"Quantity\"<0 AND \"Value\"<=0)");
+                            t.HasCheckConstraint("ck_cost_entry_sign", "(\"Kind\" IN ('Opening','Receipt','Return','TransferIn','ProductionReturn','ProductionReceipt') AND \"Quantity\">0 AND \"Value\">=0) OR (\"Kind\" IN ('Issue','Reversal','TransferOut','ProductionIssue','ProductionReturnReversal','ProductionReceiptReversal') AND \"Quantity\"<0 AND \"Value\"<=0)");
                         });
                 });
 

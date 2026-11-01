@@ -94,6 +94,11 @@ internal sealed class StockCostLedger(VatDbContext db, StockCostHead head, DateT
     {
         var p=await Position(source.WarehouseId,source.ProductId,source.BusinessDate,ct);var state=State(p);IReadOnlyList<CostChunk> chunks;
         if(source.Kind=="ReceiptReversal")chunks=state.ReverseReceipt(source.OriginalIssueId!.Value,-source.Quantity,-source.Value);
+        else if(source.Kind=="ReturnReversal"){
+            var original=await db.Set<StockCostEntry>().AsNoTracking().SingleOrDefaultAsync(x=>x.TenantId==head.TenantId&&x.CompanyId==head.CompanyId&&x.Kind=="ProductionReturn"&&x.SourceId==source.OriginalIssueId,ct)
+                ??throw new DomainException("production_cost_return_missing","Original production return cost allocation is missing.",409);
+            chunks=state.ReverseReturn(JsonSerializer.Deserialize<List<CostChunk>>(original.Allocations)!);
+        }
         else if(source.Kind=="Issue")chunks=state.Take(-source.Quantity);
         else if(source.Kind=="Return"){
             var original=await db.Set<StockCostEntry>().AsNoTracking().SingleOrDefaultAsync(x=>x.TenantId==head.TenantId&&x.CompanyId==head.CompanyId&&x.Kind=="ProductionIssue"&&x.SourceId==source.OriginalIssueId,ct)
