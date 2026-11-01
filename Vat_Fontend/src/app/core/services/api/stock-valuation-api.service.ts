@@ -14,6 +14,9 @@ export interface LandedReview extends LandedDraft { id:string; companyId:string;
 export interface ImportCharge { kind:string; amount:string; evidence:string; capitalizable:boolean; }
 export interface ImportDraft { planId:string; declarationNumber:string; declarationDate:string; currency:string; foreignInvoiceAmount:string; exchangeRate:string; recoverableTaxAmount:string; nonrecoverableTaxAmount:string; evidence:string; charges:ImportCharge[]; }
 export interface ImportReview extends ImportDraft { id:string; companyId:string; functionalInvoiceAmount:string; capitalizableChargeAmount:string; state:string; version:number; createdBy:string; approvedBy:string|null; }
+export interface ExportDraft { invoiceId:string; declarationNumber:string; declarationDate:string; destinationCountry:string; transportDocument:string; currency:string; foreignProceedsAmount:string; exchangeRate:string; taxTreatment:string; evidence:string; }
+export interface ExportReview extends ExportDraft { id:string; companyId:string; functionalProceedsAmount:string; dispatchCostAmount:string; frozenOutputTaxAmount:string; state:string; version:number; createdBy:string; approvedBy:string|null; }
+export interface ExportSource { invoiceId:string; documentNumber:string; businessDate:string; customerReference:string; netAmount:string; outputTaxAmount:string; dispatchCostAmount:string; }
 export interface LandedSource { planId:string; purchaseReference:string; warehouse:string; businessDate:string; lines:{purchaseLineId:string; product:string; quantity:string; netAmount:string}[]; }
 export interface LedgerStatus { companyId:string; state:string; basis:string|null; openingDate:string|null; sequence:string|null; reason:string|null; stockValue:string|null; }
 export interface LedgerEntry { sequence:string; warehouseId:string; productId:string; kind:string; sourceId:string; originalSourceId:string|null; businessDate:string; method:string; quantity:string; value:string; allocations:{id:string;origin:string;quantity:string;value:string}[]; }
@@ -29,12 +32,16 @@ export class StockValuationApiService {
   openings(before?:string){return this.http.get<OpeningReview[]>(`${this.root}/cost-adoptions`,{params:{take:25,...(before?{before}:{})}});}
   landed(before?:string){return this.http.get<LandedReview[]>(`${this.root}/landed-cost-reviews`,{params:{take:25,...(before?{before}:{})}});}
   imports(before?:string){return this.http.get<ImportReview[]>(`${this.root}/import-declarations`,{params:{take:25,...(before?{before}:{})}});}
+  exports(before?:string){return this.http.get<ExportReview[]>(`${this.root}/export-shipments`,{params:{take:25,...(before?{before}:{})}});}
+  exportSources(){return this.http.get<ExportSource[]>(`${this.root}/export-shipment-sources`);}
   createOpening(draft:OpeningDraft,key:string){return this.command<OpeningReview>('cost-adoptions',draft,key);}
   createLanded(draft:LandedDraft,key:string){return this.command<LandedReview>('landed-cost-reviews',draft,key);}
   createImport(draft:ImportDraft,key:string){return this.command<ImportReview>('import-declarations',draft,key);}
+  createExport(draft:ExportDraft,key:string){return this.command<ExportReview>('export-shipments',draft,key);}
   approveOpening(review:OpeningReview,key:string){return this.command<OpeningReview>(`cost-adoptions/${review.id}/approve`,{expectedVersion:review.version},key);}
   approveLanded(review:LandedReview,key:string){return this.command<LandedReview>(`landed-cost-reviews/${review.id}/approve`,{expectedVersion:review.version},key);}
   approveImport(review:ImportReview,key:string){return this.command<ImportReview>(`import-declarations/${review.id}/approve`,{expectedVersion:review.version},key);}
+  approveExport(review:ExportReview,key:string){return this.command<ExportReview>(`export-shipments/${review.id}/approve`,{expectedVersion:review.version},key);}
   private command<T>(route:string,body:unknown,key:string):Observable<T>{
     if(environment.useMockData)return throwError(()=>new Error('Valuation commands require the live API.'));
     return this.http.post<T>(`${this.root}/${route}`,body,{headers:{'Idempotency-Key':key}});

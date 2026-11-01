@@ -9,8 +9,15 @@ namespace Vat.Coordinated.Inventory.Controllers;
 
 [ApiController, Tags("Inventory Valuation")]
 [Route("api/v1/companies/{companyId:guid}/inventory")]
-public sealed class StockValuationController(LandedCostService landed, ImportDeclarationService imports, StockValuationService valuation, ICommandExecutor commands): ControllerBase
+public sealed class StockValuationController(LandedCostService landed, ImportDeclarationService imports, ExportShipmentService exports, StockValuationService valuation, ICommandExecutor commands): ControllerBase
 {
+    [HttpPost("export-shipments"), Authorize(Policy=Permissions.CostingManage)]
+    public Task<IActionResult> CreateExport(Guid companyId,CreateExportShipmentRequest request,CancellationToken ct)=>InventoryApiCommands.Execute(HttpContext,commands,companyId,"export-shipment.create",request,()=>exports.Create(HttpContext.GetActor(),companyId,request,HttpContext.TraceIdentifier,ct),ct);
+    [HttpPost("export-shipments/{id:guid}/approve"), Authorize(Policy=Permissions.CostingApprove)]
+    public Task<IActionResult> ApproveExport(Guid companyId,Guid id,ApproveCostingPolicyRequest request,CancellationToken ct)=>InventoryApiCommands.Execute(HttpContext,commands,companyId,$"export-shipment.approve:{id}",request,()=>exports.Approve(HttpContext.GetActor(),companyId,id,request,HttpContext.TraceIdentifier,ct),ct);
+    [HttpGet("export-shipments/{id:guid}"), Authorize(Policy=Permissions.CostingRead)] public async Task<IActionResult> GetExport(Guid companyId,Guid id,CancellationToken ct)=>Ok(await exports.Get(HttpContext.GetActor(),companyId,id,ct));
+    [HttpGet("export-shipments"), Authorize(Policy=Permissions.CostingRead)] public async Task<IActionResult> ListExports(Guid companyId,CancellationToken ct,Guid? before=null,int take=25)=>Ok(await exports.List(HttpContext.GetActor(),companyId,before,take,ct));
+    [HttpGet("export-shipment-sources"), Authorize(Policy=Permissions.CostingRead)] public async Task<IActionResult> ExportSources(Guid companyId,CancellationToken ct)=>Ok(await exports.Sources(HttpContext.GetActor(),companyId,ct));
     [HttpPost("import-declarations"), Authorize(Policy=Permissions.CostingManage)]
     public Task<IActionResult> CreateImport(Guid companyId,CreateImportDeclarationRequest request,CancellationToken ct)=>
         InventoryApiCommands.Execute(HttpContext,commands,companyId,"import-declaration.create",request,()=>imports.Create(HttpContext.GetActor(),companyId,request,HttpContext.TraceIdentifier,ct),ct);

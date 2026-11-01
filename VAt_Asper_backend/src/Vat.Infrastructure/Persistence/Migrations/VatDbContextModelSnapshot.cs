@@ -2001,6 +2001,119 @@ namespace Vat.Infrastructure.Persistence.Migrations
                         });
                 });
 
+            modelBuilder.Entity("Vat.Infrastructure.Persistence.ExportShipment", b =>
+                {
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("CompanyId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTimeOffset?>("ApprovedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("ApprovedBy")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("CreatedBy")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<string>("Currency")
+                        .IsRequired()
+                        .HasMaxLength(3)
+                        .HasColumnType("character varying(3)");
+
+                    b.Property<DateOnly>("DeclarationDate")
+                        .HasColumnType("date");
+
+                    b.Property<string>("DeclarationNumber")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.Property<string>("DestinationCountry")
+                        .IsRequired()
+                        .HasMaxLength(2)
+                        .HasColumnType("character varying(2)");
+
+                    b.Property<decimal>("DispatchCostAmount")
+                        .HasPrecision(24, 4)
+                        .HasColumnType("numeric(24,4)");
+
+                    b.Property<string>("Evidence")
+                        .IsRequired()
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)");
+
+                    b.Property<decimal>("ExchangeRate")
+                        .HasPrecision(24, 8)
+                        .HasColumnType("numeric(24,8)");
+
+                    b.Property<decimal>("ForeignProceedsAmount")
+                        .HasPrecision(24, 4)
+                        .HasColumnType("numeric(24,4)");
+
+                    b.Property<decimal>("FrozenOutputTaxAmount")
+                        .HasPrecision(24, 4)
+                        .HasColumnType("numeric(24,4)");
+
+                    b.Property<decimal>("FunctionalProceedsAmount")
+                        .HasPrecision(24, 4)
+                        .HasColumnType("numeric(24,4)");
+
+                    b.Property<Guid>("InvoiceId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("SourceFingerprint")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<string>("State")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("TaxTreatment")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("TransportDocument")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<int>("Version")
+                        .IsConcurrencyToken()
+                        .HasColumnType("integer");
+
+                    b.HasKey("TenantId", "CompanyId", "Id");
+
+                    b.HasIndex("TenantId", "CompanyId", "DeclarationNumber")
+                        .IsUnique();
+
+                    b.HasIndex("TenantId", "CompanyId", "InvoiceId")
+                        .IsUnique()
+                        .HasFilter("\"State\"='Approved'");
+
+                    b.ToTable("export_shipments", "inventory", t =>
+                        {
+                            t.HasCheckConstraint("ck_export_shipment_amounts", "\"ForeignProceedsAmount\">=0 AND \"ExchangeRate\">0 AND \"FunctionalProceedsAmount\">=0 AND \"DispatchCostAmount\">=0 AND \"FrozenOutputTaxAmount\">=0");
+
+                            t.HasCheckConstraint("ck_export_shipment_state", "(\"State\"='Draft' AND \"Version\"=1 AND \"ApprovedBy\" IS NULL AND \"ApprovedAt\" IS NULL) OR (\"State\"='Approved' AND \"Version\"=2 AND \"ApprovedBy\" IS NOT NULL AND \"ApprovedAt\" IS NOT NULL AND \"ApprovedBy\"<>\"CreatedBy\")");
+
+                            t.HasCheckConstraint("ck_export_shipment_tax", "\"TaxTreatment\" IN ('ZeroRated','Exempt','Standard')");
+                        });
+                });
+
             modelBuilder.Entity("Vat.Infrastructure.Persistence.IdempotencyRecord", b =>
                 {
                     b.Property<Guid>("TenantId")
@@ -7845,6 +7958,15 @@ namespace Vat.Infrastructure.Persistence.Migrations
                     b.HasOne("Vat.Domain.Company.Company", null)
                         .WithMany()
                         .HasForeignKey("TenantId", "CompanyId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("Vat.Infrastructure.Persistence.ExportShipment", b =>
+                {
+                    b.HasOne("Vat.Domain.Sales.SalesInvoice", null)
+                        .WithMany()
+                        .HasForeignKey("TenantId", "CompanyId", "InvoiceId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
                 });

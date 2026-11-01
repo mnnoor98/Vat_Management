@@ -68,6 +68,7 @@ public static class VatBackend
         builder.Services.AddScoped<StockCostAdoptionService>();
         builder.Services.AddScoped<LandedCostService>();
         builder.Services.AddScoped<ImportDeclarationService>();
+        builder.Services.AddScoped<ExportShipmentService>();
         builder.Services.AddScoped<StockValuationService>();
         builder.Services.AddScoped<StockCostPreparationQueries>();
         builder.Services.AddScoped<ProductionCostService>();

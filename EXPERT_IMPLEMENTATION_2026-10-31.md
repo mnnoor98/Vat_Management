@@ -164,3 +164,7 @@ Verification: **46 PostgreSQL integration cases passed**, covering new policy/re
 # 1 November 2026 — Import declaration foundation
 
 Added independently approved import declarations for prepared purchase receipts. Foreign invoice/rate, functional BDT amount, recoverable/non-recoverable tax and classified charge evidence are frozen. Linked landed-cost allocation must reconcile exactly to the approved capitalizable charge total at both API and database levels, then uses the existing FIFO/Moving Weighted Average receipt valuation path. See `VAt_Asper_backend/docs/IMPORT_DECLARATIONS.md`.
+
+## Export shipment evidence
+
+Added independently approved export shipment evidence for posted sales dispatches. Customs/transport, destination, foreign proceeds/rate and tax-treatment evidence are frozen, while dispatch cost is taken only from the existing immutable sales `Issue` cost entries and rechecked on approval. See `VAt_Asper_backend/docs/EXPORT_SHIPMENTS.md`.

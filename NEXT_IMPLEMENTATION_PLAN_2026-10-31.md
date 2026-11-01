@@ -1,6 +1,6 @@
 # Stock valuation-এর পরবর্তী implementation plan
 
-> 2026-11-01 update: reviewed import declaration, currency/tax/charge evidence and exact linkage to pre-receipt landed-cost capitalization are implemented after production reopening. The next Import/Export slice is export shipment/evidence linkage, followed by late import charge corrections and subcontract production. See [import declaration guide](VAt_Asper_backend/docs/IMPORT_DECLARATIONS.md).
+> 2026-11-01 update: reviewed import declaration/landed-cost linkage and reviewed export shipment/dispatch-cost linkage are implemented. Export evidence reuses the immutable sales issue cost journal. The next priority is late import charge corrections, then subcontract production. See [import guide](VAt_Asper_backend/docs/IMPORT_DECLARATIONS.md) and [export guide](VAt_Asper_backend/docs/EXPORT_SHIPMENTS.md).
 
 তারিখ: ৩১ অক্টোবর ২০২৬, Asia/Dhaka। Scope: VAT Management; Trading + Manufacturing, Import/Export এবং subcontract production। পূর্ণ ERP/HR/payroll এই scope-এর অংশ নয়।
 

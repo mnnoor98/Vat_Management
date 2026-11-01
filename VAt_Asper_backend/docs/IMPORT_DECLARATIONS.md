@@ -8,4 +8,4 @@ A different user must approve the unchanged declaration while the receipt date r
 
 The landed-cost review may reference the approved declaration. When linked, its plan and total must exactly match the declaration's prepared receipt and capitalizable charge total. The API and database triggers both enforce this reconciliation. The existing complete line allocation then capitalizes the approved BDT total through the FIFO or Moving Weighted Average stock ledger. Recoverable/non-recoverable tax remains separately evidenced so a tax component already present in the purchase calculation is not silently capitalized again.
 
-Domestic purchases can continue using the existing landed-cost review without an import declaration. Late charges after receipt posting remain part of the advanced correction backlog. Export shipment/evidence linkage is the next Import/Export slice.
+Domestic purchases can continue using the existing landed-cost review without an import declaration. Late charges after receipt posting remain part of the advanced correction backlog. Export shipment/evidence linkage is documented in [EXPORT_SHIPMENTS.md](EXPORT_SHIPMENTS.md).

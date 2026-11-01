@@ -54,6 +54,16 @@ public sealed class ImportDeclaration
     public string State { get; set; } = "Draft"; public int Version { get; set; } = 1; public string CreatedBy { get; set; } = "";
     public DateTimeOffset CreatedAt { get; set; } public string? ApprovedBy { get; set; } public DateTimeOffset? ApprovedAt { get; set; }
 }
+public sealed class ExportShipment
+{
+    public Guid TenantId { get; set; } public Guid CompanyId { get; set; } public Guid Id { get; set; } public Guid InvoiceId { get; set; }
+    public string DeclarationNumber { get; set; } = ""; public DateOnly DeclarationDate { get; set; } public string DestinationCountry { get; set; } = "";
+    public string TransportDocument { get; set; } = ""; public string Currency { get; set; } = ""; public decimal ForeignProceedsAmount { get; set; }
+    public decimal ExchangeRate { get; set; } public decimal FunctionalProceedsAmount { get; set; } public decimal DispatchCostAmount { get; set; }
+    public string TaxTreatment { get; set; } = ""; public decimal FrozenOutputTaxAmount { get; set; } public string Evidence { get; set; } = "";
+    public string SourceFingerprint { get; set; } = ""; public string State { get; set; } = "Draft"; public int Version { get; set; } = 1;
+    public string CreatedBy { get; set; } = ""; public DateTimeOffset CreatedAt { get; set; } public string? ApprovedBy { get; set; } public DateTimeOffset? ApprovedAt { get; set; }
+}
 internal static class StockCostModel
 {
     public static void Configure(ModelBuilder model)
@@ -119,6 +129,19 @@ internal static class StockCostModel
             b.HasIndex(x => new { x.TenantId,x.CompanyId,x.DeclarationNumber }).IsUnique();
             b.HasIndex(x => new { x.TenantId,x.CompanyId,x.PlanId }).IsUnique().HasFilter("\"State\"='Approved'");
             b.HasOne<PurchasePostingPlan>().WithMany().HasForeignKey(x => new { x.TenantId,x.CompanyId,x.PlanId }).HasPrincipalKey(x => new { x.TenantId,x.CompanyId,x.Id }).OnDelete(DeleteBehavior.Restrict);
+        });
+        model.Entity<ExportShipment>(b => {
+            b.ToTable("export_shipments", "inventory", t => {
+                t.HasCheckConstraint("ck_export_shipment_state", "(\"State\"='Draft' AND \"Version\"=1 AND \"ApprovedBy\" IS NULL AND \"ApprovedAt\" IS NULL) OR (\"State\"='Approved' AND \"Version\"=2 AND \"ApprovedBy\" IS NOT NULL AND \"ApprovedAt\" IS NOT NULL AND \"ApprovedBy\"<>\"CreatedBy\")");
+                t.HasCheckConstraint("ck_export_shipment_amounts", "\"ForeignProceedsAmount\">=0 AND \"ExchangeRate\">0 AND \"FunctionalProceedsAmount\">=0 AND \"DispatchCostAmount\">=0 AND \"FrozenOutputTaxAmount\">=0");
+                t.HasCheckConstraint("ck_export_shipment_tax", "\"TaxTreatment\" IN ('ZeroRated','Exempt','Standard')");
+            });
+            b.HasKey(x=>new{x.TenantId,x.CompanyId,x.Id});b.Property(x=>x.Id).ValueGeneratedNever();b.Property(x=>x.Version).IsConcurrencyToken();
+            b.Property(x=>x.DeclarationNumber).HasMaxLength(100);b.Property(x=>x.DestinationCountry).HasMaxLength(2);b.Property(x=>x.TransportDocument).HasMaxLength(200);b.Property(x=>x.Currency).HasMaxLength(3);
+            b.Property(x=>x.ForeignProceedsAmount).HasPrecision(24,4);b.Property(x=>x.ExchangeRate).HasPrecision(24,8);b.Property(x=>x.FunctionalProceedsAmount).HasPrecision(24,4);b.Property(x=>x.DispatchCostAmount).HasPrecision(24,4);b.Property(x=>x.FrozenOutputTaxAmount).HasPrecision(24,4);
+            b.Property(x=>x.Evidence).HasMaxLength(1000);b.Property(x=>x.SourceFingerprint).HasMaxLength(64);b.Property(x=>x.CreatedBy).HasMaxLength(200);b.Property(x=>x.ApprovedBy).HasMaxLength(200);
+            b.HasIndex(x=>new{x.TenantId,x.CompanyId,x.DeclarationNumber}).IsUnique();b.HasIndex(x=>new{x.TenantId,x.CompanyId,x.InvoiceId}).IsUnique().HasFilter("\"State\"='Approved'");
+            b.HasOne<Vat.Domain.Sales.SalesInvoice>().WithMany().HasForeignKey(x=>new{x.TenantId,x.CompanyId,Id=x.InvoiceId}).OnDelete(DeleteBehavior.Restrict);
         });
     }
 }

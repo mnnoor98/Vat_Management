@@ -4,7 +4,7 @@ import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
 import { Subscription, Observable, EMPTY, expand, reduce, forkJoin, of } from 'rxjs';
 import { CompanyContextService } from '../../core/services/company-context.service';
-import { StockValuationApiService, OpeningPosition, OpeningDraft, OpeningReview, LandedDraft, LandedReview, LandedSource, LedgerStatus, LedgerEntry, ImportDraft, ImportReview } from '../../core/services/api/stock-valuation-api.service';
+import { StockValuationApiService, OpeningPosition, OpeningDraft, OpeningReview, LandedDraft, LandedReview, LandedSource, LedgerStatus, LedgerEntry, ImportDraft, ImportReview, ExportDraft, ExportReview, ExportSource } from '../../core/services/api/stock-valuation-api.service';
 
 @Component({selector:'app-stock-valuation',standalone:true,imports:[CommonModule,FormsModule,RouterLink],template:`
   <section class="vat-card" style="padding:24px">
@@ -72,6 +72,17 @@ import { StockValuationApiService, OpeningPosition, OpeningDraft, OpeningReview,
       <p *ngFor="let l of a.lines">{{reviewLineLabel(l.purchaseLineId)}}: BDT {{l.amount}}</p>
       <button class="btn btn-primary" (click)="approveLanded(a)" [disabled]="busy() || !canApprove(a) || !reviewSource()">Approve reviewed landed allocation</button><button (click)="reviewLanded.set(null); reviewSource.set(null)">Close review</button>
     </section>
+    <h2>Reviewed export shipment</h2>
+    <p>Select a posted sales dispatch. The system freezes its existing stock-ledger issue cost; customs, transport, proceeds/rate and tax-treatment evidence require independent approval.</p>
+    <fieldset *ngIf="context.hasPermission('costing.manage')" [disabled]="busy()">
+      <label>Posted dispatch <select [(ngModel)]="exportDraft.invoiceId"><option value="">Select export dispatch</option><option *ngFor="let s of exportSources()" [value]="s.invoiceId">{{s.documentNumber}} / {{s.customerReference}} / {{s.businessDate}} / cost {{s.dispatchCostAmount}}</option></select></label>
+      <label>Export declaration <input [(ngModel)]="exportDraft.declarationNumber" maxlength="100"></label><label>Declaration date <input type="date" [(ngModel)]="exportDraft.declarationDate"></label>
+      <label>Destination country <input [(ngModel)]="exportDraft.destinationCountry" maxlength="2"></label><label>Transport document <input [(ngModel)]="exportDraft.transportDocument" maxlength="200"></label>
+      <label>Currency <input [(ngModel)]="exportDraft.currency" maxlength="3"></label><label>Foreign proceeds <input [(ngModel)]="exportDraft.foreignProceedsAmount" inputmode="decimal"></label><label>BDT exchange rate <input [(ngModel)]="exportDraft.exchangeRate" inputmode="decimal"></label>
+      <label>Tax treatment <select [(ngModel)]="exportDraft.taxTreatment"><option value="ZeroRated">Zero rated</option><option value="Exempt">Exempt</option><option value="Standard">Standard</option></select></label><label>Customs/tax evidence <input [(ngModel)]="exportDraft.evidence" maxlength="1000"></label>
+      <button class="btn btn-primary" (click)="createExport()">Save export shipment</button>
+    </fieldset>
+    <table class="vat-table"><thead><tr><th>Declaration / destination</th><th>Proceeds / dispatch cost</th><th>Tax / state / action</th></tr></thead><tbody><tr *ngFor="let e of exportReviews()"><td>{{e.declarationNumber}} / {{e.destinationCountry}}</td><td>{{e.functionalProceedsAmount}} / {{e.dispatchCostAmount}}</td><td>{{e.taxTreatment}} / {{e.frozenOutputTaxAmount}} / {{e.state}} <button (click)="approveExport(e)" [disabled]="busy() || !canApprove(e)">Approve</button></td></tr></tbody></table>
     <h2>Immutable cost journal</h2>
     <table class="vat-table"><thead><tr><th>Sequence / date</th><th>Movement / source</th><th>Method</th><th>Quantity</th><th>BDT change</th></tr></thead><tbody>
       <tr *ngFor="let e of entries()"><td>{{e.sequence}} / {{e.businessDate}}</td><td>{{e.kind}} / {{e.sourceId}}</td><td>{{e.method}}</td><td>{{e.quantity}}</td><td>{{e.value}}</td></tr>
@@ -82,27 +93,29 @@ export class StockValuationComponent implements OnDestroy {
   private requests=new Map<string,Subscription>();
   readonly status=signal<LedgerStatus|null>(null); readonly entries=signal<LedgerEntry[]>([]); readonly openings=signal<OpeningReview[]>([]);
   readonly landedReviews=signal<LandedReview[]>([]); readonly importReviews=signal<ImportReview[]>([]); readonly sources=signal<LandedSource[]>([]); readonly positions=signal<OpeningPosition[]>([]);
+  readonly exportReviews=signal<ExportReview[]>([]); readonly exportSources=signal<ExportSource[]>([]);
   readonly reviewOpening=signal<OpeningReview|null>(null); readonly reviewLanded=signal<LandedReview|null>(null); readonly reviewSource=signal<LandedSource|null>(null);
   readonly busy=signal(false); readonly error=signal(''); readonly message=signal(''); readonly positionsLoaded=signal(false);
   readonly openingPage=signal(0); readonly reviewPage=signal(0); private reloadRequired=true; private scope=''; private commandKeys=new Map<string,string>();
   opening:OpeningDraft={businessDate:'',basis:'NetPlusNonrecoverableTaxAndLanded',evidence:'',lines:[]};
   landed:LandedDraft={planId:'',totalAmount:'',evidence:'',lines:[]}; openingBefore?:string; landedBefore?:string; entryBefore?:string; sourceBefore?:string;
   readonly importKinds=['Duty','Freight','Insurance','Port','Clearing','Other']; importDraft:ImportDraft={planId:'',declarationNumber:'',declarationDate:'',currency:'USD',foreignInvoiceAmount:'',exchangeRate:'',recoverableTaxAmount:'0.0000',nonrecoverableTaxAmount:'0.0000',evidence:'',charges:[]};
+  exportDraft:ExportDraft={invoiceId:'',declarationNumber:'',declarationDate:'',destinationCountry:'',transportDocument:'',currency:'USD',foreignProceedsAmount:'',exchangeRate:'',taxTreatment:'ZeroRated',evidence:''};
   constructor(){effect(()=>{const company=this.context.companyGuid();untracked(()=>this.reset(company));});}
   reset(company:string):void{
     this.subscriptions.unsubscribe();this.subscriptions=new Subscription();this.scope=company;this.commandKeys.clear();this.busy.set(false);this.message.set('');
-    this.opening={businessDate:'',basis:'NetPlusNonrecoverableTaxAndLanded',evidence:'',lines:[]};this.landed={planId:'',totalAmount:'',evidence:'',lines:[]};this.importDraft={planId:'',declarationNumber:'',declarationDate:'',currency:'USD',foreignInvoiceAmount:'',exchangeRate:'',recoverableTaxAmount:'0.0000',nonrecoverableTaxAmount:'0.0000',evidence:'',charges:[]};
+    this.opening={businessDate:'',basis:'NetPlusNonrecoverableTaxAndLanded',evidence:'',lines:[]};this.landed={planId:'',totalAmount:'',evidence:'',lines:[]};this.importDraft={planId:'',declarationNumber:'',declarationDate:'',currency:'USD',foreignInvoiceAmount:'',exchangeRate:'',recoverableTaxAmount:'0.0000',nonrecoverableTaxAmount:'0.0000',evidence:'',charges:[]};this.exportDraft={invoiceId:'',declarationNumber:'',declarationDate:'',destinationCountry:'',transportDocument:'',currency:'USD',foreignProceedsAmount:'',exchangeRate:'',taxTreatment:'ZeroRated',evidence:''};
     this.positions.set([]);this.positionsLoaded.set(false);this.openingPage.set(0);this.reviewPage.set(0);this.sources.set([]);
     this.openingBefore=this.landedBefore=this.entryBefore=this.sourceBefore=undefined;this.reload();
   }
   reload():void{
     if(this.busy())return;this.subscriptions.unsubscribe();this.subscriptions=new Subscription();this.requests.clear();this.error.set('');this.reloadRequired=true;this.reviewOpening.set(null);this.reviewLanded.set(null);this.reviewSource.set(null);this.status.set(null);
-    this.openings.set([]);this.landedReviews.set([]);this.importReviews?.set([]);this.entries.set([]);
+    this.openings.set([]);this.landedReviews.set([]);this.importReviews?.set([]);this.exportReviews?.set([]);this.exportSources?.set([]);this.entries.set([]);
     if(!this.context.hasPermission('costing.read')){this.error.set('Costing read permission is required.');return;}
     this.busy.set(true);
-    this.read(forkJoin({status:this.api.status(),openings:this.api.openings(this.openingBefore),landed:this.api.landed(this.landedBefore),imports:this.api.imports?.()??of([]),entries:this.api.journal(this.entryBefore)}),r=>{
-      if(r.status.companyId!==this.scope||r.openings.some(a=>a.companyId!==this.scope)||r.landed.some(a=>a.companyId!==this.scope))throw new Error('Ledger/review scope mismatch.');
-      this.status.set(r.status);this.openings.set(r.openings);this.landedReviews.set(r.landed);this.importReviews?.set(r.imports);this.entries.set(r.entries);this.reloadRequired=false;this.busy.set(false);
+    this.read(forkJoin({status:this.api.status(),openings:this.api.openings(this.openingBefore),landed:this.api.landed(this.landedBefore),imports:this.api.imports?.()??of([]),exports:this.api.exports?.()??of([]),exportSources:this.api.exportSources?.()??of([]),entries:this.api.journal(this.entryBefore)}),r=>{
+      if(r.status.companyId!==this.scope||r.openings.some(a=>a.companyId!==this.scope)||r.landed.some(a=>a.companyId!==this.scope)||r.imports.some(a=>a.companyId!==this.scope)||r.exports.some(a=>a.companyId!==this.scope))throw new Error('Ledger/review scope mismatch.');
+      this.status.set(r.status);this.openings.set(r.openings);this.landedReviews.set(r.landed);this.importReviews?.set(r.imports);this.exportReviews?.set(r.exports);this.exportSources?.set(r.exportSources);this.entries.set(r.entries);this.reloadRequired=false;this.busy.set(false);
     },'reload');
   }
   private read<T>(request:Observable<T>,next:(value:T)=>void,slot='page'):void{
@@ -135,7 +148,7 @@ export class StockValuationComponent implements OnDestroy {
   }
   declareZero():void{this.landed.totalAmount='0.0000';this.landed.lines=this.landed.lines.map(x=>({...x,amount:'0.0000'}));}
   selectLanded(a:LandedReview):void{this.reviewLanded.set(a);this.reviewSource.set(null);this.read(this.api.source(a.planId),source=>{if(this.reviewLanded()?.id===a.id && source.planId===a.planId)this.reviewSource.set(source);},'review-source');}
-  canApprove(a:OpeningReview|LandedReview|ImportReview):boolean{return !this.reloadRequired&&a.companyId===this.context.companyGuid()&&a.state==='Draft'&&a.version===1&&a.createdBy!==this.context.currentUser().id&&this.context.hasPermission('costing.approve');}
+  canApprove(a:OpeningReview|LandedReview|ImportReview|ExportReview):boolean{return !this.reloadRequired&&a.companyId===this.context.companyGuid()&&a.state==='Draft'&&a.version===1&&a.createdBy!==this.context.currentUser().id&&this.context.hasPermission('costing.approve');}
   createOpening():void{
     if(this.busy()||!this.context.hasPermission('costing.manage')||!this.positionsLoaded())return;
     if(!this.validDate(this.opening.businessDate)||!this.opening.evidence.trim()||this.opening.lines.some(x=>!this.amount(x.value))){this.error.set('Enter a valid opening date, evidence and every reviewed total value.');return;}
@@ -149,6 +162,8 @@ export class StockValuationComponent implements OnDestroy {
   approveOpening(a:OpeningReview):void{if(!this.canApprove(a)||this.busy())return;this.command('approve-opening',{id:a.id,version:a.version},key=>this.api.approveOpening(a,key),r=>r.id===a.id&&r.state==='Approved'&&r.version===2&&this.openingMatches(r,a));}
   approveLanded(a:LandedReview):void{if(!this.canApprove(a)||this.busy()||this.reviewSource()?.planId!==a.planId)return;this.command('approve-landed',{id:a.id,version:a.version},key=>this.api.approveLanded(a,key),r=>r.id===a.id&&r.state==='Approved'&&r.version===2&&this.landedMatches(r,a));}
   approveImport(a:ImportReview):void{if(!this.canApprove(a)||this.busy())return;this.command('approve-import',{id:a.id,version:a.version},key=>this.api.approveImport(a,key),r=>r.id===a.id&&r.state==='Approved'&&r.version===2&&r.planId===a.planId);}
+  createExport():void{if(this.busy()||!this.context.hasPermission('costing.manage'))return;const d=this.exportDraft;if(!d.invoiceId||!d.declarationNumber.trim()||!this.validDate(d.declarationDate)||!/^[A-Za-z]{2}$/.test(d.destinationCountry)||!d.transportDocument.trim()||!/^[A-Za-z]{3}$/.test(d.currency)||!this.amount(d.foreignProceedsAmount)||!/^\d+(\.\d{1,8})?$/.test(d.exchangeRate)||Number(d.exchangeRate)<=0||!d.evidence.trim()){this.error.set('Complete the posted dispatch, declaration, destination, transport, proceeds/rate, treatment and evidence.');return;}const draft=structuredClone(d);this.command('export',draft,key=>this.api.createExport(draft,key),r=>r.state==='Draft'&&r.invoiceId===draft.invoiceId&&r.declarationNumber===draft.declarationNumber.trim());}
+  approveExport(a:ExportReview):void{if(!this.canApprove(a)||this.busy())return;this.command('approve-export',{id:a.id,version:a.version},key=>this.api.approveExport(a,key),r=>r.id===a.id&&r.state==='Approved'&&r.version===2&&r.invoiceId===a.invoiceId&&r.dispatchCostAmount===a.dispatchCostAmount);}
   private command<T extends {companyId:string}>(kind:string,payload:unknown,send:(key:string)=>Observable<T>,valid:(response:T)=>boolean):void{
     const scope=this.context.companyGuid();if(scope!==this.scope)return;const fingerprint=JSON.stringify([kind,payload]);let key=this.commandKeys.get(fingerprint);if(!key){key=crypto.randomUUID();this.commandKeys.set(fingerprint,key);}
     this.busy.set(true);this.error.set('');this.message.set('');this.subscriptions.add(send(key).subscribe({next:r=>{if(scope!==this.context.companyGuid())return;if(r.companyId!==scope||!valid(r)){this.fail(new Error('Command response mismatch. Reload required.'));return;}this.busy.set(false);this.message.set('Saved and verified. Reloaded current ledger and reviews.');this.reload();},error:e=>{if(scope===this.context.companyGuid())this.fail(e);}}));
