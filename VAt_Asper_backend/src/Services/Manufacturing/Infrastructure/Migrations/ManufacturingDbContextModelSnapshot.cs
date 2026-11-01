@@ -415,6 +415,154 @@ namespace Vat.Manufacturing.Infrastructure.Migrations
                         });
                 });
 
+            modelBuilder.Entity("Vat.Services.Manufacturing.Domain.ProductionExecutionCheckpoint", b =>
+                {
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("CompanyId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("OrderId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("ExecutionState")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)");
+
+                    b.Property<string>("ReceivedQuantity")
+                        .IsRequired()
+                        .HasMaxLength(40)
+                        .HasColumnType("character varying(40)");
+
+                    b.Property<Guid>("SessionId")
+                        .HasColumnType("uuid");
+
+                    b.Property<long>("SessionVersion")
+                        .HasColumnType("bigint");
+
+                    b.Property<DateTimeOffset>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("WipValue")
+                        .IsRequired()
+                        .HasMaxLength(40)
+                        .HasColumnType("character varying(40)");
+
+                    b.HasKey("TenantId", "CompanyId", "OrderId");
+
+                    b.HasIndex("TenantId", "CompanyId", "SessionId")
+                        .IsUnique();
+
+                    b.ToTable("production_execution_checkpoints", "manufacturing", t =>
+                        {
+                            t.HasCheckConstraint("ck_production_execution_checkpoints", "\"SessionVersion\" >= 0 AND \"ExecutionState\" IN ('Running','Completed')");
+                        });
+                });
+
+            modelBuilder.Entity("Vat.Services.Manufacturing.Domain.ProductionExecutionDeadLetter", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid");
+
+                    b.Property<byte[]>("Body")
+                        .IsRequired()
+                        .HasMaxLength(1048576)
+                        .HasColumnType("bytea");
+
+                    b.Property<Guid?>("CompanyId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("ErrorCode")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.Property<Guid?>("EventId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Fingerprint")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<DateTimeOffset>("FirstSeenAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTimeOffset>("LastSeenAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int>("Occurrences")
+                        .HasColumnType("integer");
+
+                    b.Property<Guid?>("TenantId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Fingerprint")
+                        .IsUnique();
+
+                    b.HasIndex("TenantId", "CompanyId", "LastSeenAt");
+
+                    b.ToTable("production_execution_dead_letters", "manufacturing");
+                });
+
+            modelBuilder.Entity("Vat.Services.Manufacturing.Domain.ProductionExecutionInbox", b =>
+                {
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("CompanyId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("EventId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("EventType")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.Property<DateTimeOffset>("OccurredAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid?>("OperationId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("OrderId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("PayloadSha256")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<DateTimeOffset>("ProcessedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("SessionId")
+                        .HasColumnType("uuid");
+
+                    b.Property<long>("SessionVersion")
+                        .HasColumnType("bigint");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)");
+
+                    b.HasKey("TenantId", "CompanyId", "EventId");
+
+                    b.HasIndex("TenantId", "CompanyId", "OrderId", "SessionVersion");
+
+                    b.ToTable("production_execution_inbox", "manufacturing", t =>
+                        {
+                            t.HasCheckConstraint("ck_production_execution_inbox", "\"SessionVersion\" >= 0 AND \"Status\" IN ('Processed','Ignored')");
+                        });
+                });
+
             modelBuilder.Entity("Vat.Services.Manufacturing.Domain.ProductionOrder", b =>
                 {
                     b.Property<Guid>("TenantId")
@@ -757,6 +905,24 @@ namespace Vat.Manufacturing.Infrastructure.Migrations
                     b.HasOne("Vat.Services.Manufacturing.Domain.ProductionOrder", null)
                         .WithMany()
                         .HasForeignKey("TenantId", "CompanyId", "ProductionOrderId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("Vat.Services.Manufacturing.Domain.ProductionExecutionCheckpoint", b =>
+                {
+                    b.HasOne("Vat.Services.Manufacturing.Domain.ProductionOrder", null)
+                        .WithMany()
+                        .HasForeignKey("TenantId", "CompanyId", "OrderId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("Vat.Services.Manufacturing.Domain.ProductionExecutionInbox", b =>
+                {
+                    b.HasOne("Vat.Services.Manufacturing.Domain.ProductionOrder", null)
+                        .WithMany()
+                        .HasForeignKey("TenantId", "CompanyId", "OrderId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
                 });

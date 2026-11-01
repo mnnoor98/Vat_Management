@@ -2,6 +2,8 @@
   <ItemGroup>
     <ProjectReference Include="../Infrastructure/Vat.Manufacturing.Infrastructure.csproj" />
     <ProjectReference Include="../../../Vat.Web/Vat.Web.csproj" />
+    <ProjectReference Include="../../../Vat.Messaging.RabbitMq/Vat.Messaging.RabbitMq.csproj" />
+    <ProjectReference Include="../../../Vat.Messaging/Vat.Messaging.csproj" />
     <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="10.0.11" PrivateAssets="all" />
   </ItemGroup>
 </Project>

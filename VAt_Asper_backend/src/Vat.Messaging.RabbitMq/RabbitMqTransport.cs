@@ -53,6 +53,12 @@ public sealed class RabbitMqTransport(IOptions<MessagingSettings> options) : IEv
     }
 
     public async Task Consume(Func<ReceivedMessage, CancellationToken, Task> process, CancellationToken ct)
+        => await Consume(options.Value.ReportingQueue, process, ct);
+
+    public async Task ConsumeManufacturing(Func<ReceivedMessage, CancellationToken, Task> process, CancellationToken ct)
+        => await Consume(options.Value.ManufacturingQueue, process, ct);
+
+    private async Task Consume(string queue, Func<ReceivedMessage, CancellationToken, Task> process, CancellationToken ct)
     {
         await using var connection = await Factory().CreateConnectionAsync(ct);
         await using var channel = await connection.CreateChannelAsync(cancellationToken: ct);
@@ -76,7 +82,7 @@ public sealed class RabbitMqTransport(IOptions<MessagingSettings> options) : IEv
                 failure.TrySetException(exception);
             }
         };
-        await channel.BasicConsumeAsync(options.Value.ReportingQueue, autoAck: false, consumer: consumer, cancellationToken: ct);
+        await channel.BasicConsumeAsync(queue, autoAck: false, consumer: consumer, cancellationToken: ct);
         await failure.Task.WaitAsync(ct);
     }
 
@@ -85,8 +91,12 @@ public sealed class RabbitMqTransport(IOptions<MessagingSettings> options) : IEv
         await channel.ExchangeDeclareAsync(options.Value.Exchange, ExchangeType.Topic, durable: true, autoDelete: false, cancellationToken: ct);
         await channel.QueueDeclareAsync(options.Value.ReportingQueue, durable: true, exclusive: false, autoDelete: false,
             arguments: new Dictionary<string, object?> { ["x-queue-type"] = "quorum" }, cancellationToken: ct);
+        await channel.QueueDeclareAsync(options.Value.ManufacturingQueue, durable: true, exclusive: false, autoDelete: false,
+            arguments: new Dictionary<string, object?> { ["x-queue-type"] = "quorum" }, cancellationToken: ct);
         // Consume all current notifications so mandatory publishes have a durable route.
         await channel.QueueBindAsync(options.Value.ReportingQueue, options.Value.Exchange, "#", cancellationToken: ct);
+        await channel.QueueBindAsync(options.Value.ManufacturingQueue, options.Value.Exchange, "ProductionExecutionAcceptedV1", cancellationToken: ct);
+        await channel.QueueBindAsync(options.Value.ManufacturingQueue, options.Value.Exchange, "ProductionCostPostedV1", cancellationToken: ct);
     }
 
     private async Task Reset()

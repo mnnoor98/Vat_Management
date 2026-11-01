@@ -1,6 +1,6 @@
 # Stock valuation-এর পরবর্তী implementation plan
 
-> 2026-11-01 update: physical scrap/by-product stock is implemented. Approved order evidence now freezes output products/classification and optional UOM ratios; financial posting allocates reviewed WIP value into physical stock with FIFO/MWA valuation and full reversal. The next priority is the Manufacturing execution-status inbox/consumer with deduplication and delivery recovery, then advanced corrections, Import/Export and subcontract production. See [physical output guide](VAt_Asper_backend/docs/PRODUCTION_PHYSICAL_OUTPUTS.md).
+> 2026-11-01 update: physical scrap/by-product stock and the Manufacturing execution-status inbox are implemented. The dedicated durable queue now projects committed financial execution events with deduplication, monotonic versions and quarantine recovery. The next priority is advanced production corrections, then Import/Export and subcontract production. See [physical output guide](VAt_Asper_backend/docs/PRODUCTION_PHYSICAL_OUTPUTS.md) and [execution inbox guide](VAt_Asper_backend/docs/PRODUCTION_EXECUTION_INBOX.md).
 
 তারিখ: ৩১ অক্টোবর ২০২৬, Asia/Dhaka। Scope: VAT Management; Trading + Manufacturing, Import/Export এবং subcontract production। পূর্ণ ERP/HR/payroll এই scope-এর অংশ নয়।
 

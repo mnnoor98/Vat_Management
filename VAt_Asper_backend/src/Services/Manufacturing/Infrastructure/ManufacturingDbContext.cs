@@ -5,8 +5,29 @@ namespace Vat.Services.Manufacturing.Infrastructure;
 public sealed class ManufacturingDbContext(DbContextOptions<ManufacturingDbContext> options) : DbContext(options)
 {
     public DbSet<ProductionOrder> Orders => Set<ProductionOrder>();
+    public DbSet<ProductionExecutionInbox> ExecutionInbox => Set<ProductionExecutionInbox>();
+    public DbSet<ProductionExecutionCheckpoint> ExecutionCheckpoints => Set<ProductionExecutionCheckpoint>();
+    public DbSet<ProductionExecutionDeadLetter> ExecutionDeadLetters => Set<ProductionExecutionDeadLetter>();
     protected override void OnModelCreating(ModelBuilder model)
     {
+        model.Entity<ProductionExecutionInbox>(b=>{
+            b.ToTable("production_execution_inbox","manufacturing",t=>t.HasCheckConstraint("ck_production_execution_inbox","\"SessionVersion\" >= 0 AND \"Status\" IN ('Processed','Ignored')"));
+            b.HasKey(x=>new{x.TenantId,x.CompanyId,x.EventId});b.Property(x=>x.EventId).ValueGeneratedNever();
+            b.Property(x=>x.EventType).HasMaxLength(100);b.Property(x=>x.PayloadSha256).HasMaxLength(64);b.Property(x=>x.Status).HasMaxLength(20);
+            b.HasIndex(x=>new{x.TenantId,x.CompanyId,x.OrderId,x.SessionVersion});
+            b.HasOne<ProductionOrder>().WithMany().HasForeignKey(x=>new{x.TenantId,x.CompanyId,Id=x.OrderId}).OnDelete(DeleteBehavior.Restrict);
+        });
+        model.Entity<ProductionExecutionCheckpoint>(b=>{
+            b.ToTable("production_execution_checkpoints","manufacturing",t=>t.HasCheckConstraint("ck_production_execution_checkpoints","\"SessionVersion\" >= 0 AND \"ExecutionState\" IN ('Running','Completed')"));
+            b.HasKey(x=>new{x.TenantId,x.CompanyId,x.OrderId});b.Property(x=>x.ExecutionState).HasMaxLength(20);b.Property(x=>x.WipValue).HasMaxLength(40);b.Property(x=>x.ReceivedQuantity).HasMaxLength(40);
+            b.HasIndex(x=>new{x.TenantId,x.CompanyId,x.SessionId}).IsUnique();
+            b.HasOne<ProductionOrder>().WithMany().HasForeignKey(x=>new{x.TenantId,x.CompanyId,Id=x.OrderId}).OnDelete(DeleteBehavior.Restrict);
+        });
+        model.Entity<ProductionExecutionDeadLetter>(b=>{
+            b.ToTable("production_execution_dead_letters","manufacturing");b.HasKey(x=>x.Id);b.Property(x=>x.Id).ValueGeneratedNever();
+            b.Property(x=>x.Fingerprint).HasMaxLength(64);b.Property(x=>x.ErrorCode).HasMaxLength(100);b.Property(x=>x.Body).HasMaxLength(1048576);
+            b.HasIndex(x=>x.Fingerprint).IsUnique();b.HasIndex(x=>new{x.TenantId,x.CompanyId,x.LastSeenAt});
+        });
         model.Entity<ProductionOrderDocument>(b=>{
             b.ToTable("production_order_documents","manufacturing");b.HasKey(x=>new{x.TenantId,x.CompanyId,x.Id});b.Property(x=>x.Id).ValueGeneratedNever();b.Property(x=>x.Sha256).HasMaxLength(64);
             b.HasOne<ProductionOrder>().WithMany().HasForeignKey(x=>new{x.TenantId,x.CompanyId,x.Id}).OnDelete(DeleteBehavior.Restrict);

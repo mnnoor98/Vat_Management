@@ -11,3 +11,5 @@ public sealed record ProductionOrderEvidence(Guid CoefficientId, int Revision, i
     [property:System.Text.Json.Serialization.JsonIgnore(Condition=System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)] IReadOnlyList<ProductionByProduct>? ByProducts=null);
 public sealed record ProductionOrderSource(Guid TenantId, Guid CompanyId, Guid OrderId, int Version, string State,
     string Reference, string CreatedBy, string ApprovedBy, string EvidenceSha256, ProductionOrderEvidence Evidence);
+public sealed record ProductionExecutionAcceptedV1(Guid SessionId,Guid OrderId,string SourceSha256);
+public sealed record ProductionCostPostedV1(Guid SessionId,Guid OrderId,Guid OperationId,string Kind,int SessionVersion,string WipValue,string ReceivedQuantity);

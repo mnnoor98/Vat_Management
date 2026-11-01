@@ -3,6 +3,7 @@ using Microsoft.EntityFrameworkCore.Design;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
+using Vat.Application;
 
 namespace Vat.Services.Manufacturing.Infrastructure;
 
@@ -25,6 +26,8 @@ public static class ManufacturingPersistence
         services.AddScoped<ICoefficientStore, CoefficientStore>();
         services.AddScoped<CoefficientService>();
         services.AddScoped<IProductionOrderWorkflow,ProductionOrderWorkflow>();
+        services.AddScoped<ProductionExecutionInboxProcessor>();
+        services.AddScoped<IIncomingEventProcessor>(sp=>sp.GetRequiredService<ProductionExecutionInboxProcessor>());
         services.AddHttpClient<IProductionWarehouseReferences,ProductionWarehouseReferenceClient>(client=>client.Timeout=TimeSpan.FromSeconds(5))
             .ConfigurePrimaryHttpMessageHandler(()=>new HttpClientHandler{AllowAutoRedirect=false,UseCookies=false});
         services.AddHttpClient<ICoefficientReferences, CoefficientReferenceClient>(client => client.Timeout = TimeSpan.FromSeconds(5))

@@ -1,5 +1,11 @@
 # Expert implementation batch — 31 October 2026
 
+## 2026-11-01 milestone: Manufacturing execution-status inbox
+
+Added a dedicated durable RabbitMQ queue and Manufacturing-owned inbox/checkpoint/dead-letter tables for financial production execution events. Inbox evidence, monotonic order projection and `Approved → Running → Completed` status changes commit atomically before broker acknowledgement. Exact redelivery is deduplicated; stale versions cannot roll status or totals backwards; malformed, unknown-order, conflicting-ID and second-session deliveries are quarantined without changing the projection. Migration: `20261101064158_ProductionExecutionInbox`. See [execution inbox guide](VAt_Asper_backend/docs/PRODUCTION_EXECUTION_INBOX.md).
+
+Focused PostgreSQL tests passed **2/2**. The complete Manufacturing run passed 18 cases and had one existing transfer test time out during parallel fixture cleanup; that test passed **1/1** when rerun alone. Manufacturing EF model drift reported no pending changes. The complete solution Release build passed with zero warnings/errors. Live broker and deployment validation were not performed.
+
 ## 2026-11-01 milestone: physical scrap and by-product stock
 
 Production orders now freeze separately referenced `Scrap`/`ByProduct` products for independent approval. Financial `ByProduct` operations post exact physical quantity and reviewed WIP value into the active FIFO or Moving Weighted Average ledger and company warehouse. Frozen UOM conversions apply to these outputs. Full source-linked reversal removes the original stock layer/pool value and restores WIP; consumed or reserved stock remains protected.

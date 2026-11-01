@@ -20,9 +20,6 @@ public sealed record ApproveProductionOperationRequest(int ExpectedVersion,int E
 public sealed record ProductionOperationView(Guid Id,Guid SessionId,string Kind,DateOnly BusinessDate,string State,int Version,int SessionVersion,string Evidence,
     IReadOnlyList<ProductionLineInput> Lines,string Amount,string OutputQuantity,string Labor,string Utility,string Overhead,string PostedValue,string CreatedBy,string? ApprovedBy,Guid? ReversesOperationId=null,string? OutputUnitOfMeasure=null,string? OutputInputQuantity=null,Guid? OutputProductId=null,Guid? OutputWarehouseId=null);
 public sealed record ProductionSessionView(Guid Id,Guid CompanyId,Guid OrderId,string Reference,string State,int Version,string WipValue,string ReceivedQuantity,string PlannedQuantity,ProductionOrderEvidence Source);
-public sealed record ProductionExecutionAcceptedV1(Guid SessionId,Guid OrderId,string SourceSha256);
-public sealed record ProductionCostPostedV1(Guid SessionId,Guid OrderId,Guid OperationId,string Kind,int SessionVersion,string WipValue,string ReceivedQuantity);
-
 public sealed class ProductionCostService(VatDbContext db,IProductionExecutionReferences references,IPeriodGuard periods,IPeriodStore periodStore,
     IAuditWriter audit,IEventWriter events,PostingPolicy policy,TimeProvider clock)
 {
