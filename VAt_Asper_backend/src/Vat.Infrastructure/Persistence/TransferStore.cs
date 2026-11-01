@@ -67,6 +67,7 @@ public sealed class TransferStore(VatDbContext db, IPeriodGuard periods, IPeriod
     private async Task Post(Actor actor, Guid company, Dictionary<string, object> header, CancellationToken ct)
     {
         var tenant = actor.TenantId; var id = (Guid)header["Id"];
+        var ledger = await StockCostLedger.Begin(db, tenant, company, clock.GetUtcNow(), ct);
         var from = (Guid)header["FromWarehouseId"]; var to = (Guid)header["ToWarehouseId"];
         var lines = await db.Set<Dictionary<string, object>>("inventory.transfer_lines").AsNoTracking()
             .Where(x => EF.Property<Guid>(x, "TenantId") == tenant && EF.Property<Guid>(x, "CompanyId") == company && EF.Property<Guid>(x, "TransferId") == id)
@@ -92,10 +93,12 @@ public sealed class TransferStore(VatDbContext db, IPeriodGuard periods, IPeriod
             var proof = new { TenantId = tenant, CompanyId = company, TransferId = id, TransferLineId = (Guid)line["Id"],
                 Version = (int)header["Version"], FromWarehouseId = from, ToWarehouseId = to, ProductId = product,
                 Quantity = quantity, BusinessDate = (DateOnly)header["BusinessDate"] };
-            db.Add(new TransferJournalEntry { TenantId = tenant, CompanyId = company, Id = Guid.CreateVersion7(), TransferId = id,
+            var journal = new TransferJournalEntry { TenantId = tenant, CompanyId = company, Id = Guid.CreateVersion7(), TransferId = id,
                 TransferLineId = proof.TransferLineId, FromWarehouseId = from, ToWarehouseId = to, ProductId = product,
                 BusinessDate = proof.BusinessDate, Quantity = quantity, EvidenceSha256 = Convert.ToHexString(SHA256.HashData(JsonSerializer.SerializeToUtf8Bytes(proof))),
-                RecordedBy = actor.Subject, RecordedAt = clock.GetUtcNow() });
+                RecordedBy = actor.Subject, RecordedAt = clock.GetUtcNow() };
+            db.Add(journal);
+            if (ledger is not null) await ledger.Transfer(journal, ct);
         }
     }
 

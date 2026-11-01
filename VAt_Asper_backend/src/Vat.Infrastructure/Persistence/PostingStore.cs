@@ -2,6 +2,7 @@ using System.Data;
 using Microsoft.EntityFrameworkCore;
 using Vat.Application;
 using Vat.Domain.Posting;
+using Vat.Domain.Costing;
 
 namespace Vat.Infrastructure.Persistence;
 
@@ -19,6 +20,8 @@ public sealed class PostingStore(VatDbContext db) : IPostingStore
     public async Task Receive(PurchasePostingPlan plan, DateTimeOffset now, CancellationToken ct)
     {
         if (db.Database.CurrentTransaction is null) throw new InvalidOperationException("Stock posting requires a transaction.");
+        var costHead = await CostSourceJournal.Begin(db, plan.TenantId, plan.CompanyId, now, ct);
+        var ledger = await StockCostLedger.Begin(db, plan.TenantId, plan.CompanyId, now, ct);
         // Stable product order prevents cross-receipt deadlocks. Atomic upsert prevents lost increments.
         foreach (var group in plan.Snapshot.Lines.GroupBy(x => x.ProductId).OrderBy(x => x.Key))
         {
@@ -31,7 +34,17 @@ public sealed class PostingStore(VatDbContext db) : IPostingStore
                 DO UPDATE SET "Quantity" = inventory.stock_balances."Quantity" + EXCLUDED."Quantity"
                 """, ct);
         }
-        foreach (var line in plan.Snapshot.Lines) db.Add(StockMovement.Receipt(plan, line, now));
+        var costing = new CostingStore(db);
+        foreach (var line in plan.Snapshot.Lines.OrderBy(x => x.ProductId).ThenBy(x => x.PurchaseLineId))
+        {
+            var movement = StockMovement.Receipt(plan, line, now);
+            db.Add(movement);
+            var policy = await costing.Resolve(plan.TenantId, plan.CompanyId, line.ProductId, plan.Snapshot.BusinessDate, ct);
+            var receipt = PurchaseCostReceipt.Capture(plan, line, movement, policy, now);
+            db.Add(receipt);
+            CostSourceJournal.Receipt(db, costHead, receipt);
+            if (ledger is not null) await ledger.Receipt(receipt, ct);
+        }
     }
 
     public void RecordTax(PurchasePostingPlan plan, DateTimeOffset now)

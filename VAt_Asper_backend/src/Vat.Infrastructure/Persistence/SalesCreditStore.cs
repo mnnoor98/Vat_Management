@@ -24,6 +24,8 @@ public sealed class SalesCreditStore(VatDbContext db) : ISalesCreditStore
             Original = original.Entries.Single(x => x.Id == line.OriginalEntryId && x.IsOriginal),
             Allocation = line
         }).ToArray();
+        var ledger = entries.Any(x => x.Allocation.Quantity > 0)
+            ? await StockCostLedger.Begin(db, note.TenantId, note.CompanyId, now, ct) : null;
         foreach (var group in entries.Where(x => x.Allocation.Quantity > 0).GroupBy(x => new { x.Original.WarehouseId, x.Original.ProductId }).OrderBy(g => g.Key.WarehouseId).ThenBy(g => g.Key.ProductId))
         {
             var warehouse = group.Key.WarehouseId;
@@ -36,6 +38,10 @@ public sealed class SalesCreditStore(VatDbContext db) : ISalesCreditStore
                 """, ct);
             if (changed != 1) throw new DomainException("balance_missing", "Original stock balance is missing; reconcile inventory before returning goods.", 409);
         }
-        foreach (var entry in entries) db.Add(SalesPostingEntry.Return(entry.Original, note, entry.Allocation, now));
+        foreach (var entry in entries.OrderBy(x => x.Original.WarehouseId).ThenBy(x => x.Original.ProductId).ThenBy(x => x.Original.Id))
+        {
+            var returned = SalesPostingEntry.Return(entry.Original, note, entry.Allocation, now); db.Add(returned);
+            if (ledger is not null) await ledger.Return(returned, ct);
+        }
     }
 }

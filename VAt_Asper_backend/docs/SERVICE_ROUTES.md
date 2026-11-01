@@ -133,11 +133,17 @@ Current Inventory controller additions are inventoried here; the new transfer fl
 | Method | Path | Controller |
 |---|---|---|
 | GET | `/api/v1/companies/{companyId}/manufacturing/production-orders` | ManufacturingController |
+| POST | `/api/v1/companies/{companyId}/manufacturing/production-orders` | ManufacturingController |
+| GET | `/api/v1/companies/{companyId}/manufacturing/production-orders/{id}` | ManufacturingController |
+| GET | `/api/v1/companies/{companyId}/manufacturing/production-orders/{id}/execution-source` | ManufacturingController |
+| POST | `/api/v1/companies/{companyId}/manufacturing/production-orders/{id}/{submit,approve,cancel}` | ManufacturingController |
 | GET | `/api/v1/companies/{companyId}/manufacturing/coefficients` | ManufacturingController |
 | POST | `/api/v1/companies/{companyId}/manufacturing/coefficients` | ManufacturingController |
 | PUT | `/api/v1/companies/{companyId}/manufacturing/coefficients/{id}/approve` | ManufacturingController |
 | POST | `/api/v1/companies/{companyId}/manufacturing/coefficients/{id}/submit` | ManufacturingController |
 | POST | `/api/v1/companies/{companyId}/manufacturing/coefficients/{id}/cancel` | ManufacturingController |
+
+Financial execution routes use `/api/v1/companies/{companyId}/inventory/production-executions`: POST import, GET list/detail, POST/GET `{id}/operations`, GET `{id}/operations/{operation}`, POST `{id}/operations/{operation}/approve` and `/cancel`. See [production/WIP ownership, permissions and configuration](PRODUCTION_WIP_EXECUTION.md).
 
 The coefficient routes reflect concurrent controller additions. Their business flow is not certified by the messaging/readiness checks; see the [scope note](architecture/0022-reporting-delivery-commit-receipts.md#concurrent-manufacturing-scope).
 

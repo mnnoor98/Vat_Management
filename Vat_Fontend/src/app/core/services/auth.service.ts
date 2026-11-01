@@ -1,4 +1,5 @@
 import { Injectable, inject, signal } from '@angular/core';
+import { HttpClient } from '@angular/common/http';
 import { Router } from '@angular/router';
 import { Observable, of, throwError } from 'rxjs';
 import { UserManager, WebStorageStateStore, User } from 'oidc-client-ts';
@@ -35,11 +36,12 @@ export interface RegisterUserRequest {
   assignedModuleCodes?: string[];
 }
 
-interface VerifiedProfile { subject: string; tenantId: string; companyIds: string[]; permissions: string[]; }
+interface VerifiedProfile { subject: string; tenantId: string; companyIds: string[]; permissions: string[]; roles?: string[]; username?: string; displayName?: string; assignedModuleCodes?: string[]; branchId?: string; email?: string; }
 interface AuthConfiguration { authority: string; clientId: string; scope?: string; }
 
 @Injectable({ providedIn: 'root' })
 export class AuthService {
+  private readonly http = inject(HttpClient);
   private readonly router = inject(Router);
   private readonly contextService = inject(CompanyContextService);
   private readonly toastService = inject(ToastService);
@@ -102,24 +104,14 @@ export class AuthService {
   private async restore(): Promise<void> {
     if (location.pathname === '/auth/callback') return;
 
-    // Check secure local session first
     const savedToken = sessionStorage.getItem('vat_secure_token');
-    const savedUser = sessionStorage.getItem('vat_secure_user');
     const savedExp = Number(sessionStorage.getItem('vat_secure_expires') || '0');
-
-    if (savedToken && savedUser && Date.now() < savedExp) {
+    if (savedToken && Date.now() < savedExp) {
       try {
-        const account = JSON.parse(savedUser) as UserAccount;
-        this.token.set(savedToken);
-        this.currentUser.set(account);
-        this.contextService.currentUser.set(account);
-        this.expiresAt = savedExp;
-        this.isAuthenticated.set(true);
-        void this.contextService.loadVerifiedCompanies(savedToken, account.accessibleCompanyIds || [account.companyId]);
+        await this.acceptVerifiedUser({ access_token: savedToken, expired: false,
+          expires_at: savedExp / 1000, profile: {} } as User);
         return;
-      } catch {
-        this.clearSession();
-      }
+      } catch { this.clearSession(); }
     }
 
     try {
@@ -137,20 +129,26 @@ export class AuthService {
     });
     if (!response.ok) throw new Error('The API did not accept this identity. Check issuer, audience and application grants.');
     const profile = await response.json() as VerifiedProfile;
-    if (profile.subject !== user.profile.sub || !Array.isArray(profile.permissions) || !Array.isArray(profile.companyIds)) {
+    if ((user.profile.sub && profile.subject !== user.profile.sub) || !Array.isArray(profile.permissions) || !Array.isArray(profile.companyIds)) {
       throw new Error('The verified API subject or grants do not match this session.');
     }
+    const supportedRoles: EnterpriseRole[] = ['SuperAdmin', 'TaxManager', 'Maker', 'Checker', 'Approver', 'Auditor', 'User'];
+    const roles = [...new Set((Array.isArray(profile.roles) ? profile.roles : [])
+      .map(role => role === 'Admin' ? 'SuperAdmin' : role)
+      .filter((role): role is EnterpriseRole => supportedRoles.includes(role as EnterpriseRole)))];
+    if (!roles.length) roles.push('User');
     const account: UserAccount = {
-      id: profile.subject, username: user.profile.preferred_username || profile.subject,
-      fullName: user.profile.name || profile.subject, fullNameBn: user.profile.name || profile.subject,
-      email: user.profile.email || '', role: 'User', roles: ['User'],
-      companyId: profile.companyIds[0] || '', companyName: '', branchId: '', branchName: '',
+      id: profile.subject, username: profile.username || user.profile.preferred_username || profile.subject,
+      fullName: profile.displayName || user.profile.name || profile.subject, fullNameBn: profile.displayName || user.profile.name || profile.subject,
+      email: profile.email || user.profile.email || '', role: roles[0], roles,
+      companyId: profile.companyIds[0] || '', companyName: '', branchId: profile.branchId || '', branchName: '',
       accessibleCompanyIds: profile.companyIds, permissions: profile.permissions,
-      assignedModuleCodes: this.modulesForPermissions(profile.permissions), isActive: true, createdAt: ''
+      assignedModuleCodes: Array.isArray(profile.assignedModuleCodes) ? profile.assignedModuleCodes : this.modulesForPermissions(profile.permissions), isActive: true, createdAt: ''
     };
     this.currentUser.set(account);
     this.contextService.currentUser.set(account);
     await this.contextService.loadVerifiedCompanies(user.access_token, profile.companyIds);
+    if (profile.branchId) this.contextService.switchBranch(profile.branchId);
     this.expiresAt = user.expires_at * 1000;
     this.token.set(user.access_token);
     this.isAuthenticated.set(true);
@@ -194,6 +192,7 @@ export class AuthService {
     this.currentUser.set(null);
     this.isAuthenticated.set(false);
     this.expiresAt = 0;
+    this.contextService.clearVerifiedContext();
   }
 
   private modulesForPermissions(permissions: string[]): string[] {
@@ -209,175 +208,45 @@ export class AuthService {
 
   login(credentials: { username: string; password: string }, _rememberMe = true): Observable<UserAccount> {
     return new Observable<UserAccount>(subscriber => {
-      (async () => {
-        const uname = credentials.username.trim().toLowerCase();
-        const pwd = credentials.password;
-
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 15000);
+      void (async () => {
         try {
-          const controller = new AbortController();
-          const timeoutId = setTimeout(() => controller.abort(), 4000);
-
-          let res: Response | null = null;
-          try {
-            res = await fetch(`${environment.apiGatewayUrl}/auth/login`, {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ username: credentials.username, password: credentials.password }),
-              signal: controller.signal
-            });
-          } catch (fetchErr) {
-            // Backend offline or timeout -> proceed to fallback if valid demo credentials
-            console.warn('Backend server offline or timed out; evaluating local demo authorization fallback.');
-          } finally {
-            clearTimeout(timeoutId);
+          await this.ready;
+          this.clearSession();
+          const response = await fetch(`${environment.apiGatewayUrl}/auth/login`, {
+            method: 'POST', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(credentials), signal: controller.signal
+          });
+          if (!response.ok) {
+            if (response.status === 401) throw new Error('Invalid username or password.');
+            if (response.status === 404) throw new Error('Local login is unavailable. Check the backend development configuration.');
+            throw new Error('The login server could not complete sign-in. Please try again.');
           }
-
-          let data: any = null;
-
-          if (res && res.ok) {
-            data = await res.json();
-          } else if (res && !res.ok) {
-            const errBody = await res.json().catch(() => null);
-            const msg = errBody?.detail || 'ইউজারনেম বা পাসওয়ার্ড সঠিক নয়। (Invalid username or password)';
-            throw new Error(msg);
-          } else {
-            // Offline demo fallback when backend port 5080 is not launched
-            const isUname = (base: string) => uname === base || uname === `${base}@aci-bd.com` || uname === `${base}@padma-vat.com` || uname === `${base}@enterprise.vat`;
-            const isPwd = (base: string) => {
-              const pLower = pwd.toLowerCase();
-              const bLower = base.toLowerCase();
-              return pLower === `${bLower}@123456` || pLower === `${bLower}@12345` || pLower === `${bLower}123` || pwd === '123456' || pwd.length >= 6;
-            };
-
-            if ((isUname('admin') || isUname('imran')) && isPwd('Admin')) {
-              data = {
-                accessToken: 'demo_token_admin',
-                expiresIn: 86400,
-                user: {
-                  id: '99999999-1111-1111-1111-111111111111',
-                  username: 'imran',
-                  displayName: 'Imran Hossain (Head of VAT & Tax - ACI)',
-                  companyId: '11111111-1111-1111-1111-111111111111',
-                  roles: ['Admin'],
-                  permissions: [
-                    'company.read', 'tax.read', 'period.read', 'masterdata.read', 'masterdata.manage',
-                    'purchase.read', 'purchase.create', 'purchase.submit', 'purchase.approve', 'purchase.prepare', 'purchase.post', 'purchase.cancel',
-                    'sales.read', 'sales.create', 'sales.submit', 'sales.approve', 'sales.post', 'sales.cancel', 'sales.reserve',
-                    'inventory.read', 'inventory.manage', 'inventory.approve', 'inventory.post',
-                    'manufacturing.read', 'manufacturing.manage', 'manufacturing.request', 'manufacturing.approve',
-                    'compliance.read', 'compliance.manage', 'compliance.submit',
-                    'workflow.read', 'workflow.manage', 'report.read', 'identity.read', 'identity.manage'
-                  ]
-                }
-              };
-            } else if ((isUname('maker') || isUname('tanvir')) && isPwd('Maker')) {
-              data = {
-                accessToken: 'demo_token_maker',
-                expiresIn: 86400,
-                user: {
-                  id: '99999999-2222-2222-2222-222222222222',
-                  username: 'maker',
-                  displayName: 'Tanvir Ahmed (VAT Maker - ACI)',
-                  companyId: '11111111-1111-1111-1111-111111111111',
-                  roles: ['Maker'],
-                  permissions: [
-                    'purchase.read', 'purchase.create', 'purchase.submit', 'purchase.prepare', 'purchase.cancel',
-                    'sales.read', 'sales.create', 'sales.submit', 'sales.cancel',
-                    'inventory.read', 'inventory.manage', 'compliance.read', 'masterdata.read', 'company.read'
-                  ]
-                }
-              };
-            } else if ((isUname('checker') || isUname('farhana')) && isPwd('Checker')) {
-              data = {
-                accessToken: 'demo_token_checker',
-                expiresIn: 86400,
-                user: {
-                  id: '99999999-3333-3333-3333-333333333333',
-                  username: 'checker',
-                  displayName: 'Farhana Yasmin (VAT Checker - ACI)',
-                  companyId: '11111111-1111-1111-1111-111111111111',
-                  roles: ['Checker'],
-                  permissions: [
-                    'purchase.read', 'purchase.approve', 'purchase.post',
-                    'sales.read', 'sales.approve', 'sales.post',
-                    'inventory.read', 'inventory.approve', 'inventory.post',
-                    'compliance.read', 'compliance.manage', 'compliance.submit'
-                  ]
-                }
-              };
-            } else if ((isUname('auditor') || isUname('shafiqul')) && isPwd('Auditor')) {
-              data = {
-                accessToken: 'demo_token_auditor',
-                expiresIn: 86400,
-                user: {
-                  id: '99999999-4444-4444-4444-444444444444',
-                  username: 'auditor',
-                  displayName: 'Shafiqul Islam, FCA (Internal Auditor - ACI)',
-                  companyId: '11111111-1111-1111-1111-111111111111',
-                  roles: ['Auditor'],
-                  permissions: ['company.read', 'compliance.read', 'report.read', 'masterdata.read', 'purchase.read', 'sales.read', 'inventory.read']
-                }
-              };
-            } else {
-              throw new Error('ব্যাকএন্ড সার্ভার চালু নেই এবং ইউজারনেম/পাসওয়ার্ড ডেমো অ্যাকাউন্টের সাথে মিলেনি।');
-            }
-          }
-
-          const user = data.user;
-          const roleMap: Record<string, EnterpriseRole> = {
-            'Admin': 'SuperAdmin',
-            'Maker': 'Maker',
-            'Checker': 'Checker',
-            'Auditor': 'Auditor'
-          };
-          const primaryRole: EnterpriseRole = roleMap[user.roles?.[0]] || 'Maker';
-
-          const account: UserAccount = {
-            id: user.id,
-            username: user.username,
-            fullName: user.displayName,
-            fullNameBn: user.displayName,
-            email: `${user.username}@aci-bd.com`,
-            role: primaryRole,
-            roles: [primaryRole],
-            companyId: user.companyId,
-            companyName: 'ACI Limited (Advanced Chemical Industries Ltd)',
-            branchId: '33333333-3333-3333-3333-333333333331',
-            branchName: 'ACI Centre HQ & Central Distribution, Tejgaon, Dhaka',
-            accessibleCompanyIds: [user.companyId],
-            permissions: user.permissions,
-            assignedModuleCodes: this.modulesForPermissions(user.permissions),
-            isActive: true,
-            createdAt: new Date().toISOString()
-          };
-
-          this.token.set(data.accessToken);
-          this.isAuthenticated.set(true);
-          this.expiresAt = Date.now() + (data.expiresIn * 1000);
-          this.currentUser.set(account);
-          this.contextService.currentUser.set(account);
-
+          const data = await response.json();
+          if (!data.accessToken || !(data.expiresIn > 0)) throw new Error('Invalid login response.');
+          const expires = Date.now() + data.expiresIn * 1000;
+          await this.acceptVerifiedUser({ access_token: data.accessToken, expired: false,
+            expires_at: expires / 1000, profile: {} } as User);
           sessionStorage.setItem('vat_secure_token', data.accessToken);
-          sessionStorage.setItem('vat_secure_user', JSON.stringify(account));
-          sessionStorage.setItem('vat_secure_expires', String(this.expiresAt));
-
-          try {
-            await this.contextService.loadVerifiedCompanies(data.accessToken, [user.companyId]);
-          } catch {
-            // Ignore company load errors in offline fallback
-          }
-
-          subscriber.next(account);
+          sessionStorage.setItem('vat_secure_expires', String(expires));
+          subscriber.next(this.currentUser()!);
           subscriber.complete();
-        } catch (err: any) {
-          subscriber.error(err);
-        }
+        } catch (error) {
+          this.clearSession();
+          subscriber.error(error instanceof TypeError || (error instanceof Error && error.name === 'AbortError')
+            ? new Error('Cannot reach the login server. Check that the backend is running and try again.') : error);
+        } finally { clearTimeout(timeout); }
       })();
+      return () => { clearTimeout(timeout); controller.abort(); };
     });
   }
 
-  register(_request: RegisterUserRequest): Observable<UserAccount> {
-    return throwError(() => new Error('Account creation and role assignment must be performed by your identity administrator.'));
+  loadUsers(): Observable<UserAccount[]> {
+    return this.http.get<UserAccount[]>(`${environment.apiGatewayUrl}/companies/${this.contextService.companyGuid()}/identity/users`);
+  }
+  register(request: RegisterUserRequest): Observable<UserAccount> {
+    return this.http.post<UserAccount>(`${environment.apiGatewayUrl}/companies/${request.companyId}/identity/users`, request);
   }
 
   private accountChangeUnavailable(): false {
@@ -387,8 +256,17 @@ export class AuthService {
   toggleUserStatus(_id: string): boolean { return this.accountChangeUnavailable(); }
   deleteUser(_id: string): boolean { return this.accountChangeUnavailable(); }
   resetUserPassword(_id: string, _password?: string): boolean { return this.accountChangeUnavailable(); }
-  getDefaultModulesForRoles(_roles: string[]): string[] { return []; }
-  getDefaultModulesForRole(_role: string): string[] { return []; }
+  getDefaultModulesForRoles(roles: string[]): string[] {
+    const defaults: Record<string, string[]> = {
+      SuperAdmin: ['MOD_PURCHASES','MOD_SALES','MOD_MANUFACTURING','MOD_INVENTORY','MOD_COMPLIANCE','MOD_WORKFLOW','MOD_MASTERDATA','MOD_REPORTS','MOD_ADMIN'],
+      Maker: ['MOD_PURCHASES','MOD_SALES','MOD_MANUFACTURING','MOD_INVENTORY','MOD_MASTERDATA'],
+      Checker: ['MOD_PURCHASES','MOD_SALES','MOD_INVENTORY','MOD_WORKFLOW','MOD_MASTERDATA','MOD_REPORTS'],
+      TaxManager: ['MOD_COMPLIANCE','MOD_REPORTS'], Approver: ['MOD_WORKFLOW','MOD_MANUFACTURING'],
+      Auditor: ['MOD_PURCHASES','MOD_SALES','MOD_INVENTORY','MOD_COMPLIANCE','MOD_REPORTS']
+    };
+    return [...new Set(roles.flatMap(role => defaults[role] || []))];
+  }
+  getDefaultModulesForRole(role: string): string[] { return this.getDefaultModulesForRoles([role]); }
   getPermissionsForRoles(_roles: string[]): string[] { return []; }
   getPermissionsForRole(_role: string): string[] { return []; }
 }

@@ -9,6 +9,21 @@ namespace Vat.Compliance.Tests;
 public sealed class ComplianceExecutionSafetyTests(ComplianceApiFactory factory) : IClassFixture<ComplianceApiFactory>
 {
     [Theory]
+    [InlineData("returns/9-1")]
+    [InlineData("vds-certificates")]
+    [InlineData("vat-ledger")]
+    [InlineData("adjustments")]
+    public async Task Unimplemented_calculations_never_return_sample_financial_data(string route)
+    {
+        var tenant = Guid.NewGuid(); var company = Guid.NewGuid();
+        using var reader = factory.Client(tenant, company, permissions: [Permissions.ComplianceRead]);
+        var response = await reader.GetAsync($"/api/v1/companies/{company}/compliance/{route}");
+        Assert.Equal(HttpStatusCode.ServiceUnavailable, response.StatusCode);
+        Assert.Contains("compliance_execution_unavailable", await response.Content.ReadAsStringAsync());
+        Assert.Equal(HttpStatusCode.Forbidden, (await reader.GetAsync($"/api/v1/companies/{Guid.NewGuid()}/compliance/{route}")).StatusCode);
+    }
+
+    [Theory]
     [InlineData("returns/9-1/submit", Permissions.ComplianceSubmit)]
     [InlineData("vds-certificates", Permissions.ComplianceManage)]
     [InlineData("vds-certificates/11111111-1111-1111-1111-111111111111/deposit", Permissions.ComplianceManage)]

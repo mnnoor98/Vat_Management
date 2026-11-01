@@ -4,9 +4,9 @@ using Npgsql;
 using Vat.Services.VatEngine.Infrastructure;
 
 var source = Environment.GetEnvironmentVariable("ConnectionStrings__VatDatabase")
-    ?? "Host=127.0.0.1;Port=5432;Database=vat_management;Username=postgres;Password=123456;";
+    ?? throw new InvalidOperationException("Set ConnectionStrings__VatDatabase before migration.");
 var target = Environment.GetEnvironmentVariable("ConnectionStrings__VatEngineDatabase")
-    ?? "Host=127.0.0.1;Port=5432;Database=vat_vatengine;Username=postgres;Password=123456;";
+    ?? throw new InvalidOperationException("Set ConnectionStrings__VatEngineDatabase before migration.");
 
 var sourceSettings = new NpgsqlConnectionStringBuilder(source);
 var targetSettings = new NpgsqlConnectionStringBuilder(target);

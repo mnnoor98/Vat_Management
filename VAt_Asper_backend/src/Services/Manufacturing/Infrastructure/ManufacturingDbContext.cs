@@ -7,6 +7,15 @@ public sealed class ManufacturingDbContext(DbContextOptions<ManufacturingDbConte
     public DbSet<ProductionOrder> Orders => Set<ProductionOrder>();
     protected override void OnModelCreating(ModelBuilder model)
     {
+        model.Entity<ProductionOrderDocument>(b=>{
+            b.ToTable("production_order_documents","manufacturing");b.HasKey(x=>new{x.TenantId,x.CompanyId,x.Id});b.Property(x=>x.Id).ValueGeneratedNever();b.Property(x=>x.Sha256).HasMaxLength(64);
+            b.HasOne<ProductionOrder>().WithMany().HasForeignKey(x=>new{x.TenantId,x.CompanyId,x.Id}).OnDelete(DeleteBehavior.Restrict);
+        });
+        model.Entity<ProductionOrderAudit>(b=>{
+            b.ToTable("production_order_audit","manufacturing");b.HasKey(x=>new{x.TenantId,x.CompanyId,x.Id});b.Property(x=>x.Id).ValueGeneratedNever();
+            b.Property(x=>x.Action).HasMaxLength(40);b.Property(x=>x.Actor).HasMaxLength(200);b.Property(x=>x.Reason).HasMaxLength(1000);b.Property(x=>x.CorrelationId).HasMaxLength(200);
+            b.HasIndex(x=>new{x.TenantId,x.CompanyId,x.OrderId,x.Version}).IsUnique();b.HasOne<ProductionOrder>().WithMany().HasForeignKey(x=>new{x.TenantId,x.CompanyId,Id=x.OrderId}).OnDelete(DeleteBehavior.Restrict);
+        });
         model.Entity<CoefficientDocument>(b =>
         {
             b.ToTable("coefficient_documents", "manufacturing");

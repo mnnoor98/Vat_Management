@@ -16,6 +16,7 @@ public sealed class ReversalStore(VatDbContext db) : IReversalStore
     public async Task Correct(PurchaseReversal reversal, PostingReadSnapshot original, DateTimeOffset now, CancellationToken ct)
     {
         if (db.Database.CurrentTransaction is null) throw new InvalidOperationException("Reversal requires a transaction.");
+        var ledger = await StockCostLedger.Begin(db, reversal.TenantId, reversal.CompanyId, now, ct);
         var stock = original.StockEntries.Where(x => x.ReversesEntryId is null).ToArray();
         foreach (var group in stock.GroupBy(x => new { x.WarehouseId, x.ProductId }).OrderBy(x => x.Key.WarehouseId).ThenBy(x => x.Key.ProductId))
         {
@@ -29,7 +30,11 @@ public sealed class ReversalStore(VatDbContext db) : IReversalStore
                 """, ct);
             if (affected != 1) throw new DomainException("insufficient_stock", "Reversal would consume reserved or unavailable warehouse stock.", 409);
         }
-        foreach (var entry in stock) db.Add(StockMovement.Correction(entry, reversal, now));
+        foreach (var entry in stock.OrderBy(x => x.WarehouseId).ThenBy(x => x.ProductId).ThenBy(x => x.Id))
+        {
+            var correction = StockMovement.Correction(entry, reversal, now); db.Add(correction);
+            if (ledger is not null) await ledger.Reverse(correction, ct);
+        }
         foreach (var entry in original.TaxEntries.Where(x => x.ReversesEntryId is null)) db.Add(TaxLedgerEntry.Correction(entry, reversal, now));
     }
 }

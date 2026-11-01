@@ -1,4 +1,5 @@
 import { Component, EventEmitter, Input, OnInit, Output, inject, signal } from '@angular/core';
+import { Observable } from 'rxjs';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { PurchaseApiService } from '../../core/services/api/purchase-api.service';
@@ -13,19 +14,22 @@ import { FinancialPlan } from '../../core/models/financial-contracts';
   template: `
     <div class="modal-backdrop">
       <section class="vat-card" role="dialog" aria-modal="true" aria-label="Posting review">
-        <h2>Posting review ? {{ invoice.invoiceNumber }}</h2>
+        <h2>Posting review: {{ invoice.invoiceNumber }}</h2>
         <p *ngIf="error()" role="alert">{{ error() }}</p>
-        <p *ngIf="busy()">Loading?</p>
+        <p *ngIf="busy()">Loading...</p>
+        <p *ngIf="!plan() && !canPrepare()" role="status">Your account cannot prepare this calculation. A user with {{ kind === 'purchase' ? 'purchase.prepare (for example maker)' : 'sales.reserve' }} permission must prepare it first. Then a different authorized user can confirm posting.</p>
+        <p *ngIf="reloadRequired()" role="status">Reload this invoice before trying again.</p>
+        <button class="btn btn-secondary" [disabled]="busy()" (click)="reloadInvoice()">Reload invoice</button>
         <ng-container *ngIf="!plan()">
           <label>Warehouse for this invoice branch
             <select class="vat-select" [(ngModel)]="warehouseId" [disabled]="busy()">
               <option value="">Select warehouse</option>
-              <option *ngFor="let w of warehouses()" [value]="w.warehouseId">{{ w.code }} ? {{ w.name }}</option>
+              <option *ngFor="let w of warehouses()" [value]="w.warehouseId">{{ w.code }} - {{ w.name }}</option>
             </select>
           </label>
           <button class="btn btn-secondary" *ngIf="hasMoreWarehouses()" [disabled]="busy()" (click)="loadWarehouses()">Load more warehouses</button>
           <p *ngIf="!busy() && warehouses().length === 0">No warehouses found for this branch.</p>
-          <button class="btn btn-primary" [disabled]="busy() || reloadRequired() || !warehouseId || !canPrepare()" (click)="prepare()">
+          <button class="btn btn-primary" [disabled]="busy() || reloadRequired() || !validWarehouse() || !canPrepare()" (click)="prepare()">
             {{ kind === 'purchase' ? 'Prepare tax calculation' : 'Reserve stock and calculate tax' }}
           </button>
         </ng-container>
@@ -48,7 +52,7 @@ import { FinancialPlan } from '../../core/models/financial-contracts';
       </section>
     </div>
   `,
-  styles: [`section { max-width: 1000px; width: 95vw; max-height: 90vh; overflow: auto; padding: 24px; } button { margin: 12px 8px 0 0; } [role=alert] { color: var(--danger, #dc2626); }`]
+  styles: [`.modal-backdrop { position: fixed; inset: 0; z-index: 1100; background: rgba(0,0,0,.65); display: flex; align-items: center; justify-content: center; padding: 16px; } button:disabled { opacity: .45; cursor: not-allowed; } section { max-width: 1000px; width: 95vw; max-height: 90vh; overflow: auto; padding: 24px; } button { margin: 12px 8px 0 0; } [role=alert] { color: var(--danger, #dc2626); }`]
 })
 export class FinancialPostingComponent implements OnInit {
   @Input({ required: true }) invoice!: PurchaseInvoice | SalesInvoice;
@@ -90,12 +94,28 @@ export class FinancialPostingComponent implements OnInit {
         this.warehouses.update(current => [...current, ...items.filter(w => w.branchId === this.invoice.branchId)]);
         this.warehouseSkip += items.length;
         this.hasMoreWarehouses.set(items.length === 100 && this.warehouseSkip <= 10000);
+        if (!this.warehouseId && this.warehouses().length === 1 && !this.hasMoreWarehouses()) this.warehouseId = this.warehouses()[0].warehouseId;
         this.busy.set(false);
       }, error: e => this.fail(e)
     });
   }
+  validWarehouse(): boolean { return this.warehouses().some(w => w.warehouseId === this.warehouseId && w.branchId === this.invoice.branchId); }
+  reloadInvoice(): void {
+    if (this.busy()) return;
+    this.busy.set(true); this.error.set('');
+    const request: Observable<PurchaseInvoice | SalesInvoice | undefined> = this.kind === 'purchase' ? this.purchase.getInvoiceById(this.invoice.id) : this.sales.getInvoiceById(this.invoice.id);
+    request.subscribe({ next: invoice => {
+      if (!invoice) { this.fail(new Error('Invoice not found. Close and reload the register.')); return; }
+      this.invoice = invoice; this.plan.set(null); this.reloadRequired.set(false);
+      this.warehouses.set([]); this.warehouseSkip = 0; this.warehouseId = ''; this.hasMoreWarehouses.set(false); this.busy.set(false);
+      this.ngOnInit(); this.changed.emit();
+    }, error: e => this.fail(e) });
+  }
   prepare(): void {
-    if (this.reloadRequired() || this.busy() || !this.canPrepare() || !this.warehouses().some(w => w.warehouseId === this.warehouseId)) return;
+    if (this.busy()) return;
+    if (this.reloadRequired()) { this.error.set('Reload this invoice before preparing again.'); return; }
+    if (!this.canPrepare()) { this.error.set('This account does not have preparation permission. Ask a maker to prepare the calculation first.'); return; }
+    if (!this.validWarehouse()) { this.error.set('Select a warehouse belonging to this invoice branch.'); return; }
     if (!Number.isSafeInteger(this.invoice.version)) { this.error.set('Reload the invoice to obtain its current version.'); return; }
     this.busy.set(true); this.error.set('');
     const service = this.kind === 'purchase' ? this.purchase : this.sales;
@@ -113,7 +133,13 @@ export class FinancialPostingComponent implements OnInit {
     request.subscribe({ next: () => { this.busy.set(false); this.changed.emit(); this.closed.emit(); }, error: e => { this.reloadRequired.set(true); this.fail(e); } });
   }
   private fail(error: unknown): void {
-    const e = error as { status?: number; message?: string };
+    const e = error as { status?: number; message?: string; error?: { detail?: string; code?: string } };
+    const detail = e.error?.detail;
+    if (typeof detail === 'string' && detail.trim()) {
+      this.error.set(`${detail} Close and reload after resolving this issue.`);
+      this.busy.set(false);
+      return;
+    }
     this.error.set(e.status === 409 ? 'The document changed or posting is unavailable. Close and reload before trying again.' : (e.message || 'Request failed. Close and reload the invoice before retrying.'));
     this.busy.set(false);
   }

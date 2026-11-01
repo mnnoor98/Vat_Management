@@ -41,3 +41,10 @@ ehthumbs.db
 $RECYCLE.BIN/
 .DS_Store
 
+
+# Generated local authentication keys
+.local/
+
+# Local API process captures
+/VAt_Asper_backend/src/Vat.Api/out.txt
+/VAt_Asper_backend/src/Vat.Api/err.txt

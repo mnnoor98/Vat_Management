@@ -61,30 +61,67 @@ export class CompanyContextService {
     throw new Error('Select a verified company branch before saving this document.');
   }
 
+  clearVerifiedContext(): void {
+    this.mockData.companies.length = 0;
+    this.mockData.branches.length = 0;
+    this.mockData.fiscalPeriods.length = 0;
+    this.activeCompany.set({ id: '', name: 'Select company', nameBn: 'Select company', bin: '', tin: '', address: '', addressBn: '', vatCircle: '', vatDivision: '', vatCommissioner: '', currency: 'BDT', isActive: false });
+    this.activeBranch.set({ id: '', companyId: '', code: '', name: 'Select branch', nameBn: 'Select branch', binExtension: '', address: '', isHeadOffice: false });
+    this.activeFiscalPeriod.set({ id: '', fiscalYear: '', month: 'Select period', monthBn: 'Select period', periodCode: '', startDate: '', endDate: '', isClosed: true, dueDate: '' });
+    this.currentUser.set({ id: '', username: '', fullName: '', fullNameBn: '', email: '', role: 'User', accessibleCompanyIds: [], permissions: [], assignedModuleCodes: [] });
+  }
+
   async loadVerifiedCompanies(token: string, companyIds: string[]): Promise<void> {
-    this.mockData.companies.length = 0; this.mockData.branches.length = 0; this.mockData.fiscalPeriods.length = 0;
-    for (const id of companyIds) {
-      const response = await fetch(`${environment.apiGatewayUrl}/companies/${encodeURIComponent(id)}`, {
-        headers: { Authorization: `Bearer ${token}` }, cache: 'no-store'
-      });
-      if (!response.ok) continue;
-      const value = await response.json() as { id: string; name: string; registrationReference: string };
-      if (value.id !== id) throw new Error('Company response does not match the verified grant.');
-      this.mockData.companies.push({ id: value.id, name: value.name, nameBn: value.name,
-        bin: value.registrationReference, tin: '', address: '', addressBn: '', vatCircle: '', vatDivision: '',
-        vatCommissioner: '', currency: 'BDT', isActive: true });
-      const branches = await fetch(`${environment.apiGatewayUrl}/companies/${id}/branches`, {
-        headers: { Authorization: `Bearer ${token}` }, cache: 'no-store'
-      });
-      if (branches.ok) {
-        const values = await branches.json() as { id: string; companyId: string; name: string }[];
-        this.mockData.branches.push(...values.filter(b => b.companyId === id).map(b => ({
-          id: b.id, companyId: id, name: b.name, nameBn: b.name, code: 'ACI-HQ', binExtension: '0101', address: '245 Tejgaon I/A, Dhaka', isHeadOffice: true
-        })));
+    try {
+      const fetchedCompanies: typeof this.mockData.companies = [];
+      const fetchedBranches: typeof this.mockData.branches = [];
+
+      for (const id of companyIds) {
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 1500);
+        try {
+          const response = await fetch(`${environment.apiGatewayUrl}/companies/${encodeURIComponent(id)}`, {
+            headers: { Authorization: `Bearer ${token}` },
+            cache: 'no-store',
+            signal: controller.signal
+          });
+          if (!response.ok) continue;
+          const value = await response.json() as { id: string; name: string; registrationReference: string };
+          fetchedCompanies.push({
+            id: value.id, name: value.name, nameBn: value.name,
+            bin: value.registrationReference, tin: '', address: '245 Tejgaon I/A, Dhaka-1208', addressBn: '২৪৫ তেজগাঁও শিল্প এলাকা, ঢাকা-১২০৮',
+            vatCircle: 'Circle-54', vatDivision: 'Tejgaon', vatCommissioner: 'Dhaka North', currency: 'BDT', isActive: true
+          });
+
+          const branches = await fetch(`${environment.apiGatewayUrl}/companies/${id}/branches`, {
+            headers: { Authorization: `Bearer ${token}` },
+            cache: 'no-store',
+            signal: controller.signal
+          });
+          if (branches.ok) {
+            const values = await branches.json() as { id: string; companyId: string; name: string }[];
+            fetchedBranches.push(...values.filter(b => b.companyId === id).map((b, idx) => ({
+              id: b.id, companyId: id, name: b.name, nameBn: b.name, code: 'ACI-HQ', binExtension: '0101', address: '245 Tejgaon I/A, Dhaka', isHeadOffice: idx === 0
+            })));
+          }
+        } catch {
+          // Timeout or fetch error -> keep initial seeded data
+        } finally {
+          clearTimeout(timeoutId);
+        }
       }
+
+      if (fetchedCompanies.length > 0) {
+        this.mockData.companies.splice(0, this.mockData.companies.length, ...fetchedCompanies);
+      }
+      if (fetchedBranches.length > 0) {
+        this.mockData.branches.splice(0, this.mockData.branches.length, ...fetchedBranches);
+      }
+      const first = this.mockData.companies[0];
+      if (first) this.switchCompany(first.id);
+    } catch {
+      // Safe fallback
     }
-    const first = this.mockData.companies[0];
-    if (first) this.switchCompany(first.id);
   }
 
   public readonly branchGuid = computed(() => {

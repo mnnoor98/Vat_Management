@@ -1,3 +1,8 @@
+import { TaxRulesComponent } from './features/vat-compliance/tax-rules.component';
+import { CostingPoliciesComponent } from './features/inventory/costing-policies.component';
+import { CostPreviewComponent } from './features/inventory/cost-preview.component';
+import { StockValuationComponent } from './features/inventory/stock-valuation.component';
+import { ProductionExecutionComponent } from './features/manufacturing/production-execution.component';
 import { PaymentsComponent } from './features/payments/payments.component';
 import { NetLedgerComponent } from './features/reports/net-ledger.component';
 import { Routes } from '@angular/router';
@@ -68,11 +73,16 @@ export const routes: Routes = [
       // Inventory & Stock
       { path: 'inventory', redirectTo: 'inventory/summary', pathMatch: 'full' },
       { path: 'inventory/summary', component: InventoryComponent },
+      { path: 'inventory/costing-policies', component: CostingPoliciesComponent },
+      { path: 'inventory/cost-preview', component: CostPreviewComponent },
+      { path: 'inventory/valuation', component: StockValuationComponent },
+      { path: 'manufacturing/execution', component: ProductionExecutionComponent },
       { path: 'inventory/transfers', component: InventoryComponent },
 
       // VAT Returns & Compliance (Mushak 9.1 & 6.6)
       { path: 'compliance', redirectTo: 'compliance/return-9-1', pathMatch: 'full' },
       { path: 'compliance/return-9-1', component: VatComplianceComponent },
+      { path: 'compliance/tax-rules', component: TaxRulesComponent },
       { path: 'compliance/tax-ledger', component: VatComplianceComponent },
       { path: 'compliance/vds-certificates', component: VatComplianceComponent },
       { path: 'compliance/vds-66', redirectTo: 'compliance/vds-certificates', pathMatch: 'full' },

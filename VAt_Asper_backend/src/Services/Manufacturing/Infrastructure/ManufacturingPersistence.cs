@@ -24,6 +24,9 @@ public static class ManufacturingPersistence
         services.AddSingleton(TimeProvider.System);
         services.AddScoped<ICoefficientStore, CoefficientStore>();
         services.AddScoped<CoefficientService>();
+        services.AddScoped<IProductionOrderWorkflow,ProductionOrderWorkflow>();
+        services.AddHttpClient<IProductionWarehouseReferences,ProductionWarehouseReferenceClient>(client=>client.Timeout=TimeSpan.FromSeconds(5))
+            .ConfigurePrimaryHttpMessageHandler(()=>new HttpClientHandler{AllowAutoRedirect=false,UseCookies=false});
         services.AddHttpClient<ICoefficientReferences, CoefficientReferenceClient>(client => client.Timeout = TimeSpan.FromSeconds(5))
             .ConfigurePrimaryHttpMessageHandler(() => new HttpClientHandler { AllowAutoRedirect = false, UseCookies = false });
         return services;

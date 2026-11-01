@@ -335,10 +335,18 @@ export interface StockBalance {
   reservedQuantity: number;
   availableQuantity: number;
   lastMovementDate?: string;
-  standardCost?: number;
-  totalValuation?: number;
-  hsCode?: string;
+  standardCost?: number | null;
+  totalValuation?: number | null;
+  hsCode?: string | null;
   costingMethod?: string;
+  valuationStatus?: string;
+  valuationReason?: string | null;
+  valuationBasis?: string | null;
+  totalValuationExact?: string | null;
+  unitCostExact?: string | null;
+  quantityExact?: string | null;
+  reservedQuantityExact?: string | null;
+  availableQuantityExact?: string | null;
 }
 
 export interface WarehouseValuationSummary {
@@ -349,18 +357,21 @@ export interface WarehouseValuationSummary {
   branchName: string;
   itemsCount: number;
   totalQuantity: number;
-  totalValuation: number;
+  totalValuation: number | null;
 }
 
 export interface InventoryValuationSummary {
   companyId: string;
   costingMethod: 'WEIGHTED_AVERAGE' | 'FIFO' | string;
   totalStockQuantity: number;
-  totalStockValuation: number;
+  totalStockValuation: number | null;
   totalWarehousesCount: number;
   totalUniqueProductsCount: number;
   warehouses: WarehouseValuationSummary[];
   topValuedItems: StockBalance[];
+  valuationStatus: string;
+  valuationReason: string | null;
+  capturedAt: string;
 }
 
 export interface Mushak65TransferLine {

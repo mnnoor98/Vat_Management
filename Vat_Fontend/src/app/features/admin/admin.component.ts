@@ -1,4 +1,4 @@
-import { Component, OnInit, inject } from '@angular/core';
+import { Component, ChangeDetectorRef, OnInit, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { CompanyContextService } from '../../core/services/company-context.service';
@@ -118,7 +118,7 @@ interface RoleDefinition {
                 </td>
                 <td>
                   <div class="branch-tag font-mono">
-                    {{ isSuperAdminUser(u) ? '🌐 All Branches (সকল শাখা উন্মুক্ত)' : '🔒 ' + (u.branchName || 'Dhaka Central Plant') }}
+                    {{ isSuperAdminUser(u) ? '🌐 All Branches (সকল শাখা উন্মুক্ত)' : '🔒 ' + (u.branchName || u.branchId || 'Unassigned') }}
                   </div>
                 </td>
                 <td>
@@ -548,7 +548,7 @@ interface RoleDefinition {
               <option value="33333333-3333-3333-3333-333333333332">CTG-DEPOT (Chittagong Port Depot)</option>
               <option value="33333333-3333-3333-3333-333333333333">BGR-DEPOT (Bogura Regional Warehouse)</option>
             </select>
-            <small class="field-help text-emerald">🔒 সুপার অ্যাডমিন ব্যতীত বাকি সকল ইউজারের কার্যক্রম নির্দিষ্ট শাখায় সীমাবদ্ধ থাকবে।</small>
+            <small class="field-help text-emerald">Assigned branch sets the initial selection. API access is scoped to the assigned company.</small>
           </div>
           <div class="branch-assign-section" *ngIf="userData.roles.includes('SuperAdmin')">
             <label class="field-label-bold font-bengali">Branch Access Scope</label>
@@ -783,6 +783,7 @@ interface RoleDefinition {
   `]
 })
 export class AdminComponent implements OnInit {
+  private readonly cdr = inject(ChangeDetectorRef);
   public authService = inject(AuthService);
   public portalService = inject(PortalService);
   public context = inject(CompanyContextService);
@@ -1024,7 +1025,10 @@ export class AdminComponent implements OnInit {
 
 
   public loadUsers(): void {
-    this.users = this.authService.getUsers();
+    this.authService.loadUsers().subscribe({
+      next: users => { const current = this.authService.currentUser(); this.users = current && !users.some(u => u.id === current.id) ? [current, ...users] : users; this.cdr.markForCheck(); },
+      error: err => { this.users = this.authService.getUsers(); this.toast.showError(err.error?.detail || err.error?.title || err.message || 'Could not load users.'); this.cdr.markForCheck(); }
+    });
   }
 
   public getUserRoles(u: UserAccount): EnterpriseRole[] {
@@ -1054,8 +1058,8 @@ export class AdminComponent implements OnInit {
       password: '',
       role: 'Maker',
       roles: ['Maker'],
-      companyId: '11111111-1111-1111-1111-111111111111',
-      branchId: '33333333-3333-3333-3333-333333333331',
+      companyId: this.context.companyGuid(),
+      branchId: this.context.activeBranch().id,
       assignedModuleCodes: [...this.authService.getDefaultModulesForRoles(['Maker'])]
     };
     this.showUserModal = true;
@@ -1191,7 +1195,7 @@ export class AdminComponent implements OnInit {
         fullNameBn: this.userData.fullNameBn?.trim() || this.userData.fullName.trim(),
         email: this.userData.email.trim(),
         phone: this.userData.phone?.trim(),
-        password: this.userData.password.trim(),
+        password: this.userData.password,
         role: this.userData.roles[0],
         roles: [...this.userData.roles],
         companyId: this.userData.companyId,
@@ -1202,13 +1206,15 @@ export class AdminComponent implements OnInit {
       this.authService.register(req).subscribe({
         next: (user) => {
           this.isSavingUser = false;
+          this.cdr.markForCheck();
           this.showUserModal = false;
           this.loadUsers();
           this.toast.showSuccess(`নতুন ব্যবহারকারী '${user.fullName}' (${user.roles?.join(', ')}) সফলভাবে সিস্টেমে যুক্ত হয়েছে।`);
         },
         error: (err) => {
           this.isSavingUser = false;
-          this.toast.showError(err.message || 'ব্যবহারকারী তৈরিতে ব্যর্থ হয়েছে।');
+          this.cdr.markForCheck();
+          this.toast.showError(err.error?.detail || err.error?.title || err.message || 'ব্যবহারকারী তৈরিতে ব্যর্থ হয়েছে।');
         }
       });
     }

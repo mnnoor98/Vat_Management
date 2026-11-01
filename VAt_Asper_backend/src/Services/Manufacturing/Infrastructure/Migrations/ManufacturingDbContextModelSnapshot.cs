@@ -499,6 +499,78 @@ namespace Vat.Manufacturing.Infrastructure.Migrations
                         });
                 });
 
+            modelBuilder.Entity("Vat.Services.Manufacturing.Domain.ProductionOrderAudit", b =>
+                {
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("CompanyId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Action")
+                        .IsRequired()
+                        .HasMaxLength(40)
+                        .HasColumnType("character varying(40)");
+
+                    b.Property<string>("Actor")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<string>("CorrelationId")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("OrderId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Reason")
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)");
+
+                    b.Property<int>("Version")
+                        .HasColumnType("integer");
+
+                    b.HasKey("TenantId", "CompanyId", "Id");
+
+                    b.HasIndex("TenantId", "CompanyId", "OrderId", "Version")
+                        .IsUnique();
+
+                    b.ToTable("production_order_audit", "manufacturing");
+                });
+
+            modelBuilder.Entity("Vat.Services.Manufacturing.Domain.ProductionOrderDocument", b =>
+                {
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("CompanyId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Json")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("Sha256")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.HasKey("TenantId", "CompanyId", "Id");
+
+                    b.ToTable("production_order_documents", "manufacturing");
+                });
+
             modelBuilder.Entity("Vat.Services.Manufacturing.Domain.ProductionReceipt", b =>
                 {
                     b.Property<Guid>("TenantId")
@@ -694,6 +766,24 @@ namespace Vat.Manufacturing.Infrastructure.Migrations
                     b.HasOne("Vat.Services.Manufacturing.Domain.CoefficientVersion", null)
                         .WithMany()
                         .HasForeignKey("TenantId", "CompanyId", "CoefficientVersionId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("Vat.Services.Manufacturing.Domain.ProductionOrderAudit", b =>
+                {
+                    b.HasOne("Vat.Services.Manufacturing.Domain.ProductionOrder", null)
+                        .WithMany()
+                        .HasForeignKey("TenantId", "CompanyId", "OrderId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("Vat.Services.Manufacturing.Domain.ProductionOrderDocument", b =>
+                {
+                    b.HasOne("Vat.Services.Manufacturing.Domain.ProductionOrder", null)
+                        .WithMany()
+                        .HasForeignKey("TenantId", "CompanyId", "Id")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
                 });

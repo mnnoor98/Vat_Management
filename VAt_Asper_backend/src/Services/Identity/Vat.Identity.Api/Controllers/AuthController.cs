@@ -5,6 +5,10 @@ using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using Vat.Api.Security;
 using Vat.Application.Security;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.AspNetCore.Identity;
+using Vat.Services.Identity.Infrastructure;
+using Vat.Services.Identity.Domain;
 
 namespace Vat.Services.Identity.Controllers;
 
@@ -30,15 +34,18 @@ public sealed record LoginResponse(
 [ApiController]
 [Tags("Authentication")]
 [Route("api/v1/auth")]
-public sealed class AuthController : ControllerBase
+public sealed class AuthController(IWebHostEnvironment environment, IConfiguration configuration) : ControllerBase
 {
     private static readonly Guid TenantId = Guid.Parse("00000000-0000-0000-0000-000000000001");
     private static readonly Guid CompanyId = Guid.Parse("11111111-1111-1111-1111-111111111111");
 
     [HttpPost("login")]
+    [HttpPost("/auth/login")]
     [AllowAnonymous]
-    public IActionResult Login([FromBody] LoginRequest request)
+    public async Task<IActionResult> Login([FromBody] LoginRequest request, [FromServices] IdentityDbContext db, CancellationToken ct)
     {
+        if (!DevSecurityKey.IsEnabled(environment, configuration)) return NotFound();
+
         if (string.IsNullOrWhiteSpace(request?.Username) || string.IsNullOrWhiteSpace(request?.Password))
         {
             return BadRequest(new ProblemDetails
@@ -51,6 +58,9 @@ public sealed class AuthController : ControllerBase
 
         var uname = request.Username.Trim().ToLowerInvariant();
         var pwd = request.Password;
+        var loginCompany = CompanyId;
+        var loginTenant = TenantId;
+        LocalAccount? localAccount = null;
 
         // Supported seeded accounts: imran, admin, maker, checker, auditor (ACI Limited)
         string displayName;
@@ -59,7 +69,7 @@ public sealed class AuthController : ControllerBase
         Guid userId;
 
         if ((uname == "imran" || uname == "imran@aci-bd.com" || uname == "admin" || uname == "admin@aci-bd.com" || uname == "admin@padma-vat.com" || uname == "admin@enterprise.vat") && 
-            (pwd == "Admin@123456" || pwd == "Admin@12345" || pwd == "admin123" || pwd == "123456"))
+            (pwd == "Admin@123456"))
         {
             userId = Guid.Parse("99999999-1111-1111-1111-111111111111");
             displayName = "Imran Hossain (Head of VAT & Tax - ACI)";
@@ -67,7 +77,7 @@ public sealed class AuthController : ControllerBase
             permissions = Permissions.All;
         }
         else if ((uname == "maker" || uname == "tanvir" || uname == "tanvir.maker@aci-bd.com" || uname == "maker@padma-vat.com" || uname == "maker@enterprise.vat") && 
-                 (pwd == "Maker@123456" || pwd == "Maker@12345" || pwd == "maker123" || pwd == "123456"))
+                 (pwd == "Maker@123456"))
         {
             userId = Guid.Parse("99999999-2222-2222-2222-222222222222");
             displayName = "Tanvir Ahmed (VAT Maker - ACI)";
@@ -85,7 +95,7 @@ public sealed class AuthController : ControllerBase
             ];
         }
         else if ((uname == "checker" || uname == "farhana" || uname == "farhana.checker@aci-bd.com" || uname == "checker@padma-vat.com" || uname == "checker@enterprise.vat") && 
-                 (pwd == "Checker@123456" || pwd == "Checker@12345" || pwd == "checker123" || pwd == "123456"))
+                 (pwd == "Checker@123456"))
         {
             userId = Guid.Parse("99999999-3333-3333-3333-333333333333");
             displayName = "Farhana Yasmin (VAT Checker - ACI)";
@@ -103,7 +113,7 @@ public sealed class AuthController : ControllerBase
             ];
         }
         else if ((uname == "auditor" || uname == "shafiqul" || uname == "shafiqul.auditor@aci-bd.com" || uname == "auditor@padma-vat.com" || uname == "auditor@enterprise.vat") && 
-                 (pwd == "Auditor@123456" || pwd == "Auditor@12345" || pwd == "auditor123" || pwd == "123456"))
+                 (pwd == "Auditor@123456"))
         {
             userId = Guid.Parse("99999999-4444-4444-4444-444444444444");
             displayName = "Shafiqul Islam, FCA (Internal Auditor - ACI)";
@@ -116,12 +126,14 @@ public sealed class AuthController : ControllerBase
         }
         else
         {
-            return Unauthorized(new ProblemDetails
-            {
-                Status = 401,
-                Title = "unauthorized",
-                Detail = "Invalid username or password. Check credentials and try again."
-            });
+            if (LocalAccountPolicy.Reserved(uname)) return Unauthorized(new ProblemDetails { Status = 401, Title = "Invalid credentials" });
+            localAccount = await db.Set<LocalAccount>().AsNoTracking().SingleOrDefaultAsync(x => x.Username == uname && x.IsActive, ct);
+            var hasher = new PasswordHasher<LocalAccount>();
+            if (localAccount is null || hasher.VerifyHashedPassword(localAccount, localAccount.PasswordHash, pwd) == PasswordVerificationResult.Failed)
+                return Unauthorized(new ProblemDetails { Status = 401, Title = "Invalid credentials" });
+            userId = localAccount.Id; displayName = localAccount.FullName;
+            roles = localAccount.Roles; permissions = LocalAccountPolicy.PermissionsFor(roles, localAccount.AssignedModuleCodes);
+            loginCompany = localAccount.CompanyId; loginTenant = localAccount.TenantId;
         }
 
         // Generate signed JWT token with RSA key
@@ -130,18 +142,28 @@ public sealed class AuthController : ControllerBase
 
         var claims = new List<Claim>
         {
-            new("sub", uname),
+            new("sub", userId.ToString()),
             new("name", displayName),
-            new("tenant_id", TenantId.ToString()),
-            new("company_id", CompanyId.ToString())
+            new("preferred_username", uname),
+            new("tenant_id", loginTenant.ToString()),
+            new("company_id", loginCompany.ToString())
         };
+
+        if (localAccount is not null)
+        {
+            claims.Add(new Claim("local_account", "true"));
+            claims.Add(new Claim("branch_id", localAccount.BranchId.ToString()));
+            claims.Add(new Claim("email", localAccount.Email));
+            foreach (var module in localAccount.AssignedModuleCodes) claims.Add(new Claim("assigned_module", module));
+        }
+        foreach (var role in roles) claims.Add(new Claim("role", role));
 
         foreach (var perm in permissions)
         {
             claims.Add(new Claim("permission", perm));
         }
 
-        var expires = DateTime.UtcNow.AddDays(7);
+        var expires = DateTime.UtcNow.AddHours(1);
         var tokenDescriptor = new SecurityTokenDescriptor
         {
             Subject = new ClaimsIdentity(claims),
@@ -163,8 +185,8 @@ public sealed class AuthController : ControllerBase
                 Id: userId,
                 Username: uname,
                 DisplayName: displayName,
-                CompanyId: CompanyId,
-                TenantId: TenantId,
+                CompanyId: loginCompany,
+                TenantId: loginTenant,
                 Roles: roles,
                 Permissions: permissions
             )

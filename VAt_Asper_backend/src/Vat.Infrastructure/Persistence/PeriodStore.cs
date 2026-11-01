@@ -33,6 +33,7 @@ public sealed class PeriodStore(VatDbContext db) : IPeriodStore
     public async Task<bool> HasPending(FiscalPeriod period, CancellationToken ct)
     {
         var tenant = period.TenantId; var company = period.CompanyId; var from = period.From; var until = period.Until;
+        if(await db.Set<ProductionCostOperation>().AnyAsync(x=>x.TenantId==tenant&&x.CompanyId==company&&x.BusinessDate>=from&&x.BusinessDate<until&&x.State=="Draft",ct))return true;
         if (await db.Purchases.AnyAsync(x => x.TenantId == tenant && x.CompanyId == company && x.BusinessDate >= from && x.BusinessDate < until &&
             (x.Status == Vat.Domain.Purchasing.PurchaseStatus.ApprovedPendingPosting || x.Status == Vat.Domain.Purchasing.PurchaseStatus.PostingPrepared || x.Status == Vat.Domain.Purchasing.PurchaseStatus.ReversalPending), ct)) return true;
         if (await db.Set<PurchaseReversal>().AnyAsync(x => x.TenantId == tenant && x.CompanyId == company && x.CorrectionDate >= from && x.CorrectionDate < until && x.Status == ReversalStatus.Pending, ct)) return true;
@@ -80,6 +81,8 @@ public sealed class PeriodStore(VatDbContext db) : IPeriodStore
         foreach (var row in sales) Add(row.WarehouseId, row.ProductId, row.Quantity);
         var transfers = await db.Set<TransferJournalEntry>().AsNoTracking().Where(x => x.TenantId == tenantId && x.CompanyId == companyId).OrderBy(x => x.Id).ToArrayAsync(ct);
         foreach (var row in transfers) { Add(row.FromWarehouseId, row.ProductId, -row.Quantity); Add(row.ToWarehouseId, row.ProductId, row.Quantity); }
+        var production=await db.Set<ProductionStockMovement>().AsNoTracking().Where(x=>x.TenantId==tenantId&&x.CompanyId==companyId).GroupBy(x=>new{x.WarehouseId,x.ProductId}).Select(g=>new{g.Key.WarehouseId,g.Key.ProductId,Quantity=g.Sum(x=>x.Quantity)}).ToArrayAsync(ct);
+        foreach(var row in production)Add(row.WarehouseId,row.ProductId,row.Quantity);
         var reservations = new Dictionary<(Guid Warehouse, Guid Product), decimal>();
         var reserved = await db.Set<SalesFulfillment>().AsNoTracking().Where(x => x.TenantId == tenantId && x.CompanyId == companyId && x.Status == "Reserved").ToArrayAsync(ct);
         foreach (var plan in reserved)
@@ -92,6 +95,7 @@ public sealed class PeriodStore(VatDbContext db) : IPeriodStore
                 row.Quantity < 0 || row.ReservedQuantity < 0 || row.ReservedQuantity > row.Quantity) return false;
             expected.Remove(key); reservations.Remove(key);
         }
+        if(await db.Set<StockCostHead>().AnyAsync(x=>x.TenantId==tenantId&&x.CompanyId==companyId,ct)&&await new FinancialInventoryQueries(db).CostAvailability(new(tenantId,"period-reconciliation",new HashSet<Guid>{companyId},new HashSet<string>()),companyId,ct)!=null)return false;
         return expected.Count == 0 && reservations.Count == 0 && await new PaymentStore(db).Reconciles(tenantId, companyId, ct);
     }
 
@@ -107,15 +111,18 @@ public sealed class PeriodStore(VatDbContext db) : IPeriodStore
         var releases = await db.Set<PaymentAllocationRelease>().AsNoTracking().Where(x => x.TenantId == tenant && x.CompanyId == company && x.BusinessDate >= from && x.BusinessDate < until).OrderBy(x => x.Id).ToArrayAsync(ct);
         var transfers = await db.Set<TransferJournalEntry>().AsNoTracking().Where(x => x.TenantId == tenant && x.CompanyId == company && x.BusinessDate >= from && x.BusinessDate < until).OrderBy(x => x.Id).ToArrayAsync(ct);
         var purchaseIds = await FinancialPurchaseIds(period, ct); var salesIds = await FinancialSalesIds(period, ct);
+        var productionOperations=await db.Set<ProductionCostOperation>().AsNoTracking().Where(x=>x.TenantId==tenant&&x.CompanyId==company&&x.BusinessDate>=from&&x.BusinessDate<until&&x.State=="Posted").OrderBy(x=>x.Id).ToArrayAsync(ct);
+        var productionStock=await db.Set<ProductionStockMovement>().AsNoTracking().Where(x=>x.TenantId==tenant&&x.CompanyId==company&&x.BusinessDate>=from&&x.BusinessDate<until).OrderBy(x=>x.Id).ToArrayAsync(ct);
+        var wip=await db.Set<ProductionCostSession>().AsNoTracking().Where(x=>x.TenantId==tenant&&x.CompanyId==company).OrderBy(x=>x.Id).Select(x=>new ProductionPeriodCheckpoint(x.Id,x.OrderId,x.Version,x.WipValue,x.ReceivedQuantity)).ToArrayAsync(ct);
         var fingerprint = Convert.ToHexString(SHA256.HashData(System.Text.Json.JsonSerializer.SerializeToUtf8Bytes(new
         { period.Id, period.TenantId, period.CompanyId, period.From, period.Until, stock, tax, sales,
-            payments = payments.Select(x => new { x.Id, x.CustomerId, x.Reference, x.PaymentDate, x.Amount, x.Currency }), allocations, cash, releases, transfers })));
+            payments = payments.Select(x => new { x.Id, x.CustomerId, x.Reference, x.PaymentDate, x.Amount, x.Currency }), allocations, cash, releases, transfers,productionOperations,productionStock,wip })));
         return new(period.Id, from, until, now, purchaseIds, stock.Select(x => x.Id).ToArray(), tax.Select(x => x.Id).ToArray(),
             tax.Sum(x => x.NetAmount), tax.Sum(x => x.TaxAmount), tax.Sum(x => x.RecoverableTaxAmount), fingerprint,
             new SalesPeriodCheckpoint(salesIds, sales.Select(x => x.Id).ToArray(), sales.Sum(x => x.NetAmount), sales.Sum(x => x.OutputTaxAmount)),
             new PaymentPeriodCheckpoint(payments.Select(x => x.Id).ToArray(), allocations.Select(x => x.Id).ToArray(), payments.Sum(x => x.Amount),
                 allocations.Sum(x => x.Amount), cash.Select(x => x.Id).ToArray(), releases.Select(x => x.Id).ToArray(), -cash.Sum(x => x.Amount), releases.Sum(x => x.Amount)),
-            transfers.Select(x => x.Id).ToArray());
+            transfers.Select(x => x.Id).ToArray(),productionOperations.Select(x=>x.Id).ToArray(),productionStock.Select(x=>x.Id).ToArray(),wip);
     }
 
     public async Task<IReadOnlyList<FiscalPeriod>> List(Guid tenantId, Guid companyId, Guid? before, int take, CancellationToken ct)

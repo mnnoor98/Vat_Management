@@ -59,6 +59,8 @@ public sealed class OutboxLeaseSourceTests(PostgresApiFactory factory) : IClassF
             builder.WebHost.UseUrls("http://127.0.0.1:0");
             builder.Configuration.AddInMemoryCollection(new Dictionary<string, string?>
             {
+                // Copied API Kestrel endpoints override UseUrls; never claim the application port.
+                ["Kestrel:Endpoints:Http:Url"] = "http://127.0.0.1:0",
                 ["OutboxServer:ServiceKey"] = key, ["OutboxServer:AllowLoopbackHttp"] = "true",
                 ["Logging:LogLevel:Default"] = "Warning"
             });

@@ -88,6 +88,16 @@ public static class VatHttp
                     }
                 };
             });
+        if (DevSecurityKey.IsEnabled(builder.Environment, builder.Configuration))
+        {
+            builder.Services.PostConfigure<JwtBearerOptions>(JwtBearerDefaults.AuthenticationScheme, options =>
+            {
+                var configuration = new Microsoft.IdentityModel.Protocols.OpenIdConnect.OpenIdConnectConfiguration
+                { Issuer = DevSecurityKey.Issuer };
+                configuration.SigningKeys.Add(DevSecurityKey.CreateSigningKey());
+                options.ConfigurationManager = new Microsoft.IdentityModel.Protocols.StaticConfigurationManager<Microsoft.IdentityModel.Protocols.OpenIdConnect.OpenIdConnectConfiguration>(configuration);
+            });
+        }
         builder.Services.AddAuthorization(options =>
         {
             options.FallbackPolicy = new AuthorizationPolicyBuilder().RequireAuthenticatedUser().Build();

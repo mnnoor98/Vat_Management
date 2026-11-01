@@ -27,10 +27,18 @@ export interface BackendStockBalanceResponse {
   quantity: number;
   reservedQuantity: number;
   availableQuantity: number;
-  standardCost?: number;
-  totalValuation?: number;
-  hsCode?: string;
+  standardCost?: number | null;
+  totalValuation?: number | null;
+  hsCode?: string | null;
   costingMethod?: string;
+  valuationStatus?: string;
+  valuationReason?: string | null;
+  valuationBasis?: string | null;
+  totalValuationExact?: string | null;
+  unitCostExact?: string | null;
+  quantityExact?: string | null;
+  reservedQuantityExact?: string | null;
+  availableQuantityExact?: string | null;
 }
 
 export interface CreateTransferRequest {

@@ -10,7 +10,7 @@ param(
     [string]$HostServer = "127.0.0.1",
     [int]$DbPort = 5432,
     [string]$Username = $(if ($env:VAT_DB_USERNAME) { $env:VAT_DB_USERNAME } else { "postgres" }),
-    [string]$Password = $(if ($env:VAT_DB_PASSWORD) { $env:VAT_DB_PASSWORD } else { "123456" })
+    [string]$Password = $env:VAT_DB_PASSWORD
 )
 
 $ErrorActionPreference = "Stop"
@@ -21,7 +21,7 @@ if ([string]::IsNullOrWhiteSpace($Username)) {
     $Username = "postgres"
 }
 if ([string]::IsNullOrWhiteSpace($Password)) {
-    $Password = "123456"
+    throw "Set VAT_DB_PASSWORD or pass -Password. No database password is stored in source."
 }
 $scriptRoot = $PSScriptRoot
 $repoRoot = Split-Path -Parent $scriptRoot

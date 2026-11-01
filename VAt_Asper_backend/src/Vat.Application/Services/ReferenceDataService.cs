@@ -81,6 +81,14 @@ public sealed class ReferenceDataService(IReferenceStore store, ICompanyStore co
             ?? throw new DomainException("not_found", "Warehouse not found.", 404));
     }
 
+    public async Task<IReadOnlyList<TaxRuleResponse>> GetRules(Actor actor, Guid companyId, int skip, int take, CancellationToken ct)
+    {
+        actor.RequireCompany(companyId);
+        if (skip < 0 || skip > 10000 || take < 1 || take > 100)
+            throw new DomainException("validation_failed", "Use skip 0..10000 and take 1..100.");
+        return (await store.Rules(actor.TenantId, companyId, skip, take, ct)).Select(TaxRuleResponse.From).ToArray();
+    }
+
     public async Task<TaxRuleResponse> GetRule(Actor actor, Guid companyId, Guid id, CancellationToken ct)
     {
         actor.RequireCompany(companyId);

@@ -10,7 +10,7 @@ cd /d "%~dp0"
 
 powershell -NoProfile -ExecutionPolicy Bypass -Command ^
     ". '%~dp0VAt_Asper_backend\scripts\Import-LocalConnections.ps1' -IncludeIdentityOwner -IncludeWorkflowOwner -IncludeComplianceOwner -IncludeManufacturingOwner -IncludeIntegrationOwner;" ^
-    "$env:ConnectionStrings__VatMigrationDatabase = 'Host=127.0.0.1;Port=5432;Database=vat_management;Username=postgres;Password=123456;Include Error Detail=true;';" ^
+    "if ([string]::IsNullOrWhiteSpace($env:ConnectionStrings__VatMigrationDatabase)) { throw 'Set ConnectionStrings__VatMigrationDatabase before running migrations.' };" ^
     "& '%~dp0VAt_Asper_backend\scripts\Migrate-AllDatabases.ps1' -Apply -Configuration Debug"
 
 if %ERRORLEVEL% NEQ 0 (

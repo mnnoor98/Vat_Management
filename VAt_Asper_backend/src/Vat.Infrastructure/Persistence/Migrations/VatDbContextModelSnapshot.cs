@@ -232,6 +232,152 @@ namespace Vat.Infrastructure.Persistence.Migrations
                         });
                 });
 
+            modelBuilder.Entity("Vat.Domain.Costing.CostingPolicy", b =>
+                {
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("CompanyId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTimeOffset?>("ApprovedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("ApprovedBy")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("CreatedBy")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<DateOnly>("EffectiveFrom")
+                        .HasColumnType("date");
+
+                    b.Property<DateOnly>("EffectiveUntil")
+                        .HasColumnType("date");
+
+                    b.Property<string>("Method")
+                        .IsRequired()
+                        .HasMaxLength(30)
+                        .HasColumnType("character varying(30)");
+
+                    b.Property<Guid?>("ProductId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("State")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)");
+
+                    b.Property<int>("Version")
+                        .IsConcurrencyToken()
+                        .HasColumnType("integer");
+
+                    b.HasKey("TenantId", "CompanyId", "Id");
+
+                    b.HasIndex("TenantId", "CompanyId", "ProductId", "EffectiveFrom");
+
+                    b.ToTable("costing_policies", "inventory", t =>
+                        {
+                            t.HasCheckConstraint("ck_cost_policy_dates", "\"EffectiveFrom\" < \"EffectiveUntil\"");
+
+                            t.HasCheckConstraint("ck_cost_policy_method", "\"Method\" IN ('FIFO','WEIGHTED_AVERAGE')");
+
+                            t.HasCheckConstraint("ck_cost_policy_state", "(\"State\" = 'Draft' AND \"Version\" = 1 AND \"ApprovedBy\" IS NULL AND \"ApprovedAt\" IS NULL) OR (\"State\" = 'Approved' AND \"Version\" = 2 AND \"ApprovedBy\" IS NOT NULL AND \"ApprovedBy\" <> \"CreatedBy\" AND \"ApprovedAt\" IS NOT NULL)");
+                        });
+                });
+
+            modelBuilder.Entity("Vat.Domain.Costing.PurchaseCostReceipt", b =>
+                {
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("CompanyId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateOnly>("BusinessDate")
+                        .HasColumnType("date");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Currency")
+                        .IsRequired()
+                        .HasMaxLength(3)
+                        .HasColumnType("character varying(3)");
+
+                    b.Property<string>("Method")
+                        .HasMaxLength(30)
+                        .HasColumnType("character varying(30)");
+
+                    b.Property<decimal>("NetAmount")
+                        .HasPrecision(24, 4)
+                        .HasColumnType("numeric(24,4)");
+
+                    b.Property<Guid>("PlanId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid?>("PolicyId")
+                        .HasColumnType("uuid");
+
+                    b.Property<int?>("PolicyVersion")
+                        .HasColumnType("integer");
+
+                    b.Property<Guid>("ProductId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("PurchaseId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("PurchaseLineId")
+                        .HasColumnType("uuid");
+
+                    b.Property<decimal>("Quantity")
+                        .HasPrecision(24, 6)
+                        .HasColumnType("numeric(24,6)");
+
+                    b.Property<decimal>("RecoverableTaxAmount")
+                        .HasPrecision(24, 4)
+                        .HasColumnType("numeric(24,4)");
+
+                    b.Property<Guid>("SourceMovementId")
+                        .HasColumnType("uuid");
+
+                    b.Property<decimal>("TaxAmount")
+                        .HasPrecision(24, 4)
+                        .HasColumnType("numeric(24,4)");
+
+                    b.Property<Guid>("WarehouseId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("TenantId", "CompanyId", "Id");
+
+                    b.HasIndex("TenantId", "CompanyId", "PolicyId");
+
+                    b.HasIndex("TenantId", "CompanyId", "SourceMovementId")
+                        .IsUnique();
+
+                    b.HasIndex("TenantId", "CompanyId", "ProductId", "BusinessDate");
+
+                    b.ToTable("purchase_cost_receipts", "inventory", t =>
+                        {
+                            t.HasCheckConstraint("ck_cost_receipt_amounts", "\"Quantity\" > 0 AND \"NetAmount\" >= 0 AND \"TaxAmount\" >= 0 AND \"RecoverableTaxAmount\" >= 0 AND \"RecoverableTaxAmount\" <= \"TaxAmount\"");
+
+                            t.HasCheckConstraint("ck_cost_receipt_policy", "(\"PolicyId\" IS NULL AND \"PolicyVersion\" IS NULL AND \"Method\" IS NULL) OR (\"PolicyId\" IS NOT NULL AND \"PolicyVersion\" IS NOT NULL AND \"Method\" IS NOT NULL AND \"PolicyVersion\" = 2 AND \"Method\" IN ('FIFO','WEIGHTED_AVERAGE'))");
+                        });
+                });
+
             modelBuilder.Entity("Vat.Domain.Inventory.TransferJournalEntry", b =>
                 {
                     b.Property<Guid>("TenantId")
@@ -1770,6 +1916,91 @@ namespace Vat.Infrastructure.Persistence.Migrations
                     b.ToTable("audit_entries", "platform");
                 });
 
+            modelBuilder.Entity("Vat.Infrastructure.Persistence.CostSourceEvent", b =>
+                {
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("CompanyId")
+                        .HasColumnType("uuid");
+
+                    b.Property<long>("Sequence")
+                        .HasColumnType("bigint");
+
+                    b.Property<string>("Method")
+                        .HasMaxLength(30)
+                        .HasColumnType("character varying(30)");
+
+                    b.Property<Guid?>("PolicyId")
+                        .HasColumnType("uuid");
+
+                    b.Property<int?>("PolicyVersion")
+                        .HasColumnType("integer");
+
+                    b.Property<Guid>("ProductId")
+                        .HasColumnType("uuid");
+
+                    b.Property<decimal>("Quantity")
+                        .HasPrecision(24, 6)
+                        .HasColumnType("numeric(24,6)");
+
+                    b.Property<Guid?>("ReceiptId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid?>("SalesEntryId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("WarehouseId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("TenantId", "CompanyId", "Sequence");
+
+                    b.HasIndex("TenantId", "CompanyId", "PolicyId");
+
+                    b.HasIndex("TenantId", "CompanyId", "ReceiptId")
+                        .IsUnique()
+                        .HasFilter("\"ReceiptId\" IS NOT NULL");
+
+                    b.HasIndex("TenantId", "CompanyId", "SalesEntryId")
+                        .IsUnique()
+                        .HasFilter("\"SalesEntryId\" IS NOT NULL");
+
+                    b.HasIndex("TenantId", "CompanyId", "WarehouseId", "ProductId", "Sequence");
+
+                    b.ToTable("cost_source_events", "inventory", t =>
+                        {
+                            t.HasCheckConstraint("ck_cost_source_kind", "\"Sequence\" > 0 AND ((\"ReceiptId\" IS NOT NULL AND \"SalesEntryId\" IS NULL AND \"Quantity\" > 0) OR (\"ReceiptId\" IS NULL AND \"SalesEntryId\" IS NOT NULL AND \"Quantity\" < 0))");
+
+                            t.HasCheckConstraint("ck_cost_source_policy", "(\"PolicyId\" IS NULL AND \"PolicyVersion\" IS NULL AND \"Method\" IS NULL) OR (\"PolicyId\" IS NOT NULL AND \"PolicyVersion\" IS NOT NULL AND \"Method\" IS NOT NULL AND \"PolicyVersion\" = 2 AND \"Method\" IN ('FIFO','WEIGHTED_AVERAGE'))");
+                        });
+                });
+
+            modelBuilder.Entity("Vat.Infrastructure.Persistence.CostSourceHead", b =>
+                {
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("CompanyId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<bool>("EmptyOpeningProven")
+                        .HasColumnType("boolean");
+
+                    b.Property<long>("Sequence")
+                        .IsConcurrencyToken()
+                        .HasColumnType("bigint");
+
+                    b.HasKey("TenantId", "CompanyId");
+
+                    b.ToTable("cost_source_heads", "inventory", t =>
+                        {
+                            t.HasCheckConstraint("ck_cost_source_sequence", "\"Sequence\" >= 0");
+                        });
+                });
+
             modelBuilder.Entity("Vat.Infrastructure.Persistence.IdempotencyRecord", b =>
                 {
                     b.Property<Guid>("TenantId")
@@ -1980,6 +2211,275 @@ namespace Vat.Infrastructure.Persistence.Migrations
                     b.ToTable("outbox_messages", "platform");
                 });
 
+            modelBuilder.Entity("Vat.Infrastructure.Persistence.ProductionCostOperation", b =>
+                {
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("CompanyId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid");
+
+                    b.Property<decimal>("Amount")
+                        .HasPrecision(24, 4)
+                        .HasColumnType("numeric(24,4)");
+
+                    b.Property<string>("ApprovedBy")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<DateOnly>("BusinessDate")
+                        .HasColumnType("date");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("CreatedBy")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<string>("Evidence")
+                        .IsRequired()
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)");
+
+                    b.Property<string>("Kind")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<decimal>("Labor")
+                        .HasPrecision(24, 4)
+                        .HasColumnType("numeric(24,4)");
+
+                    b.Property<string>("Lines")
+                        .IsRequired()
+                        .HasColumnType("jsonb");
+
+                    b.Property<decimal?>("OutputInputQuantity")
+                        .HasPrecision(24, 6)
+                        .HasColumnType("numeric(24,6)");
+
+                    b.Property<Guid?>("OutputProductId")
+                        .HasColumnType("uuid");
+
+                    b.Property<decimal>("OutputQuantity")
+                        .HasPrecision(24, 6)
+                        .HasColumnType("numeric(24,6)");
+
+                    b.Property<string>("OutputUnitOfMeasure")
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)");
+
+                    b.Property<Guid?>("OutputWarehouseId")
+                        .HasColumnType("uuid");
+
+                    b.Property<decimal>("Overhead")
+                        .HasPrecision(24, 4)
+                        .HasColumnType("numeric(24,4)");
+
+                    b.Property<DateTimeOffset?>("PostedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<decimal>("PostedValue")
+                        .HasPrecision(24, 4)
+                        .HasColumnType("numeric(24,4)");
+
+                    b.Property<Guid?>("ReversesOperationId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("SessionId")
+                        .HasColumnType("uuid");
+
+                    b.Property<int>("SessionVersion")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("State")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<decimal>("Utility")
+                        .HasPrecision(24, 4)
+                        .HasColumnType("numeric(24,4)");
+
+                    b.Property<int>("Version")
+                        .IsConcurrencyToken()
+                        .HasColumnType("integer");
+
+                    b.HasKey("TenantId", "CompanyId", "Id");
+
+                    b.HasIndex("TenantId", "CompanyId", "ReversesOperationId")
+                        .IsUnique()
+                        .HasFilter("\"State\"='Posted' AND \"ReversesOperationId\" IS NOT NULL");
+
+                    b.HasIndex("TenantId", "CompanyId", "SessionId");
+
+                    b.ToTable("production_cost_operations", "inventory", t =>
+                        {
+                            t.HasCheckConstraint("ck_production_operation_amounts", "\"Amount\">=0 AND \"OutputQuantity\">=0 AND \"PostedValue\">=0 AND \"Labor\">=0 AND \"Utility\">=0 AND \"Overhead\">=0");
+
+                            t.HasCheckConstraint("ck_production_operation_kind", "\"Kind\" IN ('Issue','Return','Conversion','Receipt','ByProduct','Loss','Close','Reverse')");
+
+                            t.HasCheckConstraint("ck_production_operation_reversal", "(\"Kind\"='Reverse')=(\"ReversesOperationId\" IS NOT NULL)");
+
+                            t.HasCheckConstraint("ck_production_operation_state", "(\"State\"='Draft' AND \"Version\"=1 AND \"ApprovedBy\" IS NULL AND \"PostedAt\" IS NULL AND \"PostedValue\"=0) OR (\"State\"='Cancelled' AND \"Version\"=2 AND \"ApprovedBy\" IS NULL AND \"PostedAt\" IS NULL AND \"PostedValue\"=0) OR (\"State\"='Posted' AND \"Version\"=2 AND \"ApprovedBy\" IS NOT NULL AND \"ApprovedBy\"<>\"CreatedBy\" AND \"PostedAt\" IS NOT NULL)");
+                        });
+                });
+
+            modelBuilder.Entity("Vat.Infrastructure.Persistence.ProductionCostSession", b =>
+                {
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("CompanyId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("CreatedBy")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<Guid>("OrderId")
+                        .HasColumnType("uuid");
+
+                    b.Property<decimal>("ReceivedQuantity")
+                        .HasPrecision(24, 6)
+                        .HasColumnType("numeric(24,6)");
+
+                    b.Property<string>("Reference")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.Property<string>("SourceJson")
+                        .IsRequired()
+                        .HasColumnType("jsonb");
+
+                    b.Property<string>("SourceSha256")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<string>("State")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<int>("Version")
+                        .IsConcurrencyToken()
+                        .HasColumnType("integer");
+
+                    b.Property<decimal>("WipValue")
+                        .HasPrecision(24, 4)
+                        .HasColumnType("numeric(24,4)");
+
+                    b.HasKey("TenantId", "CompanyId", "Id");
+
+                    b.HasIndex("TenantId", "CompanyId", "OrderId")
+                        .IsUnique();
+
+                    b.ToTable("production_cost_sessions", "inventory", t =>
+                        {
+                            t.HasCheckConstraint("ck_production_cost_session", "\"Version\">=1 AND \"WipValue\">=0 AND \"ReceivedQuantity\">=0 AND \"State\" IN ('Open','Closed')");
+                        });
+                });
+
+            modelBuilder.Entity("Vat.Infrastructure.Persistence.ProductionStockMovement", b =>
+                {
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("CompanyId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateOnly>("BusinessDate")
+                        .HasColumnType("date");
+
+                    b.Property<string>("Kind")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<Guid>("OperationId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid?>("OriginalIssueId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("ProductId")
+                        .HasColumnType("uuid");
+
+                    b.Property<decimal>("Quantity")
+                        .HasPrecision(24, 6)
+                        .HasColumnType("numeric(24,6)");
+
+                    b.Property<Guid>("SessionId")
+                        .HasColumnType("uuid");
+
+                    b.Property<decimal>("Value")
+                        .HasPrecision(24, 4)
+                        .HasColumnType("numeric(24,4)");
+
+                    b.Property<Guid>("WarehouseId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("TenantId", "CompanyId", "Id");
+
+                    b.HasIndex("TenantId", "CompanyId", "OperationId");
+
+                    b.HasIndex("TenantId", "CompanyId", "WarehouseId", "ProductId");
+
+                    b.ToTable("production_stock_movements", "inventory", t =>
+                        {
+                            t.HasCheckConstraint("ck_production_movement_sign", "(\"Kind\" IN ('Issue','ReceiptReversal') AND \"Quantity\"<0 AND \"Value\"<=0) OR (\"Kind\" IN ('Return','Receipt') AND \"Quantity\">0 AND \"Value\">=0)");
+                        });
+                });
+
+            modelBuilder.Entity("Vat.Infrastructure.Persistence.ProductionWipEntry", b =>
+                {
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("CompanyId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("OperationId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateOnly>("BusinessDate")
+                        .HasColumnType("date");
+
+                    b.Property<string>("Kind")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<Guid>("SessionId")
+                        .HasColumnType("uuid");
+
+                    b.Property<int>("SessionVersion")
+                        .HasColumnType("integer");
+
+                    b.Property<decimal>("Value")
+                        .HasPrecision(24, 4)
+                        .HasColumnType("numeric(24,4)");
+
+                    b.HasKey("TenantId", "CompanyId", "OperationId");
+
+                    b.HasIndex("TenantId", "CompanyId", "SessionId", "SessionVersion")
+                        .IsUnique();
+
+                    b.ToTable("production_wip_entries", "inventory");
+                });
+
             modelBuilder.Entity("Vat.Infrastructure.Persistence.ReportingCheckpoint", b =>
                 {
                     b.Property<Guid>("TenantId")
@@ -2087,6 +2587,271 @@ namespace Vat.Infrastructure.Persistence.Migrations
                     b.ToTable("reporting_source_exports", "platform", t =>
                         {
                             t.HasCheckConstraint("CK_reporting_source_exports_size", "octet_length(\"RowsJson\") <= 8388608");
+                        });
+                });
+
+            modelBuilder.Entity("Vat.Infrastructure.Persistence.StockCostAdoption", b =>
+                {
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("CompanyId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTimeOffset?>("ApprovedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("ApprovedBy")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<string>("Basis")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<DateOnly>("BusinessDate")
+                        .HasColumnType("date");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("CreatedBy")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<string>("Evidence")
+                        .IsRequired()
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)");
+
+                    b.Property<string>("Lines")
+                        .IsRequired()
+                        .HasColumnType("jsonb");
+
+                    b.Property<string>("Snapshot")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<string>("State")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<int>("Version")
+                        .IsConcurrencyToken()
+                        .HasColumnType("integer");
+
+                    b.HasKey("TenantId", "CompanyId", "Id");
+
+                    b.ToTable("cost_adoptions", "inventory", t =>
+                        {
+                            t.HasCheckConstraint("ck_cost_adoption_basis", "\"Basis\" IN ('PurchaseNetOnly','NetPlusNonrecoverableTaxAndLanded')");
+
+                            t.HasCheckConstraint("ck_cost_adoption_state", "(\"State\"='Draft' AND \"Version\"=1 AND \"ApprovedBy\" IS NULL AND \"ApprovedAt\" IS NULL) OR (\"State\"='Approved' AND \"Version\"=2 AND \"ApprovedBy\" IS NOT NULL AND \"ApprovedAt\" IS NOT NULL AND \"ApprovedBy\"<>\"CreatedBy\")");
+                        });
+                });
+
+            modelBuilder.Entity("Vat.Infrastructure.Persistence.StockCostEntry", b =>
+                {
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("CompanyId")
+                        .HasColumnType("uuid");
+
+                    b.Property<long>("Sequence")
+                        .HasColumnType("bigint");
+
+                    b.Property<string>("Allocations")
+                        .IsRequired()
+                        .HasColumnType("jsonb");
+
+                    b.Property<DateOnly>("BusinessDate")
+                        .HasColumnType("date");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Kind")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("Method")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<Guid?>("OriginalSourceId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("ProductId")
+                        .HasColumnType("uuid");
+
+                    b.Property<decimal>("Quantity")
+                        .HasPrecision(24, 6)
+                        .HasColumnType("numeric(24,6)");
+
+                    b.Property<Guid>("SourceId")
+                        .HasColumnType("uuid");
+
+                    b.Property<decimal>("Value")
+                        .HasPrecision(24, 4)
+                        .HasColumnType("numeric(24,4)");
+
+                    b.Property<Guid>("WarehouseId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("TenantId", "CompanyId", "Sequence");
+
+                    b.HasIndex("TenantId", "CompanyId", "WarehouseId", "ProductId", "Sequence");
+
+                    b.HasIndex("TenantId", "CompanyId", "Kind", "SourceId", "WarehouseId", "ProductId")
+                        .IsUnique();
+
+                    b.ToTable("cost_entries", "inventory", t =>
+                        {
+                            t.HasCheckConstraint("ck_cost_entry_kind", "\"Kind\" IN ('Opening','Receipt','Issue','Return','Reversal','TransferOut','TransferIn','ProductionIssue','ProductionReturn','ProductionReceipt','ProductionReceiptReversal')");
+
+                            t.HasCheckConstraint("ck_cost_entry_sign", "(\"Kind\" IN ('Opening','Receipt','Return','TransferIn','ProductionReturn','ProductionReceipt') AND \"Quantity\">0 AND \"Value\">=0) OR (\"Kind\" IN ('Issue','Reversal','TransferOut','ProductionIssue','ProductionReceiptReversal') AND \"Quantity\"<0 AND \"Value\"<=0)");
+                        });
+                });
+
+            modelBuilder.Entity("Vat.Infrastructure.Persistence.StockCostHead", b =>
+                {
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("CompanyId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("AdoptionId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Basis")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<DateOnly>("OpeningDate")
+                        .HasColumnType("date");
+
+                    b.Property<long>("Sequence")
+                        .IsConcurrencyToken()
+                        .HasColumnType("bigint");
+
+                    b.HasKey("TenantId", "CompanyId");
+
+                    b.HasIndex("TenantId", "CompanyId", "AdoptionId");
+
+                    b.ToTable("cost_ledger_heads", "inventory", t =>
+                        {
+                            t.HasCheckConstraint("ck_cost_ledger_sequence", "\"Sequence\">=0");
+                        });
+                });
+
+            modelBuilder.Entity("Vat.Infrastructure.Persistence.StockCostPosition", b =>
+                {
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("CompanyId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("WarehouseId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("ProductId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Layers")
+                        .IsRequired()
+                        .HasColumnType("jsonb");
+
+                    b.Property<string>("Method")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<decimal>("Quantity")
+                        .HasPrecision(24, 6)
+                        .HasColumnType("numeric(24,6)");
+
+                    b.Property<decimal>("Value")
+                        .HasPrecision(24, 4)
+                        .HasColumnType("numeric(24,4)");
+
+                    b.HasKey("TenantId", "CompanyId", "WarehouseId", "ProductId");
+
+                    b.ToTable("cost_positions", "inventory", t =>
+                        {
+                            t.HasCheckConstraint("ck_cost_position_method", "\"Method\" IN ('FIFO','WEIGHTED_AVERAGE')");
+
+                            t.HasCheckConstraint("ck_cost_position_value", "\"Quantity\">=0 AND \"Value\">=0 AND (\"Quantity\">0 OR \"Value\"=0)");
+                        });
+                });
+
+            modelBuilder.Entity("Vat.Infrastructure.Persistence.StockLandedReview", b =>
+                {
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("CompanyId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTimeOffset?>("ApprovedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("ApprovedBy")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("CreatedBy")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<string>("Evidence")
+                        .IsRequired()
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)");
+
+                    b.Property<string>("Lines")
+                        .IsRequired()
+                        .HasColumnType("jsonb");
+
+                    b.Property<Guid>("PlanId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("State")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<decimal>("TotalAmount")
+                        .HasPrecision(24, 4)
+                        .HasColumnType("numeric(24,4)");
+
+                    b.Property<int>("Version")
+                        .IsConcurrencyToken()
+                        .HasColumnType("integer");
+
+                    b.HasKey("TenantId", "CompanyId", "Id");
+
+                    b.HasIndex("TenantId", "CompanyId", "PlanId")
+                        .IsUnique()
+                        .HasFilter("\"State\"='Approved'");
+
+                    b.ToTable("cost_landed_reviews", "inventory", t =>
+                        {
+                            t.HasCheckConstraint("ck_landed_amount", "\"TotalAmount\">=0");
+
+                            t.HasCheckConstraint("ck_landed_state", "(\"State\"='Draft' AND \"Version\"=1 AND \"ApprovedBy\" IS NULL AND \"ApprovedAt\" IS NULL) OR (\"State\"='Approved' AND \"Version\"=2 AND \"ApprovedBy\" IS NOT NULL AND \"ApprovedAt\" IS NOT NULL AND \"ApprovedBy\"<>\"CreatedBy\")");
                         });
                 });
 
@@ -6556,6 +7321,34 @@ namespace Vat.Infrastructure.Persistence.Migrations
                         .IsRequired();
                 });
 
+            modelBuilder.Entity("Vat.Domain.Costing.CostingPolicy", b =>
+                {
+                    b.HasOne("Vat.Domain.Company.Company", null)
+                        .WithMany()
+                        .HasForeignKey("TenantId", "CompanyId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("Vat.Domain.Catalog.Product", null)
+                        .WithMany()
+                        .HasForeignKey("TenantId", "CompanyId", "ProductId")
+                        .OnDelete(DeleteBehavior.Restrict);
+                });
+
+            modelBuilder.Entity("Vat.Domain.Costing.PurchaseCostReceipt", b =>
+                {
+                    b.HasOne("Vat.Domain.Costing.CostingPolicy", null)
+                        .WithMany()
+                        .HasForeignKey("TenantId", "CompanyId", "PolicyId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("Vat.Domain.Posting.StockMovement", null)
+                        .WithMany()
+                        .HasForeignKey("TenantId", "CompanyId", "SourceMovementId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+                });
+
             modelBuilder.Entity("Vat.Domain.Inventory.TransferJournalEntry", b =>
                 {
                     b.HasOne("Vat.Domain.Catalog.Warehouse", null)
@@ -6915,6 +7708,125 @@ namespace Vat.Infrastructure.Persistence.Migrations
                     b.HasOne("Vat.Domain.Company.Company", null)
                         .WithMany()
                         .HasForeignKey("TenantId", "CompanyId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("Vat.Infrastructure.Persistence.CostSourceEvent", b =>
+                {
+                    b.HasOne("Vat.Infrastructure.Persistence.CostSourceHead", null)
+                        .WithMany()
+                        .HasForeignKey("TenantId", "CompanyId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("Vat.Domain.Costing.CostingPolicy", null)
+                        .WithMany()
+                        .HasForeignKey("TenantId", "CompanyId", "PolicyId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("Vat.Domain.Costing.PurchaseCostReceipt", null)
+                        .WithMany()
+                        .HasForeignKey("TenantId", "CompanyId", "ReceiptId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("Vat.Domain.Sales.SalesPostingEntry", null)
+                        .WithMany()
+                        .HasForeignKey("TenantId", "CompanyId", "SalesEntryId")
+                        .OnDelete(DeleteBehavior.Restrict);
+                });
+
+            modelBuilder.Entity("Vat.Infrastructure.Persistence.CostSourceHead", b =>
+                {
+                    b.HasOne("Vat.Domain.Company.Company", null)
+                        .WithMany()
+                        .HasForeignKey("TenantId", "CompanyId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("Vat.Infrastructure.Persistence.ProductionCostOperation", b =>
+                {
+                    b.HasOne("Vat.Infrastructure.Persistence.ProductionCostOperation", null)
+                        .WithMany()
+                        .HasForeignKey("TenantId", "CompanyId", "ReversesOperationId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("Vat.Infrastructure.Persistence.ProductionCostSession", null)
+                        .WithMany()
+                        .HasForeignKey("TenantId", "CompanyId", "SessionId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("Vat.Infrastructure.Persistence.ProductionCostSession", b =>
+                {
+                    b.HasOne("Vat.Domain.Company.Company", null)
+                        .WithMany()
+                        .HasForeignKey("TenantId", "CompanyId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("Vat.Infrastructure.Persistence.ProductionStockMovement", b =>
+                {
+                    b.HasOne("Vat.Infrastructure.Persistence.ProductionCostOperation", null)
+                        .WithMany()
+                        .HasForeignKey("TenantId", "CompanyId", "OperationId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("Vat.Infrastructure.Persistence.ProductionWipEntry", b =>
+                {
+                    b.HasOne("Vat.Infrastructure.Persistence.ProductionCostOperation", null)
+                        .WithMany()
+                        .HasForeignKey("TenantId", "CompanyId", "OperationId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("Vat.Infrastructure.Persistence.StockCostAdoption", b =>
+                {
+                    b.HasOne("Vat.Domain.Company.Company", null)
+                        .WithMany()
+                        .HasForeignKey("TenantId", "CompanyId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("Vat.Infrastructure.Persistence.StockCostEntry", b =>
+                {
+                    b.HasOne("Vat.Infrastructure.Persistence.StockCostHead", null)
+                        .WithMany()
+                        .HasForeignKey("TenantId", "CompanyId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("Vat.Infrastructure.Persistence.StockCostHead", b =>
+                {
+                    b.HasOne("Vat.Infrastructure.Persistence.StockCostAdoption", null)
+                        .WithMany()
+                        .HasForeignKey("TenantId", "CompanyId", "AdoptionId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("Vat.Infrastructure.Persistence.StockCostPosition", b =>
+                {
+                    b.HasOne("Vat.Infrastructure.Persistence.StockCostHead", null)
+                        .WithMany()
+                        .HasForeignKey("TenantId", "CompanyId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("Vat.Infrastructure.Persistence.StockLandedReview", b =>
+                {
+                    b.HasOne("Vat.Domain.Posting.PurchasePostingPlan", null)
+                        .WithMany()
+                        .HasForeignKey("TenantId", "CompanyId", "PlanId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
                 });

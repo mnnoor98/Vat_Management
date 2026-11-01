@@ -32,6 +32,8 @@ public sealed class SalesPostingStore(VatDbContext db) : ISalesPostingStore
     public async Task Issue(SalesFulfillment plan, DateTimeOffset now, CancellationToken ct)
     {
         RequireTransaction();
+        var costHead = await CostSourceJournal.Begin(db, plan.TenantId, plan.CompanyId, now, ct);
+        var ledger = await StockCostLedger.Begin(db, plan.TenantId, plan.CompanyId, now, ct);
         foreach (var group in plan.Snapshot.Lines.GroupBy(x => x.ProductId).OrderBy(x => x.Key))
         {
             var product = group.Key;
@@ -44,7 +46,14 @@ public sealed class SalesPostingStore(VatDbContext db) : ISalesPostingStore
                 """, ct);
             if (changed != 1) throw new DomainException("reservation_mismatch", "Reserved inventory is inconsistent.", 409);
         }
-        foreach (var line in plan.Snapshot.Lines) db.Add(SalesPostingEntry.Issue(plan, line, now));
+        var costing = new CostingStore(db);
+        foreach (var line in plan.Snapshot.Lines.OrderBy(x => x.ProductId).ThenBy(x => x.LineId))
+        {
+            var entry = SalesPostingEntry.Issue(plan, line, now); db.Add(entry);
+            var policy = await costing.Resolve(plan.TenantId, plan.CompanyId, line.ProductId, entry.BusinessDate, ct);
+            CostSourceJournal.Issue(db, costHead, entry, policy);
+            if (ledger is not null) await ledger.Issue(entry, ct);
+        }
     }
 
     public async Task Release(SalesFulfillment plan, CancellationToken ct)

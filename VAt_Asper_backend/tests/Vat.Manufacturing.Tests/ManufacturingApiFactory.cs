@@ -60,6 +60,7 @@ public sealed class ManufacturingApiFactory : WebApplicationFactory<Program>, IA
         builder.ConfigureTestServices(services =>
         {
             services.AddSingleton<ICoefficientReferences>(References);
+            services.AddSingleton<IProductionWarehouseReferences>(References);
             services.PostConfigure<JwtBearerOptions>(JwtBearerDefaults.AuthenticationScheme, options =>
             {
             var configuration = new OpenIdConnectConfiguration { Issuer = Issuer };
@@ -124,8 +125,10 @@ public sealed class ManufacturingApiFactory : WebApplicationFactory<Program>, IA
     }
 }
 
-public sealed class TestCoefficientReferences : ICoefficientReferences
+public sealed class TestCoefficientReferences : ICoefficientReferences,IProductionWarehouseReferences
 {
+    public System.Collections.Concurrent.ConcurrentDictionary<(Guid Tenant,Guid Company,Guid Warehouse),ProductionWarehouseReference> Warehouses{get;}=new();
+    public Task<ProductionWarehouseReference> Warehouse(Actor actor,Guid company,Guid warehouse,string bearer,CancellationToken ct)=>Task.FromResult(Warehouses.TryGetValue((actor.TenantId,company,warehouse),out var value)?value:throw new DomainException("not_found","Test warehouse missing.",404));
     public System.Collections.Concurrent.ConcurrentDictionary<(Guid Tenant, Guid Company, Guid Product), ProductReference> Products { get; } = new();
     public Task<ProductReference> Product(Actor actor, Guid company, Guid product, string bearerToken, CancellationToken ct) =>
         Task.FromResult(Products.TryGetValue((actor.TenantId, company, product), out var value) ? value :

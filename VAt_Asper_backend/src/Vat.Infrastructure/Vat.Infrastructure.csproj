@@ -1,5 +1,12 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <ItemGroup>
+    <EmbeddedResource Include="Persistence/Migrations/Sql/ProductionOutputGuards.sql" LogicalName="ProductionOutputGuards.sql" />
+    <EmbeddedResource Include="Persistence/Migrations/Sql/ProductionUomGuards.sql" LogicalName="ProductionUomGuards.sql" />
+    <EmbeddedResource Include="Persistence/Migrations/Sql/ProductionReversalGuards.sql" LogicalName="ProductionReversalGuards.sql" />
+    <EmbeddedResource Include="Persistence/Migrations/Sql/ProductionReversalCostGuard.sql" LogicalName="ProductionReversalCostGuard.sql" />
+    <EmbeddedResource Include="Persistence/Migrations/Sql/ActiveStockCostLedger.sql" LogicalName="ActiveStockCostLedger.sql" />
+    <EmbeddedResource Include="Persistence/Migrations/Sql/ProductionWipGuards.sql" LogicalName="ProductionWipGuards.sql" />
+    <EmbeddedResource Include="Persistence/Migrations/Sql/ProductionStockCostGuard.sql" LogicalName="ProductionStockCostGuard.sql" />
     <ProjectReference Include="../Vat.Application/Vat.Application.csproj" />
     <ProjectReference Include="../Vat.Messaging/Vat.Messaging.csproj" />
     <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" Version="10.0.3" />

@@ -5,7 +5,8 @@ public enum FiscalPeriodStatus { Open, Closing, Closed }
 public sealed record PeriodCloseSnapshot(Guid PeriodId, DateOnly From, DateOnly Until, DateTimeOffset CapturedAt,
     IReadOnlyList<Guid> PurchaseIds, IReadOnlyList<Guid> StockEntryIds, IReadOnlyList<Guid> TaxEntryIds,
     decimal NetAmount, decimal TaxAmount, decimal RecoverableTaxAmount, string LedgerFingerprint, SalesPeriodCheckpoint? Sales = null, PaymentPeriodCheckpoint? Payments = null,
-    IReadOnlyList<Guid>? TransferEntryIds = null);
+    IReadOnlyList<Guid>? TransferEntryIds = null,IReadOnlyList<Guid>? ProductionOperationIds=null,IReadOnlyList<Guid>? ProductionStockIds=null,IReadOnlyList<ProductionPeriodCheckpoint>? ProductionWip=null);
+public sealed record ProductionPeriodCheckpoint(Guid SessionId,Guid OrderId,int Version,decimal WipValue,decimal ReceivedQuantity);
 
 public sealed record PaymentPeriodCheckpoint(IReadOnlyList<Guid> PaymentIds, IReadOnlyList<Guid> AllocationIds, decimal CollectedAmount, decimal AllocatedAmount, IReadOnlyList<Guid>? CashAdjustmentIds = null, IReadOnlyList<Guid>? AllocationReleaseIds = null, decimal ReturnedAmount = 0, decimal ReleasedAmount = 0);
 

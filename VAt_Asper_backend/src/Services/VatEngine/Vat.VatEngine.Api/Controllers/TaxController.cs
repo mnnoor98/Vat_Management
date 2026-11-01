@@ -51,6 +51,12 @@ public sealed class TaxController : ControllerBase
             () => service.Publish(ctx.GetActor(), companyId, id, request, ctx.TraceIdentifier, ct), ct);
     }
 
+    [HttpGet("/api/v1/companies/{companyId:guid}/tax/rules", Name = "ListTaxRules")]
+    [Authorize(Policy = Permissions.TaxRead)]
+    public async Task<IActionResult> ListTaxRules(Guid companyId, [FromServices] ReferenceDataService service,
+        CancellationToken ct, [FromQuery] int skip = 0, [FromQuery] int take = 25) =>
+        Ok(await service.GetRules(HttpContext.GetActor(), companyId, skip, take, ct));
+
     [HttpGet("/api/v1/companies/{companyId:guid}/tax/rules/{id:guid}", Name = "GetTaxRule")]
     [Authorize(Policy = Permissions.TaxRead)]
     public async Task<IActionResult> GetTaxRule([FromRoute] Guid companyId, [FromRoute] Guid id,

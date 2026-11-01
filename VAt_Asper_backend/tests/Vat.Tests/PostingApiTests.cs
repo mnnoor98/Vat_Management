@@ -6,6 +6,9 @@ using Microsoft.EntityFrameworkCore.Diagnostics;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Vat.Application.Contracts;
+using Vat.Application;
+using Vat.Domain.Costing;
+using Npgsql;
 using Vat.Application.Security;
 using Vat.Domain.Posting;
 using Vat.Domain.Purchasing;
@@ -16,11 +19,124 @@ namespace Vat.Tests;
 [Collection("PostgreSQL integration")]
 public sealed class PostingApiTests(PostgresApiFactory factory) : IClassFixture<PostgresApiFactory>
 {
+    [Fact]
+    public async Task Costing_policies_enforce_maker_checker_override_dates_overlap_scope_and_replay()
+    {
+        var setup = await Setup(); var root = setup.Root + "/inventory/costing-policies";
+        var companyPolicy = await Created<CostingPolicyView>(setup.Maker, root, new CreateCostingPolicyRequest(null, "FIFO", new(2026, 1, 1), new(2028, 1, 1)));
+        var approvalPath = root + $"/{companyPolicy.Id}/approve";
+        Assert.Equal(HttpStatusCode.Forbidden, (await Post(setup.Maker, approvalPath, new ApproveCostingPolicyRequest(1))).StatusCode);
+        using var reader = factory.Client(setup.Tenant, setup.Company, permissions: [Permissions.CostingRead]);
+        Assert.Equal(HttpStatusCode.Forbidden, (await Post(reader, approvalPath, new ApproveCostingPolicyRequest(1))).StatusCode);
+        var key = Guid.NewGuid().ToString();
+        Assert.Equal(HttpStatusCode.OK, (await Post(setup.Checker, approvalPath, new ApproveCostingPolicyRequest(1), key)).StatusCode);
+        var replay = await Post(setup.Checker, approvalPath, new ApproveCostingPolicyRequest(1), key);
+        Assert.Equal("true", replay.Headers.GetValues("Idempotency-Replayed").Single());
+        var productPolicy = await Created<CostingPolicyView>(setup.Maker, root, new CreateCostingPolicyRequest(setup.Product, "WEIGHTED_AVERAGE", new(2026, 1, 1), new(2027, 1, 1)));
+        Assert.Equal(HttpStatusCode.OK, (await Post(setup.Checker, root + $"/{productPolicy.Id}/approve", new ApproveCostingPolicyRequest(1))).StatusCode);
+        var resolved = (await reader.GetFromJsonAsync<CostingPolicyView>(root + $"/resolve?productId={setup.Product}&businessDate=2026-10-23"))!;
+        Assert.Equal(productPolicy.Id, resolved.Id); Assert.Equal(2, resolved.Version);
+        Assert.Equal(companyPolicy.Id, (await reader.GetFromJsonAsync<CostingPolicyView>(root + $"/resolve?productId={setup.Product}&businessDate=2027-01-01"))!.Id);
+        var overlap = await Created<CostingPolicyView>(setup.Maker, root, new CreateCostingPolicyRequest(setup.Product, "FIFO", new(2026, 6, 1), new(2027, 6, 1)));
+        Assert.Equal(HttpStatusCode.Conflict, (await Post(setup.Checker, root + $"/{overlap.Id}/approve", new ApproveCostingPolicyRequest(1))).StatusCode);
+        Assert.Equal(HttpStatusCode.UnprocessableEntity, (await reader.GetAsync(root + "?take=101")).StatusCode);
+        Assert.Equal(HttpStatusCode.NotFound, (await reader.GetAsync(root + $"/resolve?productId={Guid.NewGuid()}&businessDate=2026-10-23")).StatusCode);
+        using var foreignTenant = factory.Client(Guid.NewGuid(), setup.Company);
+        Assert.Empty((await foreignTenant.GetFromJsonAsync<CostingPolicyView[]>(root))!);
+        Assert.Equal(HttpStatusCode.NotFound, (await foreignTenant.GetAsync(root + $"/{companyPolicy.Id}")).StatusCode);
+        using var foreignCompany = factory.Client(setup.Tenant, Guid.NewGuid());
+        Assert.Equal(HttpStatusCode.Forbidden, (await foreignCompany.GetAsync(root)).StatusCode);
+        await factory.Inspect(async db =>
+        {
+            await Assert.ThrowsAsync<PostgresException>(() => db.Database.ExecuteSqlInterpolatedAsync($"UPDATE inventory.costing_policies SET \"Method\"='WEIGHTED_AVERAGE' WHERE \"TenantId\"={setup.Tenant} AND \"CompanyId\"={setup.Company} AND \"Id\"={companyPolicy.Id}"));
+            return 0;
+        });
+    }
+
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public async Task Cost_receipts_commit_once_with_posting_and_freeze_policy_or_explicit_unassigned_history(bool configured)
+    {
+        var setup = await Setup(); var policies = setup.Root + "/inventory/costing-policies";
+        CostingPolicyView? selected = null;
+        if (configured)
+        {
+            selected = await Created<CostingPolicyView>(setup.Maker, policies, new CreateCostingPolicyRequest(setup.Product, "FIFO", new(2026, 1, 1), new(2027, 1, 1)));
+            Assert.Equal(HttpStatusCode.OK, (await Post(setup.Checker, policies + $"/{selected.Id}/approve", new ApproveCostingPolicyRequest(1))).StatusCode);
+        }
+        var purchase = await Approve(setup); var plan = await Prepare(setup, purchase.Id);
+        var path = setup.Purchase(purchase.Id) + $"/posting-plans/{plan.Id}/post"; var key = Guid.NewGuid().ToString();
+        Assert.Equal(HttpStatusCode.OK, (await Post(setup.Checker, path, new TransitionRequest(4), key)).StatusCode);
+        Assert.Equal("true", (await Post(setup.Checker, path, new TransitionRequest(4), key)).Headers.GetValues("Idempotency-Replayed").Single());
+        await factory.Inspect(async db =>
+        {
+            var receipt = await db.Set<PurchaseCostReceipt>().SingleAsync(x => x.TenantId == setup.Tenant && x.CompanyId == setup.Company && x.PurchaseId == purchase.Id);
+            Assert.Equal(selected?.Id, receipt.PolicyId); Assert.Equal(configured ? 2 : (int?)null, receipt.PolicyVersion);
+            Assert.Equal(configured ? "FIFO" : null, receipt.Method);
+            Assert.Equal(2.5m, receipt.Quantity); Assert.Equal(250m, receipt.NetAmount);
+            Assert.Equal(18.75m, receipt.TaxAmount); Assert.Equal(7.5m, receipt.RecoverableTaxAmount);
+            Assert.True(await db.Set<StockMovement>().AnyAsync(x => x.TenantId == receipt.TenantId && x.CompanyId == receipt.CompanyId && x.Id == receipt.SourceMovementId));
+            await Assert.ThrowsAsync<PostgresException>(() => db.Database.ExecuteSqlInterpolatedAsync($"UPDATE inventory.purchase_cost_receipts SET \"NetAmount\"=0 WHERE \"Id\"={receipt.Id}"));
+            await Assert.ThrowsAsync<PostgresException>(() => db.Database.ExecuteSqlInterpolatedAsync($"DELETE FROM inventory.purchase_cost_receipts WHERE \"Id\"={receipt.Id}"));
+            return 0;
+        });
+        var laterPolicy = await Created<CostingPolicyView>(setup.Maker, policies, new CreateCostingPolicyRequest(null, "WEIGHTED_AVERAGE", new(2026, 1, 1), new(2027, 1, 1)));
+        Assert.Equal(HttpStatusCode.Conflict, (await Post(setup.Checker, policies + $"/{laterPolicy.Id}/approve", new ApproveCostingPolicyRequest(1))).StatusCode);
+        var receiptsPath = setup.Root + "/inventory/purchase-cost-receipts";
+        Assert.Equal(HttpStatusCode.OK, (await setup.Checker.GetAsync(receiptsPath)).StatusCode);
+        using var denied = factory.Client(setup.Tenant, setup.Company, permissions: [Permissions.InventoryRead]);
+        Assert.Equal(HttpStatusCode.Forbidden, (await denied.GetAsync(receiptsPath)).StatusCode);
+    }
+
+    [Fact]
+    public async Task Costing_approval_racing_receipt_capture_has_one_consistent_policy_boundary()
+    {
+        var setup = await Setup(); var root = setup.Root + "/inventory/costing-policies";
+        var draft = await Created<CostingPolicyView>(setup.Maker, root, new CreateCostingPolicyRequest(null, "FIFO", new(2026, 1, 1), new(2027, 1, 1)));
+        var purchase = await Approve(setup); var plan = await Prepare(setup, purchase.Id);
+        var decisions = await Task.WhenAll(Post(setup.Checker, root + $"/{draft.Id}/approve", new ApproveCostingPolicyRequest(1)),
+            Post(setup.Checker, setup.Purchase(purchase.Id) + $"/posting-plans/{plan.Id}/post", new TransitionRequest(4)));
+        Assert.Equal(HttpStatusCode.OK, decisions[1].StatusCode);
+        Assert.Contains(decisions[0].StatusCode, new[] { HttpStatusCode.OK, HttpStatusCode.Conflict });
+        await factory.Inspect(async db =>
+        {
+            var receipt = await db.Set<PurchaseCostReceipt>().SingleAsync(x => x.TenantId == setup.Tenant && x.CompanyId == setup.Company);
+            Assert.Equal(decisions[0].StatusCode == HttpStatusCode.OK ? draft.Id : (Guid?)null, receipt.PolicyId);
+            return 0;
+        });
+    }
+
+    [Fact]
+    public async Task Costing_concurrent_overlapping_approvals_commit_only_one_policy()
+    {
+        var setup = await Setup(); var root = setup.Root + "/inventory/costing-policies";
+        var a = await Created<CostingPolicyView>(setup.Maker, root, new CreateCostingPolicyRequest(null, "FIFO", new(2026, 1, 1), new(2027, 1, 1)));
+        var b = await Created<CostingPolicyView>(setup.Maker, root, new CreateCostingPolicyRequest(null, "WEIGHTED_AVERAGE", new(2026, 1, 1), new(2027, 1, 1)));
+        var outcomes = await Task.WhenAll(Post(setup.Checker, root + $"/{a.Id}/approve", new ApproveCostingPolicyRequest(1)),
+            Post(setup.Checker, root + $"/{b.Id}/approve", new ApproveCostingPolicyRequest(1)));
+        Assert.Single(outcomes, x => x.StatusCode == HttpStatusCode.OK);
+        Assert.Single(outcomes, x => x.StatusCode == HttpStatusCode.Conflict);
+    }
+
     private sealed record SetupData(Guid Tenant, Guid Company, Guid Branch, Guid Warehouse, Guid Product,
         Guid Rule, HttpClient Maker, HttpClient Checker)
     {
         public string Root => $"/api/v1/companies/{Company}";
         public string Purchase(Guid id) => $"{Root}/purchases/{id}";
+    }
+
+    [Fact]
+    public async Task TaxRuleListIsScopedBoundedAndRequiresReadPermission()
+    {
+        var setup = await Setup(publishRule: false);
+        var rows = await setup.Maker.GetFromJsonAsync<TaxRuleResponse[]>($"{setup.Root}/tax/rules?take=25&skip=0");
+        Assert.Contains(rows!, rule => rule.Id == setup.Rule && rule.PublishedAt == null);
+        Assert.Equal(HttpStatusCode.UnprocessableEntity, (await setup.Maker.GetAsync($"{setup.Root}/tax/rules?take=101")).StatusCode);
+        using var foreign = factory.Client(Guid.NewGuid(), setup.Company);
+        Assert.Empty((await foreign.GetFromJsonAsync<TaxRuleResponse[]>($"{setup.Root}/tax/rules"))!);
+        using var denied = factory.Client(setup.Tenant, setup.Company, permissions: []);
+        Assert.Equal(HttpStatusCode.Forbidden, (await denied.GetAsync($"{setup.Root}/tax/rules")).StatusCode);
     }
 
     private static async Task<HttpResponseMessage> Post(HttpClient client, string url, object body, string? key = null)
@@ -209,6 +325,7 @@ public sealed class PostingApiTests(PostgresApiFactory factory) : IClassFixture<
         var path = $"{setup.Purchase(purchase.Id)}/posting-plans/{plan.Id}/post";
         Assert.Equal(HttpStatusCode.InternalServerError, (await Post(client, path, new TransitionRequest(4), key)).StatusCode);
         Assert.Equal(0, await factory.Inspect(db => db.Set<StockBalance>().CountAsync(x => x.CompanyId == setup.Company)));
+        Assert.Equal(0, await factory.Inspect(db => db.Set<PurchaseCostReceipt>().CountAsync(x => x.CompanyId == setup.Company)));
         Assert.Equal(0, await factory.Inspect(db => db.Set<StockMovement>().CountAsync(x => x.PurchaseId == purchase.Id)));
         Assert.Equal(0, await factory.Inspect(db => db.Set<TaxLedgerEntry>().CountAsync(x => x.PurchaseId == purchase.Id)));
         Assert.Equal(1, await factory.Inspect(db => db.Outbox.CountAsync(x => x.AggregateId == purchase.Id)));

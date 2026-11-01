@@ -1,25 +1,25 @@
 import { Component, OnInit, inject, ChangeDetectorRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { RouterLink } from '@angular/router';
 import { FormsModule } from '@angular/forms';
 import { InventoryApiService } from '../../../../core/services/api/inventory-api.service';
 import { CompanyContextService } from '../../../../core/services/company-context.service';
 import { CsvExportService } from '../../../../core/services/csv-export.service';
-import { BdtCurrencyPipe } from '../../../../shared/pipes/bdt-currency.pipe';
 import { BengaliNumberPipe } from '../../../../shared/pipes/bengali-number.pipe';
 import { Warehouse, StockBalance } from '../../../../core/models/vat-models';
 
 @Component({
   selector: 'app-stock-summary',
   standalone: true,
-  imports: [CommonModule, FormsModule, BdtCurrencyPipe, BengaliNumberPipe],
+  imports: [CommonModule, FormsModule, BengaliNumberPipe, RouterLink],
   template: `
     <div class="vat-card">
       <div class="card-intro">
-        <h2>লাইভ ইনভেন্টরি স্টক ও মূল্যায়ন (Stock Valuation)</h2>
-        <p>
-          পারচেজ চালানের ক্রয়মূল্যের ভিত্তিতে চলমান ভারযুক্ত গড় (Moving Weighted Average) অথবা আগে আসলে আগে খালাস (FIFO)
-          পদ্ধতিতে কাঁচামাল ও তৈরি পণ্যের রিয়েল-টাইম মূল্যায়ন ও এনবিআর ৮-ডিজিট এইচএস কোড তালিকা।
-        </p>
+        <h2>Stock balances and valuation availability</h2>
+        <a *ngIf="context.hasPermission('costing.read')" routerLink="/app/inventory/costing-policies">Review costing policies</a>
+        <a *ngIf="context.hasPermission('costing.read')" routerLink="/app/inventory/valuation">Opening adoption, landed cost and valuation ledger</a>
+        <p>Quantities come from current stock balances. Values come from an approved opening and a reconciled cost ledger. The approved company/product policy determines each position's method. Missing costs and HS classifications are shown as unavailable.</p>
+        <p>Quantity and value totals below cover the filtered current page. Available quantity excludes reservations; valuation applies to on-hand stock, including reserved units.</p>
       </div>
 
       <!-- Live KPI Metric Cards -->
@@ -27,36 +27,37 @@ import { Warehouse, StockBalance } from '../../../../core/models/vat-models';
         <div class="kpi-card">
           <div class="kpi-icon wh">🏢</div>
           <div class="kpi-content">
-            <span class="kpi-label">মোট সক্রিয় গুদাম</span>
-            <span class="kpi-value">{{ warehouses.length || 1 }}</span>
+            <span class="kpi-label">Loaded warehouses</span>
+            <span class="kpi-value">{{ warehouses.length }}</span>
           </div>
         </div>
 
         <div class="kpi-card">
           <div class="kpi-icon qty">📦</div>
           <div class="kpi-content">
-            <span class="kpi-label">মোট মজুদ আইটেম (পরিমাণ)</span>
-            <span class="kpi-value">{{ totalStockQuantity | bengaliNumber }}</span>
+            <span class="kpi-label">Current page available quantity (mixed units)</span>
+            <span class="kpi-value">{{ totalAvailableQuantityExact ?? 'Unavailable' }}</span>
           </div>
         </div>
 
         <div class="kpi-card highlight">
           <div class="kpi-icon val">💰</div>
           <div class="kpi-content">
-            <span class="kpi-label">মোট ইনভেন্টরি মূল্যায়ন (BDT)</span>
-            <span class="kpi-value emerald-val">{{ totalStockValuation | bdtCurrency }}</span>
+            <span class="kpi-label">Current page valuation (BDT)</span>
+            <span class="kpi-value emerald-val">{{ totalStockValuationExact ?? 'Unavailable' }}</span>
           </div>
         </div>
 
         <div class="kpi-card">
           <div class="kpi-icon method">⚖️</div>
           <div class="kpi-content">
-            <span class="kpi-label">সক্রিয় কস্টিং পদ্ধতি</span>
-            <span class="kpi-badge font-mono">{{ costingMethod === 'FIFO' ? 'FIFO (First-In, First-Out)' : 'Weighted Average (ভারযুক্ত গড়)' }}</span>
+            <span class="kpi-label">Approved policy methods on this page</span>
+            <span class="kpi-badge font-mono">{{ policyCostingMethods }}</span>
           </div>
         </div>
       </div>
 
+      <p role="status" *ngIf="stockBalances.length && totalStockValuationExact === null">Valuation unavailable: {{valuationUnavailableReason}}. Stock quantities remain visible.</p>
       <p role="alert" *ngIf="loadError" class="alert-error">{{ loadError }} <button (click)="loadStockBalances()">Retry</button></p>
 
       <!-- Toolbar & Filters -->
@@ -88,15 +89,8 @@ import { Warehouse, StockBalance } from '../../../../core/models/vat-models';
             </div>
           </div>
 
-          <div class="method-filter">
-            <label class="vat-label-inline font-bengali">মূল্যায়ন পদ্ধতি:</label>
-            <select class="vat-select select-compact method-select" [(ngModel)]="costingMethod" (change)="onCostingMethodChange()">
-              <option value="WEIGHTED_AVERAGE">ভারযুক্ত গড় (Weighted Average)</option>
-              <option value="FIFO">আগে আসলে আগে খালাস (FIFO)</option>
-            </select>
-          </div>
 
-          <button class="btn btn-secondary btn-sm" (click)="exportStockToCsv()" title="Export Stock Valuation (.csv)">
+          <button class="btn btn-secondary btn-sm" (click)="exportStockToCsv()" [disabled]="isLoading || !!loadError || !filteredBalances.length" title="Export current stock page (.csv)">
             <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
               <polyline points="7 10 12 15 17 10"></polyline>
@@ -148,19 +142,21 @@ import { Warehouse, StockBalance } from '../../../../core/models/vat-models';
               <td>
                 <span class="wh-tag font-mono">🏢 {{ b.warehouseCode }}</span>
                 <small class="text-dim d-block">{{ b.warehouseName }}</small>
+                <a *ngIf="context.hasPermission('costing.read')" routerLink="/app/inventory/cost-preview" [queryParams]="{warehouseId: b.warehouseId, productId: b.productId}">Purchase-net cost preview</a>
               </td>
               <td>
-                <span class="hs-tag font-mono">{{ b.hsCode || '3901.20.90' }}</span>
+                <span class="hs-tag font-mono">{{ b.hsCode ?? 'Unavailable' }}</span>
               </td>
               <td><span class="uom-tag">{{ b.unitOfMeasure }}</span></td>
               <td class="text-right numeric font-bold" [class.text-amber]="b.availableQuantity <= 0">
-                {{ b.availableQuantity | bengaliNumber }}
+                {{ b.availableQuantityExact ?? (b.availableQuantity | bengaliNumber) }}
               </td>
               <td class="text-right numeric font-mono">
-                {{ (b.standardCost ?? 0) | bdtCurrency:false }} ৳
+                {{ b.unitCostExact ?? 'Unavailable' }} ৳
               </td>
               <td class="text-right numeric font-bold text-emerald font-mono">
-                {{ (b.totalValuation ?? 0) | bdtCurrency:false }} ৳
+                {{ b.totalValuationExact ?? 'Unavailable' }} ৳
+                <small class="text-dim d-block">{{b.valuationBasis ?? 'Opening adoption required'}} / {{b.costingMethod}}</small>
               </td>
               <td>
                 <span *ngIf="b.availableQuantity > 0" class="stock-pill in-stock">মজুদ আছে (In Stock)</span>
@@ -176,9 +172,9 @@ import { Warehouse, StockBalance } from '../../../../core/models/vat-models';
           <tfoot>
             <tr class="total-row">
               <th colspan="5" class="text-right font-bengali">সর্বমোট ইনভেন্টরি স্টক ও মূল্যায়ন:</th>
-              <th class="text-right numeric font-bold font-mono">{{ totalStockQuantity | bengaliNumber }}</th>
+              <th class="text-right numeric font-bold font-mono">{{ totalAvailableQuantityExact ?? 'Unavailable' }}</th>
               <th class="text-right text-dim font-mono">-</th>
-              <th class="text-right numeric font-bold text-emerald font-mono">{{ totalStockValuation | bdtCurrency }}</th>
+              <th class="text-right numeric font-bold text-emerald font-mono">{{ totalStockValuationExact ?? 'Unavailable' }}</th>
               <th></th>
             </tr>
           </tfoot>
@@ -344,11 +340,24 @@ export class StockSummaryComponent implements OnInit {
     return this.filteredBalances.reduce((sum, b) => sum + (b.availableQuantity || 0), 0);
   }
 
-  get totalStockValuation(): number {
-    return this.filteredBalances.reduce((sum, b) => sum + (b.totalValuation || 0), 0);
+  get totalStockValuation(): number | null {
+    const rows = this.filteredBalances;
+    if (rows.some(b => b.totalValuation == null || !Number.isFinite(b.totalValuation))) return null;
+    return rows.reduce((sum, b) => sum + b.totalValuation!, 0);
+  }
+
+  get policyCostingMethods(): string { return [...new Set(this.filteredBalances.filter(b=>b.valuationStatus==='Available').map(b=>b.costingMethod).filter(Boolean))].join(', ') || 'Awaiting reconciled ledger'; }
+  get valuationUnavailableReason(): string { return this.filteredBalances.find(b=>b.totalValuation==null)?.valuationReason ?? 'cost_journal_unavailable'; }
+  get totalStockValuationExact(): string|null { return this.sumExact('totalValuationExact',4); }
+  get totalAvailableQuantityExact(): string|null { return this.sumExact('availableQuantityExact',6); }
+  private sumExact(field:'totalValuationExact'|'availableQuantityExact',places:number):string|null {
+    let total=0n; const scale=10n**BigInt(places); const pattern=new RegExp(`^\\d+(\\.\\d{1,${places}})?$`);
+    for(const row of this.filteredBalances){const value=row[field];if(typeof value!=='string'||!pattern.test(value))return null;const [whole,fraction='']=value.split('.');total+=BigInt(whole)*scale+BigInt(fraction.padEnd(places,'0'));}
+    return `${total/scale}.${(total%scale).toString().padStart(places,'0')}`;
   }
 
   public exportStockToCsv(): void {
+    if (this.isLoading || this.loadError) return;
     const headers = [
       'Item Code',
       'Warehouse Code',
@@ -360,7 +369,10 @@ export class StockSummaryComponent implements OnInit {
       'Available Stock',
       'Unit Cost (BDT)',
       'Total Valuation (BDT)',
-      'Costing Method'
+      'Policy Costing Method',
+      'Valuation Status',
+      'Valuation Reason',
+      'Valuation Basis'
     ];
 
     const rows = this.filteredBalances.map(b => [
@@ -369,12 +381,15 @@ export class StockSummaryComponent implements OnInit {
       b.warehouseName,
       b.branchName,
       b.productDescription,
-      b.hsCode || '3901.20.90',
+      b.hsCode ?? 'Unavailable',
       b.unitOfMeasure,
-      b.availableQuantity,
-      b.standardCost ?? 0,
-      b.totalValuation ?? 0,
-      b.costingMethod || this.costingMethod
+      b.availableQuantityExact ?? b.availableQuantity,
+      b.unitCostExact ?? b.standardCost ?? 'Unavailable',
+      b.totalValuationExact ?? b.totalValuation ?? 'Unavailable',
+      b.costingMethod || this.costingMethod,
+      b.valuationStatus ?? 'Unknown',
+      b.valuationReason ?? '',
+      b.valuationBasis ?? 'Unavailable'
     ]);
 
     const compId = this.context.activeCompany().id;

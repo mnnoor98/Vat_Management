@@ -54,7 +54,7 @@ public sealed class ManufacturingOwnershipTests(ManufacturingApiFactory factory)
         await factory.Inspect(async db =>
         {
             Assert.False(db.Database.HasPendingModelChanges());
-            Assert.Equal(10, db.Model.GetEntityTypes().Count());
+            Assert.Equal(12, db.Model.GetEntityTypes().Count());
             Assert.All(db.Model.GetEntityTypes(), e => { Assert.Equal("manufacturing", e.GetSchema()); Assert.All(e.GetForeignKeys(), fk => { Assert.Equal("manufacturing", fk.PrincipalEntityType.GetSchema()); Assert.Equal(new[] { "TenantId", "CompanyId" }, fk.Properties.Take(2).Select(p => p.Name)); }); });
             await using var connection = new NpgsqlConnection(db.Database.GetConnectionString()); await connection.OpenAsync();
             await using var query = new NpgsqlCommand("SELECT count(*) FROM information_schema.tables WHERE table_schema NOT IN ('pg_catalog','information_schema','manufacturing') AND table_type='BASE TABLE'", connection);

@@ -127,3 +127,20 @@ test('manufacturing export preserves zero unit cost and marks absent historical 
   component.declarations.set([result, { ...result, snapshot: null }]); component.exportPage();
   assert.equal(rows[0][9], 0); assert.equal(rows[1][9], 'Unavailable');
 });
+
+test('manufacturing empty and failed reads never fabricate declarations or allow stale commands', () => {
+  const empty = register({ getCoefficients: () => of([]) });
+  empty.loadDeclarations();
+  assert.deepEqual(empty.declarations(), []);
+  assert.equal(empty.activeDeclaration(), null);
+  assert.equal(empty.hasNext(), false);
+  const failed = register({ getCoefficients: () => throwError(() => new Error('Offline')) });
+  failed.declarations.set([result]); failed.setDeclaration(result);
+  failed.loadDeclarations();
+  assert.deepEqual(failed.declarations(), []);
+  assert.equal(failed.activeDeclaration(), null);
+  assert.equal(failed.reloadRequired(), true);
+  assert.equal(failed.busy(), false);
+  assert.match(failed.error(), /Reload/);
+  assert.equal(failed.canAction(result, 'submit'), false);
+});

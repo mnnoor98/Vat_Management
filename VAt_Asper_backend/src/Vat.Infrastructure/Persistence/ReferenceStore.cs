@@ -20,6 +20,9 @@ public sealed class ReferenceStore(VatDbContext db) : IReferenceStore
         db.Set<Supplier>().SingleOrDefaultAsync(x => x.TenantId == tenantId && x.CompanyId == companyId && x.Id == id, ct);
     public Task<Warehouse?> Warehouse(Guid tenantId, Guid companyId, Guid id, CancellationToken ct) =>
         db.Set<Warehouse>().SingleOrDefaultAsync(x => x.TenantId == tenantId && x.CompanyId == companyId && x.Id == id, ct);
+    public async Task<IReadOnlyList<TaxRule>> Rules(Guid tenantId, Guid companyId, int skip, int take, CancellationToken ct) =>
+        await db.Set<TaxRule>().AsNoTracking().Where(x => x.TenantId == tenantId && x.CompanyId == companyId)
+            .OrderBy(x => x.TaxCode).ThenBy(x => x.EffectiveFrom).ThenBy(x => x.Id).Skip(skip).Take(take).ToListAsync(ct);
     public Task<TaxRule?> Rule(Guid tenantId, Guid companyId, Guid id, CancellationToken ct) =>
         db.Set<TaxRule>().SingleOrDefaultAsync(x => x.TenantId == tenantId && x.CompanyId == companyId && x.Id == id, ct);
     public Task<TaxRule?> EffectiveRule(Guid tenantId, Guid companyId, string taxCode, DateOnly date, CancellationToken ct) =>

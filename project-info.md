@@ -35,7 +35,7 @@
 | :--- | :---: | :--- | :--- |
 | **Unified API Gateway** | **`5080`** | `http://localhost:5080` | Frontend entry point proxying requests to all 12 microservices (`/api/v1/...`) |
 | **Frontend UI (Angular)** | **`4200`** | `http://localhost:4200` | Web application UI (`proxy.conf.json` maps `/api` and `/health` to `5080`) |
-| **PostgreSQL Database** | **`5432`** | `127.0.0.1:5432` | Database engine (`postgres:123456`) hosting all 12 isolated databases |
+| **PostgreSQL Database** | **`5432`** | `127.0.0.1:5432` | Database engine hosting all isolated databases; credentials come from environment or local secret storage |
 | **RabbitMQ AMQP** | **`5672`** | `localhost:5672` | Message Broker connection port (`guest:guest`) |
 | **RabbitMQ Management UI**| **`15672`**| `http://localhost:15672` | Browser dashboard for exchanges, queues, and message traces |
 

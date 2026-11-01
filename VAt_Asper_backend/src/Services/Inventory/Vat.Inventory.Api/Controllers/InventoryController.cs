@@ -46,6 +46,7 @@ public sealed class InventoryController : ControllerBase
     public async Task<IActionResult> ListWarehouses([FromRoute] Guid companyId, [FromQuery] int? skip,
         [FromQuery] int? take, [FromServices] FinancialInventoryQueries service, CancellationToken ct)
     {
+        ValidatePublicPage(skip, take);
         return Ok(await service.Warehouses(HttpContext.GetActor(), companyId, skip ?? 0, take ?? 100, ct));
     }
 
@@ -74,7 +75,14 @@ public sealed class InventoryController : ControllerBase
         [FromQuery] string? method,
         [FromServices] FinancialInventoryQueries service, CancellationToken ct)
     {
+        ValidatePublicPage(skip, take);
         return Ok(await service.AllBalances(HttpContext.GetActor(), companyId, warehouseId, method ?? "WEIGHTED_AVERAGE", skip ?? 0, take ?? 100, ct));
+    }
+
+    private static void ValidatePublicPage(int? skip, int? take)
+    {
+        if ((skip ?? 0) is < 0 or > 10000 || (take ?? 100) is < 1 or > 100)
+            throw new Vat.Domain.DomainException("validation_failed", "Require skip 0-10000 and take 1-100.");
     }
 
     [HttpGet("/api/v1/companies/{companyId:guid}/inventory/valuation-summary", Name = "GetInventoryValuationSummary")]

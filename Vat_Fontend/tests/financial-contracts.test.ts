@@ -104,14 +104,14 @@ test('warehouse pages use the financial API id contract', async () => {
   assert.equal(warehouse.warehouseId, 'warehouse');
 });
 
-function posting(kind: 'purchase' | 'sales', overrides: object = {}) {
+function posting(kind: 'purchase' | 'sales', overrides: object = {}, actorContext = context) {
   const calls: unknown[][] = [];
   const api = { preparePosting: (...args: unknown[]) => { calls.push(['prepare', ...args]); return of({ ...plan, status: kind === 'purchase' ? 'Prepared' : 'Reserved' }); },
     getPostingPlan: () => of({ ...plan, status: kind === 'purchase' ? 'Prepared' : 'Reserved' }), postPurchase: (...args: unknown[]) => { calls.push(['post', ...args]); return of(true); },
     postSalesInvoice: (...args: unknown[]) => { calls.push(['post', ...args]); return of(true); }, ...overrides };
   const injector = Injector.create({ providers: [
     { provide: PurchaseApiService, useValue: api }, { provide: SalesApiService, useValue: api },
-    { provide: CompanyContextService, useValue: context },
+    { provide: CompanyContextService, useValue: actorContext },
     { provide: InventoryApiService, useValue: { getWarehouses: () => of([
       { warehouseId: 'warehouse', branchId: 'branch' }, { warehouseId: 'foreign', branchId: 'other' }
     ]) } }
@@ -199,3 +199,35 @@ for (const kind of ['purchase', 'sales'] as const) {
     screen.loading = true; screen.changePage(1); assert.equal(pages.length, 3);
   });
 }
+
+ test('posting preparation shows the missing published tax rule instead of a stale-document message', () => {
+  const { component } = posting('purchase', { preparePosting: () => throwError(() => ({ status: 409,
+    error: { code: 'tax_rule_unavailable', detail: 'No published rule covers product ITEM-1 on the business date.' } })) });
+  component.ngOnInit(); component.warehouseId = 'warehouse'; component.prepare();
+  assert.match(component.error(), /No published rule covers product ITEM-1/);
+  assert.equal(component.reloadRequired(), true);
+  assert.equal(component.plan(), null);
+  assert.equal(component.busy(), false);
+});
+
+test('posting preparation selects the only matching warehouse and sends a request without manual reselection', () => {
+  const { component, calls } = posting('purchase'); component.ngOnInit();
+  assert.equal(component.warehouseId, 'warehouse'); assert.equal(component.validWarehouse(), true);
+  component.prepare(); assert.deepEqual(calls[0], ['prepare', 'doc', 37, 'warehouse']);
+});
+test('posting preparation explains an invalid warehouse instead of silently doing nothing', () => {
+  const { component, calls } = posting('purchase'); component.ngOnInit(); component.warehouseId = 'foreign'; component.prepare();
+  assert.equal(calls.length, 0); assert.match(component.error(), /warehouse belonging to this invoice branch/);
+});
+test('posting reload refreshes the version and clears the failed-request lock before preparation', () => {
+  const { component, calls } = posting('purchase', { getInvoiceById: () => of({ ...source, version: 44, status: 'Approved' }) });
+  component.reloadRequired.set(true); component.reloadInvoice();
+  assert.equal(component.reloadRequired(), false); assert.equal(component.invoice.version, 44);
+  component.prepare(); assert.deepEqual(calls[0], ['prepare', 'doc', 44, 'warehouse']);
+});
+
+test('posting preparation explains missing permission without sending an unauthorized request', () => {
+  const { component, calls } = posting('purchase', {}, { ...context, hasPermission: () => false });
+  component.ngOnInit(); component.prepare();
+  assert.equal(calls.length, 0); assert.match(component.error(), /preparation permission/);
+});

@@ -66,7 +66,7 @@ test('customer pagination sends the backend cursor and size explicitly', async (
 });
 test('stock pages preserve quantities and scope without supplying fictional valuation', async () => {
   const service = api(InventoryApiService, { get: (_url: string, options: unknown) => {
-    assert.deepEqual(options, { params: { skip: 50, take: 25, warehouseId: 'warehouse' } }); return of([stock]);
+    assert.deepEqual(options, { params: { skip: 50, take: 25, method: 'WEIGHTED_AVERAGE', warehouseId: 'warehouse' } }); return of([stock]);
   } });
   const [balance] = await firstValueFrom(service.getAllStockBalances('warehouse', 50, 25));
   assert.equal(balance.branchId, 'branch'); assert.equal(balance.balanceId, 'warehouse:product-id');
@@ -86,10 +86,14 @@ test('stock CSV marks unknown valuation unavailable and preserves genuine zero v
     { provide: CsvExportService, useValue: { exportToCsv: (...args: unknown[]) => output.push(args) } } ]);
   component.stockBalances = [{ ...stock, balanceId: 'balance' }];
   assert.equal(component.totalStockValuation, null); component.exportStockToCsv();
+  assert.equal((output[0][2] as unknown[][])[0][5], 'Unavailable');
   assert.equal((output[0][2] as unknown[][])[0][8], 'Unavailable');
+  assert.equal((output[0][2] as unknown[][])[0][9], 'Unavailable');
   component.stockBalances = [{ ...stock, balanceId: 'balance', standardCost: 0, totalValuation: 0 }];
   assert.equal(component.totalStockValuation, 0); component.exportStockToCsv();
   assert.equal((output[1][2] as unknown[][])[0][8], 0); assert.equal((output[1][2] as unknown[][])[0][9], 0);
+  component.stockBalances.push({ ...stock, balanceId: 'unknown', productId: 'unknown' });
+  assert.equal(component.totalStockValuation, null);
 });
 test('an older stock response cannot overwrite the selected warehouse page', () => {
   const requests: Subject<unknown[]>[] = [];
@@ -97,6 +101,22 @@ test('an older stock response cannot overwrite the selected warehouse page', () 
   component.loadStockBalances(); component.selectedWarehouse = 'new'; component.onWarehouseFilterChange();
   requests[1].next([{ ...stock, warehouseId: 'new' }]); requests[0].next([{ ...stock, warehouseId: 'old' }]);
   assert.equal(component.stockBalances[0].warehouseId, 'new'); assert.equal(component.isLoading, false);
+});
+
+test('stock API and export preserve unavailable valuation metadata without converting null costs to zero', async () => {
+  const service = api(InventoryApiService, { get: () => of([{ ...stock, standardCost: null, totalValuation: null,
+    hsCode: null, valuationStatus: 'Unavailable', valuationReason: 'cost_journal_unavailable' }]) });
+  const rows = await firstValueFrom(service.getAllStockBalances());
+  let exported: unknown[][] = [];
+  const component = screen(StockSummaryComponent, [{ provide: InventoryApiService, useValue: {} },
+    { provide: CsvExportService, useValue: { exportToCsv: (_name: string, _headers: unknown, values: unknown[][]) => exported = values } }]);
+  component.stockBalances = rows;
+  assert.equal(component.totalStockValuation, null);
+  component.exportStockToCsv();
+  assert.equal(exported[0][8], 'Unavailable'); assert.equal(exported[0][9], 'Unavailable');
+  assert.equal(exported[0][11], 'Unavailable'); assert.equal(exported[0][12], 'cost_journal_unavailable');
+  component.isLoading = true; exported = []; component.exportStockToCsv(); assert.deepEqual(exported, []);
+  component.isLoading = false; component.loadError = 'Offline'; component.exportStockToCsv(); assert.deepEqual(exported, []);
 });
 test('failed stock reload clears stale rows and exposes retry state', () => {
   const component = screen(StockSummaryComponent, [{ provide: InventoryApiService, useValue: { getAllStockBalances: () => throwError(() => new Error('Offline')) } }]);

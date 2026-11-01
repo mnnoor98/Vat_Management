@@ -100,7 +100,8 @@ public sealed class IdentityOwnershipTests(IdentityApiFactory factory) : IClassF
     {
         await factory.Inspect(async db =>
         {
-            Assert.Equal(9, db.Model.GetEntityTypes().Count());
+            Assert.Equal(10, db.Model.GetEntityTypes().Count());
+            Assert.Equal("local_accounts", db.Model.FindEntityType(typeof(LocalAccount))?.GetTableName());
             Assert.All(db.Model.GetEntityTypes(), entity =>
             {
                 Assert.Equal("identity", entity.GetSchema());

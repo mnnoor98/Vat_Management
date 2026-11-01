@@ -17,6 +17,10 @@ public sealed class VatDbContext(DbContextOptions<VatDbContext> options) : DbCon
     protected override void OnModelCreating(ModelBuilder model)
     {
         PostingModel.Configure(model);
+        CostingModel.Configure(model);
+        CostSourceModel.Configure(model);
+        StockCostModel.Configure(model);
+        ProductionCostModel.Configure(model);
         SalesModel.Configure(model);
         PaymentModel.Configure(model);
         PaymentCorrectionModel.Configure(model);

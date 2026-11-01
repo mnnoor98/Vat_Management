@@ -38,7 +38,11 @@ public sealed class InboxDeliveryContractTests(PostgresApiFactory factory) : ICl
         var connection = await factory.Inspect(db => Task.FromResult(db.Database.GetConnectionString()));
         var builder = WebApplication.CreateBuilder(); builder.WebHost.UseUrls("http://127.0.0.1:0");
         builder.Configuration.AddInMemoryCollection(new Dictionary<string, string?>
-        { ["InboxServer:ServiceKey"] = key, ["InboxServer:AllowLoopbackHttp"] = "true", ["Logging:LogLevel:Default"] = "None" });
+        {
+            // Copied API Kestrel endpoints override UseUrls; bind a private ephemeral port.
+            ["Kestrel:Endpoints:Http:Url"] = "http://127.0.0.1:0",
+            ["InboxServer:ServiceKey"] = key, ["InboxServer:AllowLoopbackHttp"] = "true", ["Logging:LogLevel:Default"] = "None"
+        });
         builder.Services.AddDbContext<VatDbContext>(options =>
         {
             options.UseNpgsql(connection);

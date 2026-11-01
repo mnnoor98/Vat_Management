@@ -1,4 +1,4 @@
-import { Component, inject, OnInit } from '@angular/core';
+import { Component, inject, OnInit, ChangeDetectorRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
@@ -358,6 +358,7 @@ interface DemoAccount {
   `]
 })
 export class LoginComponent implements OnInit {
+  private readonly cdr = inject(ChangeDetectorRef);
   private readonly auth = inject(AuthService);
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
@@ -383,6 +384,7 @@ export class LoginComponent implements OnInit {
         this.errorMessage = error instanceof Error ? error.message : 'Sign-in failed.';
       } finally {
         this.isLoading = false;
+        this.cdr.markForCheck();
       }
     }
   }
@@ -407,12 +409,14 @@ export class LoginComponent implements OnInit {
 
     this.auth.login({ username: this.username, password: this.password }).subscribe({
       next: () => {
-        const returnUrl = this.route.snapshot.queryParamMap.get('returnUrl') || '/app/portal';
+        const requestedUrl = this.route.snapshot.queryParamMap.get('returnUrl');
+        const returnUrl = requestedUrl?.startsWith('/app/') && !requestedUrl.includes('\\') ? requestedUrl : '/app/portal';
         void this.router.navigateByUrl(returnUrl, { replaceUrl: true });
       },
       error: (err: Error) => {
         this.errorMessage = err.message || 'Login failed. Please check credentials.';
         this.isLoading = false;
+        this.cdr.markForCheck();
       }
     });
   }

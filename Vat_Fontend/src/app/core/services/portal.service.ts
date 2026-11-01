@@ -338,6 +338,12 @@ export class PortalService {
           requiredPermission: 'compliance.submit'
         },
         {
+          code: 'SUB_TAX_RULES', labelEn: 'Tax Rules', labelBn: 'Tax Rules',
+          descriptionEn: 'Review draft rates and publish tax rules.', descriptionBn: 'Review draft rates and publish tax rules.',
+          route: '/app/compliance/tax-rules', icon: 'rule', requiredPermission: 'tax.read',
+          allowedRoles: ['SuperAdmin', 'TaxManager']
+        },
+        {
           code: 'SUB_TAX_LEDGER',
           labelEn: 'Current Tax Ledger (চলতি হিসাব)',
           labelBn: 'চলতি ভ্যাট হিসাব লেজার (বকেয়া ও জমা)',
@@ -585,7 +591,7 @@ export class PortalService {
       // 1. User-wise specific module assignment check:
       // If user has specific assignedModuleCodes defined and non-empty,
       // they can ONLY see those assigned modules!
-      if (assignedCodes && assignedCodes.length > 0) {
+      if (assignedCodes) {
         if (!assignedCodes.includes(mod.code)) {
           return false;
         }
@@ -627,7 +633,7 @@ export class PortalService {
     const isSuper = userRoles.includes('SuperAdmin');
 
     // If user has assigned modules and this module is NOT in their assigned list, return empty
-    if (user.assignedModuleCodes && user.assignedModuleCodes.length > 0) {
+    if (user.assignedModuleCodes) {
       if (!user.assignedModuleCodes.includes(moduleCode)) {
         return [];
       }

@@ -12,6 +12,7 @@ public interface IReferenceStore
     Task<Supplier?> SupplierByReference(Guid tenantId, Guid companyId, string reference, CancellationToken ct);
     Task<Supplier?> SupplierById(Guid tenantId, Guid companyId, Guid id, CancellationToken ct);
     Task<Warehouse?> Warehouse(Guid tenantId, Guid companyId, Guid id, CancellationToken ct);
+    Task<IReadOnlyList<TaxRule>> Rules(Guid tenantId, Guid companyId, int skip, int take, CancellationToken ct);
     Task<TaxRule?> Rule(Guid tenantId, Guid companyId, Guid id, CancellationToken ct);
     Task<TaxRule?> EffectiveRule(Guid tenantId, Guid companyId, string taxCode, DateOnly date, CancellationToken ct);
     Task<TaxRule?> EffectiveSalesRule(Guid tenantId, Guid companyId, string taxCode, DateOnly date, CancellationToken ct);

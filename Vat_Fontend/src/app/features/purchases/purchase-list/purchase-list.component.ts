@@ -695,7 +695,7 @@ export class PurchaseListComponent implements OnInit {
     if (!invoice || !Number.isSafeInteger(invoice.version)) { this.toast.error('Reload the invoice to obtain its current version.'); return; }
     this.purchaseApi.submitTransition(id, invoice.version!).subscribe({
       next: () => this.loadInvoices(),
-      error: e => { this.toast.error(e?.message || 'Submission failed. Reload the invoice.'); this.loadInvoices(); }
+      error: e => { this.toast.error(e?.error?.detail || e?.message || 'Submission failed. Reload the invoice.'); this.loadInvoices(); }
     });
   }
 
@@ -724,7 +724,7 @@ export class PurchaseListComponent implements OnInit {
     if (!Number.isSafeInteger(invoice?.version)) { this.toast.error('Reload the invoice to obtain its current version.'); return; }
     this.purchaseApi.approveTransition(id, invoice!.version!).subscribe({
       next: onApproved,
-      error: e => { this.toast.error(e?.message || 'Approval failed. Reload the invoice.'); this.loadInvoices(); }
+      error: e => { this.toast.error(e?.error?.detail || e?.message || 'Approval failed. Reload the invoice.'); this.loadInvoices(); }
     });
   }
 

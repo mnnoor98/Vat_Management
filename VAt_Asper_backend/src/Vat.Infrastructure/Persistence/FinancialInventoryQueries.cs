@@ -3,7 +3,8 @@ using Vat.Application.Security;
 using Vat.Domain;
 using Vat.Domain.Catalog;
 using Vat.Domain.Posting;
-using Vat.Domain.Purchasing;
+using System.Data;
+using System.Globalization;
 
 namespace Vat.Infrastructure.Persistence;
 
@@ -23,10 +24,18 @@ public sealed record FinancialStockItem(
     decimal Quantity,
     decimal ReservedQuantity,
     decimal AvailableQuantity,
-    decimal StandardCost,
-    decimal TotalValuation,
-    string HsCode,
-    string CostingMethod
+    decimal? StandardCost,
+    decimal? TotalValuation,
+    string? HsCode,
+    string CostingMethod,
+    string ValuationStatus,
+    string? ValuationReason,
+    string? ValuationBasis = null,
+    string? TotalValuationExact = null,
+    string? UnitCostExact = null,
+    string? QuantityExact = null,
+    string? ReservedQuantityExact = null,
+    string? AvailableQuantityExact = null
 );
 
 public sealed record WarehouseValuationSummary(
@@ -37,43 +46,29 @@ public sealed record WarehouseValuationSummary(
     string BranchName,
     int ItemsCount,
     decimal TotalQuantity,
-    decimal TotalValuation
+    decimal? TotalValuation,
+    string? TotalValuationExact = null
 );
 
 public sealed record InventoryValuationSummary(
     Guid CompanyId,
     string CostingMethod,
     decimal TotalStockQuantity,
-    decimal TotalStockValuation,
+    decimal? TotalStockValuation,
     int TotalWarehousesCount,
     int TotalUniqueProductsCount,
     IReadOnlyList<WarehouseValuationSummary> Warehouses,
-    IReadOnlyList<FinancialStockItem> TopValuedItems
+    IReadOnlyList<FinancialStockItem> TopValuedItems,
+    string ValuationStatus,
+    string? ValuationReason,
+    DateTimeOffset CapturedAt,
+    string? ValuationBasis = null,
+    string? TotalStockValuationExact = null
 );
 
 public sealed class FinancialInventoryQueries(VatDbContext db)
 {
-    private static readonly Dictionary<string, string> NbrHsCodes = new(StringComparer.OrdinalIgnoreCase)
-    {
-        ["PROD-01"] = "3901.20.90",      // High Density Polyethylene Resin (HDPE)
-        ["PROD-02"] = "3902.10.00",      // Polypropylene Polymer Granules (PP)
-        ["PROD-RAW-01"] = "3824.99.99",  // Raw Material Chemical Additive
-        ["PROD-PACK-01"] = "3923.21.00", // Finished Consumer Food Packaging Roll
-        ["PRD-FG-001"] = "3402.20.00",   // 500ml Bottled Consumer Liquid Soap
-        ["PROD-03"] = "2201.10.00",      // Bottled Pure Water
-        ["PROD-04"] = "1514.91.00"       // Mustard Oil 1 Litre Bottle
-    };
-
-    private static readonly Dictionary<string, decimal> FallbackStandardCosts = new(StringComparer.OrdinalIgnoreCase)
-    {
-        ["PROD-01"] = 140.00m,
-        ["PROD-02"] = 95.00m,
-        ["PROD-RAW-01"] = 80.00m,
-        ["PROD-PACK-01"] = 120.00m,
-        ["PRD-FG-001"] = 140.00m,
-        ["PROD-03"] = 180.00m,
-        ["PROD-04"] = 185.00m
-    };
+    private const string MissingCostJournal = "cost_journal_unavailable";
 
     public async Task<IReadOnlyList<FinancialWarehouseItem>> Warehouses(Actor actor, Guid companyId, int skip, int take, CancellationToken ct)
     {
@@ -90,220 +85,127 @@ public sealed class FinancialInventoryQueries(VatDbContext db)
     }
 
     public async Task<IReadOnlyList<FinancialStockItem>> AllBalances(
-        Actor actor,
-        Guid companyId,
-        Guid? warehouseId,
-        string method,
-        int skip,
-        int take,
-        CancellationToken ct)
+        Actor actor, Guid companyId, Guid? warehouseId, string method, int skip, int take, CancellationToken ct)
     {
         actor.RequireCompany(companyId);
         Page(skip, take);
-
-        var isFifo = method.Equals("FIFO", StringComparison.OrdinalIgnoreCase);
-        var costingMethod = isFifo ? "FIFO" : "WEIGHTED_AVERAGE";
-
-        // Query raw balances joined with warehouse, product, and branch
-        var rawBalances = await (from balance in db.Set<StockBalance>().AsNoTracking()
-            join warehouse in db.Set<Warehouse>().AsNoTracking() on new { balance.TenantId, balance.CompanyId, Id = balance.WarehouseId }
-                equals new { warehouse.TenantId, warehouse.CompanyId, warehouse.Id }
-            join product in db.Set<Product>().AsNoTracking() on new { balance.TenantId, balance.CompanyId, Id = balance.ProductId }
-                equals new { product.TenantId, product.CompanyId, product.Id }
-            join branch in db.Branches.AsNoTracking() on new { warehouse.TenantId, warehouse.CompanyId, Id = warehouse.BranchId }
-                equals new { branch.TenantId, branch.CompanyId, branch.Id }
-            where balance.TenantId == actor.TenantId && balance.CompanyId == companyId && (warehouseId == null || balance.WarehouseId == warehouseId)
-            orderby balance.WarehouseId, balance.ProductId
-            select new
-            {
-                balance.WarehouseId,
-                WarehouseCode = warehouse.Code,
-                WarehouseName = warehouse.Name,
-                BranchId = branch.Id,
-                BranchName = branch.Name,
-                ProductId = product.Id,
-                ProductReference = product.Reference,
-                ProductDescription = product.Description,
-                product.UnitOfMeasure,
-                product.TaxCode,
-                balance.Quantity,
-                balance.ReservedQuantity,
-                AvailableQuantity = balance.Quantity - balance.ReservedQuantity
-            })
-            .Skip(skip).Take(take).ToListAsync(ct);
-
-        if (rawBalances.Count == 0)
-        {
-            return Array.Empty<FinancialStockItem>();
-        }
-
-        // Distinct product references on this page to fetch purchase costing records
-        var productRefs = rawBalances.Select(x => x.ProductReference).Distinct().ToList();
-
-        // Load purchase receipts for these items (excluding Cancelled/Rejected)
-        var purchases = await (from pl in db.Set<PurchaseLine>().AsNoTracking()
-            join p in db.Purchases.AsNoTracking() on new { pl.TenantId, pl.CompanyId, Id = pl.PurchaseId } equals new { p.TenantId, p.CompanyId, p.Id }
-            where pl.TenantId == actor.TenantId && pl.CompanyId == companyId
-                  && productRefs.Contains(pl.ProductReference)
-                  && p.Status != PurchaseStatus.Cancelled && p.Status != PurchaseStatus.Rejected
-            orderby p.BusinessDate descending, pl.Id descending
-            select new
-            {
-                pl.ProductReference,
-                pl.Quantity,
-                pl.UnitPrice,
-                pl.NetAmount,
-                p.BusinessDate
-            }).ToListAsync(ct);
-
-        var purchasesByProduct = purchases
-            .GroupBy(x => x.ProductReference, StringComparer.OrdinalIgnoreCase)
-            .ToDictionary(g => g.Key, g => g.ToList(), StringComparer.OrdinalIgnoreCase);
-
-        var items = new List<FinancialStockItem>(rawBalances.Count);
-
-        foreach (var row in rawBalances)
-        {
-            purchasesByProduct.TryGetValue(row.ProductReference, out var productPurchases);
-
-            var hsCode = NbrHsCodes.TryGetValue(row.ProductReference, out var code) ? code : "3901.20.90";
-            var defaultCost = FallbackStandardCosts.TryGetValue(row.ProductReference, out var dCost) ? dCost : 100.00m;
-
-            decimal unitCost;
-            decimal totalValuation;
-
-            if (row.AvailableQuantity <= 0)
-            {
-                unitCost = productPurchases != null && productPurchases.Count > 0 ? productPurchases[0].UnitPrice : defaultCost;
-                totalValuation = 0m;
-            }
-            else if (isFifo)
-            {
-                // FIFO ending inventory valuation: recent purchases cover ending stock
-                if (productPurchases != null && productPurchases.Count > 0)
-                {
-                    decimal remainingQty = row.AvailableQuantity;
-                    decimal accumulatedValuation = 0m;
-
-                    foreach (var batch in productPurchases)
-                    {
-                        var takeQty = Math.Min(remainingQty, batch.Quantity);
-                        accumulatedValuation += takeQty * batch.UnitPrice;
-                        remainingQty -= takeQty;
-                        if (remainingQty <= 0) break;
-                    }
-
-                    if (remainingQty > 0)
-                    {
-                        // Any remaining quantity covered by earliest available batch or standard cost
-                        var fallbackPrice = productPurchases[^1].UnitPrice;
-                        accumulatedValuation += remainingQty * fallbackPrice;
-                    }
-
-                    totalValuation = decimal.Round(accumulatedValuation, 2, MidpointRounding.AwayFromZero);
-                    unitCost = decimal.Round(accumulatedValuation / row.AvailableQuantity, 4, MidpointRounding.AwayFromZero);
-                }
-                else
-                {
-                    unitCost = defaultCost;
-                    totalValuation = decimal.Round(row.AvailableQuantity * unitCost, 2, MidpointRounding.AwayFromZero);
-                }
-            }
-            else
-            {
-                // Weighted Average Cost (চলমান ভারযুক্ত গড়)
-                if (productPurchases != null && productPurchases.Count > 0)
-                {
-                    var totalQty = productPurchases.Sum(x => x.Quantity);
-                    var totalNet = productPurchases.Sum(x => x.NetAmount);
-
-                    unitCost = totalQty > 0
-                        ? decimal.Round(totalNet / totalQty, 4, MidpointRounding.AwayFromZero)
-                        : defaultCost;
-                }
-                else
-                {
-                    unitCost = defaultCost;
-                }
-
-                totalValuation = decimal.Round(row.AvailableQuantity * unitCost, 2, MidpointRounding.AwayFromZero);
-            }
-
-            items.Add(new FinancialStockItem(
-                row.WarehouseId,
-                row.WarehouseCode,
-                row.WarehouseName,
-                row.BranchId,
-                row.BranchName,
-                row.ProductId,
-                row.ProductReference,
-                row.ProductDescription,
-                row.UnitOfMeasure,
-                row.TaxCode,
-                row.Quantity,
-                row.ReservedQuantity,
-                row.AvailableQuantity,
-                unitCost,
-                totalValuation,
-                hsCode,
-                costingMethod
-            ));
-        }
-
-        return items;
+        var requestedMethod = Method(method);
+        await using var tx = await db.Database.BeginTransactionAsync(IsolationLevel.RepeatableRead, ct);
+        var availability = await CostAvailability(actor, companyId, ct);
+        var basis = await db.Set<StockCostHead>().Where(x => x.TenantId == actor.TenantId && x.CompanyId == companyId).Select(x => x.Basis).SingleOrDefaultAsync(ct);
+        var rows = await Balances(actor, companyId, warehouseId)
+            .OrderBy(x => x.WarehouseId).ThenBy(x => x.ProductId)
+            .Skip(skip).Take(take)
+            .Select(x => new FinancialStockItem(x.WarehouseId, x.WarehouseCode, x.WarehouseName, x.BranchId, x.BranchName,
+                x.ProductId, x.ProductReference, x.ProductDescription, x.UnitOfMeasure, x.TaxCode,
+                x.Quantity, x.ReservedQuantity, x.Quantity - x.ReservedQuantity,
+                availability == null && x.Quantity > 0 ? x.CostValue / x.Quantity : null,
+                availability == null ? x.CostValue ?? 0 : x.Quantity == 0 ? (decimal?)0 : null, null, x.CostMethod ?? requestedMethod,
+                x.Quantity == 0 ? "NoStock" : availability == null ? "Available" : "Unavailable", x.Quantity == 0 ? null : availability, basis,null,null,null,null,null))
+            .ToArrayAsync(ct);
+        await tx.CommitAsync(ct); return rows.Select(Exact).ToArray();
     }
 
-    public async Task<InventoryValuationSummary> ValuationSummary(
-        Actor actor,
-        Guid companyId,
-        string method,
-        CancellationToken ct)
+    private IQueryable<StockRow> Balances(Actor actor, Guid companyId, Guid? warehouseId) =>
+        from balance in db.Set<StockBalance>().AsNoTracking()
+        join warehouse in db.Set<Warehouse>().AsNoTracking() on new { balance.TenantId, balance.CompanyId, Id = balance.WarehouseId }
+            equals new { warehouse.TenantId, warehouse.CompanyId, warehouse.Id }
+        join product in db.Set<Product>().AsNoTracking() on new { balance.TenantId, balance.CompanyId, Id = balance.ProductId }
+            equals new { product.TenantId, product.CompanyId, product.Id }
+        join branch in db.Branches.AsNoTracking() on new { warehouse.TenantId, warehouse.CompanyId, Id = warehouse.BranchId }
+            equals new { branch.TenantId, branch.CompanyId, branch.Id }
+        join cost in db.Set<StockCostPosition>().AsNoTracking() on new { balance.TenantId, balance.CompanyId, balance.WarehouseId, balance.ProductId }
+            equals new { cost.TenantId, cost.CompanyId, cost.WarehouseId, cost.ProductId } into costs
+        from cost in costs.DefaultIfEmpty()
+        where balance.TenantId == actor.TenantId && balance.CompanyId == companyId && (warehouseId == null || balance.WarehouseId == warehouseId)
+        select new StockRow
+        {
+            WarehouseId = warehouse.Id, WarehouseCode = warehouse.Code, WarehouseName = warehouse.Name,
+            BranchId = branch.Id, BranchName = branch.Name, ProductId = product.Id, ProductReference = product.Reference,
+            ProductDescription = product.Description, UnitOfMeasure = product.UnitOfMeasure, TaxCode = product.TaxCode,
+            Quantity = balance.Quantity, ReservedQuantity = balance.ReservedQuantity,
+            CostValue = cost == null ? null : cost.Value, CostMethod = cost == null ? null : cost.Method
+        };
+
+    private sealed class StockRow
+    {
+        public Guid WarehouseId { get; init; }
+        public string WarehouseCode { get; init; } = "";
+        public string WarehouseName { get; init; } = "";
+        public Guid BranchId { get; init; }
+        public string BranchName { get; init; } = "";
+        public Guid ProductId { get; init; }
+        public string ProductReference { get; init; } = "";
+        public string ProductDescription { get; init; } = "";
+        public string UnitOfMeasure { get; init; } = "";
+        public string TaxCode { get; init; } = "";
+        public decimal Quantity { get; init; }
+        public decimal ReservedQuantity { get; init; }
+        public decimal? CostValue { get; init; }
+        public string? CostMethod { get; init; }
+    }
+
+    public async Task<InventoryValuationSummary> ValuationSummary(Actor actor, Guid companyId, string method, CancellationToken ct)
     {
         actor.RequireCompany(companyId);
-
-        // Fetch up to 1000 inventory items for complete valuation analysis
-        var allItems = await AllBalances(actor, companyId, warehouseId: null, method, skip: 0, take: 1000, ct);
-
-        var totalQty = allItems.Sum(x => x.AvailableQuantity);
-        var totalValuation = allItems.Sum(x => x.TotalValuation);
-
-        var warehouseSummaries = allItems
-            .GroupBy(x => new { x.WarehouseId, x.WarehouseCode, x.WarehouseName, x.BranchId, x.BranchName })
-            .Select(g => new WarehouseValuationSummary(
-                g.Key.WarehouseId,
-                g.Key.WarehouseCode,
-                g.Key.WarehouseName,
-                g.Key.BranchId,
-                g.Key.BranchName,
-                g.Count(),
-                g.Sum(x => x.AvailableQuantity),
-                g.Sum(x => x.TotalValuation)
-            ))
-            .OrderBy(w => w.WarehouseCode)
-            .ToList();
-
-        var topValued = allItems
-            .OrderByDescending(x => x.TotalValuation)
-            .Take(5)
-            .ToList();
-
-        var uniqueProductCount = allItems.Select(x => x.ProductId).Distinct().Count();
-
-        return new InventoryValuationSummary(
-            companyId,
-            method.Equals("FIFO", StringComparison.OrdinalIgnoreCase) ? "FIFO" : "WEIGHTED_AVERAGE",
-            totalQty,
-            totalValuation,
-            warehouseSummaries.Count,
-            uniqueProductCount,
-            warehouseSummaries,
-            topValued
-        );
+        var requestedMethod = Method(method);
+        // Multiple aggregates must describe one database snapshot, including concurrent posting.
+        await using var transaction = await db.Database.BeginTransactionAsync(IsolationLevel.RepeatableRead, ct);
+        var availability = await CostAvailability(actor, companyId, ct);
+        var basis = await db.Set<StockCostHead>().Where(x => x.TenantId == actor.TenantId && x.CompanyId == companyId).Select(x => x.Basis).SingleOrDefaultAsync(ct);
+        var query = Balances(actor, companyId, null);
+        var warehouses = await query.GroupBy(x => new { x.WarehouseId, x.WarehouseCode, x.WarehouseName, x.BranchId, x.BranchName })
+            .OrderBy(g => g.Key.WarehouseCode).ThenBy(g => g.Key.WarehouseId)
+            .Select(g => new WarehouseValuationSummary(g.Key.WarehouseId, g.Key.WarehouseCode, g.Key.WarehouseName,
+                g.Key.BranchId, g.Key.BranchName, g.Count(), g.Sum(x => x.Quantity),
+                availability == null ? g.Sum(x => x.CostValue ?? 0) : g.All(x => x.Quantity == 0) ? (decimal?)0 : null,null))
+            .ToArrayAsync(ct);
+        var products = await query.Select(x => x.ProductId).Distinct().CountAsync(ct);
+        var unavailable = warehouses.Any(x => x.TotalValuation is null);
+        var methods = await query.Where(x => x.CostMethod != null).Select(x => x.CostMethod!).Distinct().ToArrayAsync(ct);
+        var top = availability == null ? await query.Where(x => x.Quantity > 0).OrderByDescending(x => x.CostValue).ThenBy(x => x.WarehouseId).ThenBy(x => x.ProductId).Take(10)
+            .Select(x => new FinancialStockItem(x.WarehouseId,x.WarehouseCode,x.WarehouseName,x.BranchId,x.BranchName,x.ProductId,x.ProductReference,x.ProductDescription,
+                x.UnitOfMeasure,x.TaxCode,x.Quantity,x.ReservedQuantity,x.Quantity-x.ReservedQuantity,x.CostValue/x.Quantity,x.CostValue,null,x.CostMethod!,"Available",null,basis,null,null,null,null,null)).ToArrayAsync(ct)
+            : Array.Empty<FinancialStockItem>();
+        var result = new InventoryValuationSummary(companyId, methods.Length == 0 ? requestedMethod : methods.Length == 1 ? methods[0] : "MIXED", warehouses.Sum(x => x.TotalQuantity),
+            unavailable ? null : warehouses.Sum(x => x.TotalValuation ?? 0), warehouses.Length, products, warehouses.Select(x=>x with {TotalValuationExact=x.TotalValuation?.ToString("0.0000",CultureInfo.InvariantCulture)}).ToArray(), top.Select(Exact).ToArray(),
+            unavailable ? "Unavailable" : availability == null ? "Available" : "NoStock", unavailable ? availability : null, DateTimeOffset.UtcNow, basis,
+            unavailable ? null : warehouses.Sum(x=>x.TotalValuation??0).ToString("0.0000",CultureInfo.InvariantCulture));
+        await transaction.CommitAsync(ct);
+        return result;
     }
+
+    private static FinancialStockItem Exact(FinancialStockItem x) => x with {
+        TotalValuationExact=x.TotalValuation?.ToString("0.0000",CultureInfo.InvariantCulture),
+        UnitCostExact=x.StandardCost?.ToString("0.000000",CultureInfo.InvariantCulture),
+        QuantityExact=x.Quantity.ToString("0.000000",CultureInfo.InvariantCulture),
+        ReservedQuantityExact=x.ReservedQuantity.ToString("0.000000",CultureInfo.InvariantCulture),
+        AvailableQuantityExact=x.AvailableQuantity.ToString("0.000000",CultureInfo.InvariantCulture)
+    };
+
+    internal async Task<string?> CostAvailability(Actor actor, Guid company, CancellationToken ct)
+    {
+        if (!await db.Set<StockCostHead>().AnyAsync(x => x.TenantId == actor.TenantId && x.CompanyId == company, ct)) return MissingCostJournal;
+        var stocks = db.Set<StockBalance>().Where(x => x.TenantId == actor.TenantId && x.CompanyId == company);
+        var costs = db.Set<StockCostPosition>().Where(x => x.TenantId == actor.TenantId && x.CompanyId == company);
+        var entries = db.Set<StockCostEntry>().Where(x => x.TenantId == actor.TenantId && x.CompanyId == company);
+        var mismatch = await stocks.AnyAsync(s => s.Quantity != (costs.Where(p => p.WarehouseId == s.WarehouseId && p.ProductId == s.ProductId).Select(p => (decimal?)p.Quantity).FirstOrDefault() ?? 0), ct) ||
+            await costs.AnyAsync(p => p.Quantity != (stocks.Where(s => s.WarehouseId == p.WarehouseId && s.ProductId == p.ProductId).Select(s => (decimal?)s.Quantity).FirstOrDefault() ?? 0) ||
+                p.Quantity != (entries.Where(e => e.WarehouseId == p.WarehouseId && e.ProductId == p.ProductId).Sum(e => (decimal?)e.Quantity) ?? 0) ||
+                p.Value != (entries.Where(e => e.WarehouseId == p.WarehouseId && e.ProductId == p.ProductId).Sum(e => (decimal?)e.Value) ?? 0), ct);
+        return mismatch ? "cost_stock_reconciliation_failed" : null;
+    }
+
+    private static string Method(string method) => method?.Trim().ToUpperInvariant() switch
+    {
+        "FIFO" => "FIFO",
+        "WEIGHTED_AVERAGE" => "WEIGHTED_AVERAGE",
+        _ => throw new DomainException("validation_failed", "Require FIFO or WEIGHTED_AVERAGE costing method.")
+    };
 
     private static void Page(int skip, int take)
     {
-        if (skip is < 0 or > 10000 || take is < 1 or > 1000)
-            throw new DomainException("validation_failed", "Require skip 0-10000 and take 1-1000.");
+        if (skip is < 0 or > 10000 || take is < 1 or > 100)
+            throw new DomainException("validation_failed", "Require skip 0-10000 and take 1-100.");
     }
 }

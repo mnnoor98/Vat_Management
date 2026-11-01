@@ -14,6 +14,10 @@ public sealed record Actor(Guid TenantId, string Subject, IReadOnlySet<Guid> Com
 
 public static class Permissions
 {
+    public const string CostingRead = "costing.read";
+    public const string CostingManage = "costing.manage";
+    public const string CostingApprove = "costing.approve";
+    public const string IdentityManage = "identity.manage";
     public const string IdentityRead = "identity.read";
     public const string ManufacturingRead = "manufacturing.read";
     public const string ManufacturingRequest = "manufacturing.request";
@@ -71,7 +75,7 @@ public static class Permissions
     public const string SalesInvoiceSubmit = "sales.submit";
     public const string SalesInvoiceApprove = "sales.approve";
     public const string SalesInvoiceCancel = "sales.cancel";
-    public static readonly string[] All = [ComplianceManage, ComplianceSubmit, IdentityRead, ManufacturingRead, ManufacturingRequest, ManufacturingApprove, ComplianceRead, WorkflowRead, IntegrationRead, PaymentReverseRequest, PaymentReverseApprove, PaymentRefundRequest, PaymentRefundApprove, PaymentRead, PaymentRequest, PaymentApprove, PaymentAllocate, SalesDebitRequest, SalesDebitApprove, SalesCreditRequest, SalesCreditApprove, SalesReserve, SalesPost, SalesInvoiceRead, SalesInvoiceCreate, SalesInvoiceSubmit, SalesInvoiceApprove, SalesInvoiceCancel, CompanyRead, CompanyManage, PurchaseRead, PurchaseCreate, PurchaseSubmit, PurchaseApprove,
+    public static readonly string[] All = [CostingRead, CostingManage, CostingApprove, IdentityManage, ComplianceManage, ComplianceSubmit, IdentityRead, ManufacturingRead, ManufacturingRequest, ManufacturingApprove, ComplianceRead, WorkflowRead, IntegrationRead, PaymentReverseRequest, PaymentReverseApprove, PaymentRefundRequest, PaymentRefundApprove, PaymentRead, PaymentRequest, PaymentApprove, PaymentAllocate, SalesDebitRequest, SalesDebitApprove, SalesCreditRequest, SalesCreditApprove, SalesReserve, SalesPost, SalesInvoiceRead, SalesInvoiceCreate, SalesInvoiceSubmit, SalesInvoiceApprove, SalesInvoiceCancel, CompanyRead, CompanyManage, PurchaseRead, PurchaseCreate, PurchaseSubmit, PurchaseApprove,
         MasterDataManage, MasterDataRead, InventoryManage, InventoryRead, InventoryApprove, InventoryPost, TaxRuleManage, TaxRulePublish, TaxRead, PurchasePrepare, PurchasePost,
         PeriodRead, PeriodManage, PeriodCloseRequest, PeriodCloseApprove, PurchaseReverseRequest, PurchaseReverseApprove, PurchaseCancel,
         ReportRead, ReportManage, MessagingRead, MessagingRetry];

@@ -8,8 +8,22 @@ namespace Vat.Services.Manufacturing.Controllers;
 [ApiController]
 [Tags("Manufacturing")]
 [Route("api/v1/companies/{companyId:guid}/manufacturing")]
-public sealed class ManufacturingController(ManufacturingReadService service, CoefficientService coefficients) : ControllerBase
+public sealed class ManufacturingController(ManufacturingReadService service, CoefficientService coefficients,IProductionOrderWorkflow orders) : ControllerBase
 {
+    [HttpPost("production-orders"),Authorize(Policy=Permissions.ManufacturingRequest)]
+    public async Task<IActionResult> CreateOrder(Guid companyId,CreateProductionOrderRequest request,CancellationToken ct)=>Reply(await orders.Create(HttpContext.GetActor(),companyId,Key(),request,Request.Headers.Authorization.ToString(),HttpContext.TraceIdentifier,ct));
+    [HttpGet("production-orders/{id:guid}"),Authorize(Policy=Permissions.ManufacturingRead)]
+    public async Task<IActionResult> Order(Guid companyId,Guid id,CancellationToken ct)=>Ok(await orders.Get(HttpContext.GetActor(),companyId,id,ct));
+    [HttpGet("production-orders/{id:guid}/execution-source"),Authorize(Policy=Permissions.ManufacturingRead)]
+    public async Task<IActionResult> OrderSource(Guid companyId,Guid id,CancellationToken ct)=>Ok(await orders.Source(HttpContext.GetActor(),companyId,id,ct));
+    [HttpPost("production-orders/{id:guid}/submit"),Authorize(Policy=Permissions.ManufacturingRequest)]
+    public Task<IActionResult> SubmitOrder(Guid companyId,Guid id,CoefficientActionRequest request,CancellationToken ct)=>OrderChange(companyId,id,"submit",request,ct);
+    [HttpPost("production-orders/{id:guid}/approve"),Authorize(Policy=Permissions.ManufacturingApprove)]
+    public Task<IActionResult> ApproveOrder(Guid companyId,Guid id,CoefficientActionRequest request,CancellationToken ct)=>OrderChange(companyId,id,"approve",request,ct);
+    [HttpPost("production-orders/{id:guid}/cancel"),Authorize(Policy=Permissions.ManufacturingRequest)]
+    public Task<IActionResult> CancelOrder(Guid companyId,Guid id,CoefficientActionRequest request,CancellationToken ct)=>OrderChange(companyId,id,"cancel",request,ct);
+    private async Task<IActionResult> OrderChange(Guid companyId,Guid id,string action,CoefficientActionRequest request,CancellationToken ct)=>Reply(await orders.Transition(HttpContext.GetActor(),companyId,id,Key(),action,request,HttpContext.TraceIdentifier,ct));
+    private Guid Key()=>Guid.TryParse(Request.Headers["Idempotency-Key"],out var key)&&key!=Guid.Empty?key:throw new Vat.Domain.DomainException("idempotency_key_required","Require a nonempty UUID idempotency key.",400);
     [HttpGet("production-orders")]
     [Authorize(Policy = Permissions.ManufacturingRead)]
     public async Task<IActionResult> List(Guid companyId, [FromQuery] Guid? before, [FromQuery] int? take, CancellationToken ct) =>

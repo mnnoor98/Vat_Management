@@ -9,6 +9,21 @@ public sealed class IdentityDbContext(DbContextOptions<IdentityDbContext> option
 
     protected override void OnModelCreating(ModelBuilder model)
     {
+        model.Entity<LocalAccount>(b =>
+        {
+            b.ToTable("local_accounts", "identity");
+            b.HasKey(x => x.Id);
+            b.Property(x => x.Id).ValueGeneratedNever();
+            b.HasIndex(x => x.Username).IsUnique();
+            b.Property(x => x.Username).HasMaxLength(100);
+            b.Property(x => x.FullName).HasMaxLength(200);
+            b.Property(x => x.FullNameBn).HasMaxLength(200);
+            b.Property(x => x.Email).HasMaxLength(254);
+            b.Property(x => x.Phone).HasMaxLength(50);
+            b.Property(x => x.PasswordHash).HasMaxLength(1000);
+            b.Property(x => x.CreatedBy).HasMaxLength(200);
+            b.HasIndex(x => new { x.TenantId, x.CompanyId, x.CreatedAt });
+        });
         model.Entity<IdentityUser>(b =>
         {
             b.ToTable("users", "identity", t =>

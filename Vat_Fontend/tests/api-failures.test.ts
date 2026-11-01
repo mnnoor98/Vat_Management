@@ -1,3 +1,9 @@
+import './tax-rules.test';
+import './costing-policies.test';
+import './cost-preview.test';
+import './stock-valuation.test';
+import './production-execution.test';
+import './auth-login.test';
 import '@angular/compiler';
 import './financial-contracts.test';
 import './master-inventory.test';

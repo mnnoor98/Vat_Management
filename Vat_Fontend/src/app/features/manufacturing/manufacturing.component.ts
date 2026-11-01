@@ -33,6 +33,7 @@ import { NewDeclarationComponent } from './components/new-declaration/new-declar
         </div>
 
         <div class="header-actions">
+          <a routerLink="/app/manufacturing/execution">Production orders and actual WIP costing</a>
           <div class="tab-pill-box">
             <button class="tab-btn" [class.active-tab]="activeTab === 'declaration'" (click)="activeTab = 'declaration'">
               মূসক ৪.৩ ফরম
