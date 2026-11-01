@@ -10,9 +10,9 @@ namespace Vat.Infrastructure.Persistence;
 
 public sealed record LandedCostInput(Guid PurchaseLineId, string Amount);
 public sealed record LandedCostLine(Guid PurchaseLineId, decimal Amount);
-public sealed record CreateLandedCostRequest(Guid PlanId, string TotalAmount, string Evidence, IReadOnlyList<LandedCostInput> Lines);
+public sealed record CreateLandedCostRequest(Guid PlanId, string TotalAmount, string Evidence, IReadOnlyList<LandedCostInput> Lines, Guid? ImportDeclarationId = null);
 public sealed record LandedCostView(Guid Id, Guid CompanyId, Guid PlanId, string TotalAmount, string State, int Version, string Evidence,
-    string CreatedBy, string? ApprovedBy, IReadOnlyList<LandedCostInput> Lines);
+    string CreatedBy, string? ApprovedBy, IReadOnlyList<LandedCostInput> Lines, Guid? ImportDeclarationId = null);
 
 public sealed class LandedCostService(VatDbContext db, IPeriodStore periodStore, IPeriodGuard periods, IAuditWriter audit, TimeProvider clock)
 {
@@ -26,8 +26,9 @@ public sealed class LandedCostService(VatDbContext db, IPeriodStore periodStore,
             throw new DomainException("landed_allocation_incomplete", "Allocate the complete declared BDT landed cost across every original posting-plan line, including zero allocations.");
         var lines = r.Lines.Select(x => new LandedCostLine(x.PurchaseLineId, Amount(x.Amount))).ToArray(); var total = Amount(r.TotalAmount);
         if (lines.Sum(x => x.Amount) != total) throw new DomainException("landed_allocation_mismatch", "Allocated costs must equal the declared total exactly.");
+        await RequireImportDeclaration(actor,company,r.PlanId,r.ImportDeclarationId,total,ct);
         var review = new StockLandedReview { TenantId=actor.TenantId,CompanyId=company,Id=Guid.CreateVersion7(),PlanId=r.PlanId,TotalAmount=total,
-            Lines=JsonSerializer.Serialize(lines),Evidence=r.Evidence.Trim(),CreatedBy=actor.Subject,CreatedAt=clock.GetUtcNow() };
+            ImportDeclarationId=r.ImportDeclarationId,Lines=JsonSerializer.Serialize(lines),Evidence=r.Evidence.Trim(),CreatedBy=actor.Subject,CreatedAt=clock.GetUtcNow() };
         db.Add(review); audit.Append(actor,company,review.Id,"LandedCostCreated",correlation,1);
         return new(201,View(review),$"/api/v1/companies/{company}/inventory/landed-cost-reviews/{review.Id}");
     }
@@ -38,6 +39,7 @@ public sealed class LandedCostService(VatDbContext db, IPeriodStore periodStore,
         if (a.State!="Draft" || a.Version!=r.ExpectedVersion) throw new DomainException("version_conflict","Reload the landed-cost review.",409);
         if (a.CreatedBy==actor.Subject) throw new DomainException("self_approval_denied","A different user must approve landed-cost allocation.",403);
         var plan = await Plan(actor,company,a.PlanId,ct); await periods.RequireOpen(actor.TenantId,company,plan.Snapshot.BusinessDate,ct);
+        await RequireImportDeclaration(actor,company,a.PlanId,a.ImportDeclarationId,a.TotalAmount,ct);
         if (await db.Set<StockLandedReview>().AnyAsync(x => x.TenantId==actor.TenantId && x.CompanyId==company && x.PlanId==a.PlanId && x.State=="Approved",ct))
             throw new DomainException("landed_cost_already_approved","This posting plan already has an approved allocation.",409);
         a.State="Approved"; a.Version=2; a.ApprovedBy=actor.Subject; a.ApprovedAt=clock.GetUtcNow();
@@ -60,9 +62,17 @@ public sealed class LandedCostService(VatDbContext db, IPeriodStore periodStore,
         if(p.Status!=PostingPlanStatus.Prepared) throw new DomainException("landed_source_not_prepared","Only a prepared, unposted receipt can receive landed cost approval.",409);
         return p;
     }
+    private async Task RequireImportDeclaration(Actor a,Guid c,Guid planId,Guid? declarationId,decimal total,CancellationToken ct)
+    {
+        if(declarationId is null)return;
+        var d=await db.Set<ImportDeclaration>().AsNoTracking().SingleOrDefaultAsync(x=>x.TenantId==a.TenantId&&x.CompanyId==c&&x.Id==declarationId,ct)
+            ?? throw new DomainException("import_declaration_not_found","Import declaration not found.",404);
+        if(d.PlanId!=planId||d.State!="Approved")throw new DomainException("import_declaration_not_approved","Use an approved import declaration for this prepared receipt.",409);
+        if(d.CapitalizableChargeAmount!=total)throw new DomainException("import_landed_cost_mismatch","Landed allocation must equal the approved declaration's capitalizable charge total.");
+    }
     private static decimal Amount(string s) => decimal.TryParse(s,NumberStyles.AllowDecimalPoint,CultureInfo.InvariantCulture,out var v) && v>=0 && v<100000000000000000000m && decimal.Round(v,4)==v
         ? v : throw new DomainException("validation_failed","Require nonnegative BDT decimal strings with at most four places.");
     private static LandedCostView View(StockLandedReview a)=>new(a.Id,a.CompanyId,a.PlanId,a.TotalAmount.ToString("0.0000",CultureInfo.InvariantCulture),a.State,a.Version,a.Evidence,a.CreatedBy,a.ApprovedBy,
-        JsonSerializer.Deserialize<LandedCostLine[]>(a.Lines)!.Select(x=>new LandedCostInput(x.PurchaseLineId,x.Amount.ToString("0.0000",CultureInfo.InvariantCulture))).ToArray());
+        JsonSerializer.Deserialize<LandedCostLine[]>(a.Lines)!.Select(x=>new LandedCostInput(x.PurchaseLineId,x.Amount.ToString("0.0000",CultureInfo.InvariantCulture))).ToArray(),a.ImportDeclarationId);
     private static void Require(Actor a,Guid c,string p) { a.RequireCompany(c); if(!a.Permissions.Contains(p)) throw new DomainException("permission_denied","Costing permission required.",403); }
 }

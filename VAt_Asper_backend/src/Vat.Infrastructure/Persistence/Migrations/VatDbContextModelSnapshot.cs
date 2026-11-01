@@ -2046,6 +2046,106 @@ namespace Vat.Infrastructure.Persistence.Migrations
                     b.ToTable("idempotency_records", "platform");
                 });
 
+            modelBuilder.Entity("Vat.Infrastructure.Persistence.ImportDeclaration", b =>
+                {
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("CompanyId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTimeOffset?>("ApprovedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("ApprovedBy")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<decimal>("CapitalizableChargeAmount")
+                        .HasPrecision(24, 4)
+                        .HasColumnType("numeric(24,4)");
+
+                    b.Property<string>("Charges")
+                        .IsRequired()
+                        .HasColumnType("jsonb");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("CreatedBy")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<string>("Currency")
+                        .IsRequired()
+                        .HasMaxLength(3)
+                        .HasColumnType("character varying(3)");
+
+                    b.Property<DateOnly>("DeclarationDate")
+                        .HasColumnType("date");
+
+                    b.Property<string>("DeclarationNumber")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.Property<string>("Evidence")
+                        .IsRequired()
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)");
+
+                    b.Property<decimal>("ExchangeRate")
+                        .HasPrecision(24, 8)
+                        .HasColumnType("numeric(24,8)");
+
+                    b.Property<decimal>("ForeignInvoiceAmount")
+                        .HasPrecision(24, 4)
+                        .HasColumnType("numeric(24,4)");
+
+                    b.Property<decimal>("FunctionalInvoiceAmount")
+                        .HasPrecision(24, 4)
+                        .HasColumnType("numeric(24,4)");
+
+                    b.Property<decimal>("NonrecoverableTaxAmount")
+                        .HasPrecision(24, 4)
+                        .HasColumnType("numeric(24,4)");
+
+                    b.Property<Guid>("PlanId")
+                        .HasColumnType("uuid");
+
+                    b.Property<decimal>("RecoverableTaxAmount")
+                        .HasPrecision(24, 4)
+                        .HasColumnType("numeric(24,4)");
+
+                    b.Property<string>("State")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<int>("Version")
+                        .IsConcurrencyToken()
+                        .HasColumnType("integer");
+
+                    b.HasKey("TenantId", "CompanyId", "Id");
+
+                    b.HasIndex("TenantId", "CompanyId", "DeclarationNumber")
+                        .IsUnique();
+
+                    b.HasIndex("TenantId", "CompanyId", "PlanId")
+                        .IsUnique()
+                        .HasFilter("\"State\"='Approved'");
+
+                    b.ToTable("import_declarations", "inventory", t =>
+                        {
+                            t.HasCheckConstraint("ck_import_declaration_amounts", "\"ForeignInvoiceAmount\">=0 AND \"ExchangeRate\">0 AND \"FunctionalInvoiceAmount\">=0 AND \"RecoverableTaxAmount\">=0 AND \"NonrecoverableTaxAmount\">=0 AND \"CapitalizableChargeAmount\">=0");
+
+                            t.HasCheckConstraint("ck_import_declaration_state", "(\"State\"='Draft' AND \"Version\"=1 AND \"ApprovedBy\" IS NULL AND \"ApprovedAt\" IS NULL) OR (\"State\"='Approved' AND \"Version\"=2 AND \"ApprovedBy\" IS NOT NULL AND \"ApprovedAt\" IS NOT NULL AND \"ApprovedBy\"<>\"CreatedBy\")");
+                        });
+                });
+
             modelBuilder.Entity("Vat.Infrastructure.Persistence.InboxDeadLetter", b =>
                 {
                     b.Property<Guid>("Id")
@@ -2821,6 +2921,9 @@ namespace Vat.Infrastructure.Persistence.Migrations
                         .HasMaxLength(1000)
                         .HasColumnType("character varying(1000)");
 
+                    b.Property<Guid?>("ImportDeclarationId")
+                        .HasColumnType("uuid");
+
                     b.Property<string>("Lines")
                         .IsRequired()
                         .HasColumnType("jsonb");
@@ -2841,6 +2944,8 @@ namespace Vat.Infrastructure.Persistence.Migrations
                         .HasColumnType("integer");
 
                     b.HasKey("TenantId", "CompanyId", "Id");
+
+                    b.HasIndex("TenantId", "CompanyId", "ImportDeclarationId");
 
                     b.HasIndex("TenantId", "CompanyId", "PlanId")
                         .IsUnique()
@@ -7744,6 +7849,15 @@ namespace Vat.Infrastructure.Persistence.Migrations
                         .IsRequired();
                 });
 
+            modelBuilder.Entity("Vat.Infrastructure.Persistence.ImportDeclaration", b =>
+                {
+                    b.HasOne("Vat.Domain.Posting.PurchasePostingPlan", null)
+                        .WithMany()
+                        .HasForeignKey("TenantId", "CompanyId", "PlanId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+                });
+
             modelBuilder.Entity("Vat.Infrastructure.Persistence.ProductionCostOperation", b =>
                 {
                     b.HasOne("Vat.Infrastructure.Persistence.ProductionCostOperation", null)
@@ -7823,6 +7937,11 @@ namespace Vat.Infrastructure.Persistence.Migrations
 
             modelBuilder.Entity("Vat.Infrastructure.Persistence.StockLandedReview", b =>
                 {
+                    b.HasOne("Vat.Infrastructure.Persistence.ImportDeclaration", null)
+                        .WithMany()
+                        .HasForeignKey("TenantId", "CompanyId", "ImportDeclarationId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
                     b.HasOne("Vat.Domain.Posting.PurchasePostingPlan", null)
                         .WithMany()
                         .HasForeignKey("TenantId", "CompanyId", "PlanId")

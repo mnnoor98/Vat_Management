@@ -9,8 +9,18 @@ namespace Vat.Coordinated.Inventory.Controllers;
 
 [ApiController, Tags("Inventory Valuation")]
 [Route("api/v1/companies/{companyId:guid}/inventory")]
-public sealed class StockValuationController(LandedCostService landed, StockValuationService valuation, ICommandExecutor commands): ControllerBase
+public sealed class StockValuationController(LandedCostService landed, ImportDeclarationService imports, StockValuationService valuation, ICommandExecutor commands): ControllerBase
 {
+    [HttpPost("import-declarations"), Authorize(Policy=Permissions.CostingManage)]
+    public Task<IActionResult> CreateImport(Guid companyId,CreateImportDeclarationRequest request,CancellationToken ct)=>
+        InventoryApiCommands.Execute(HttpContext,commands,companyId,"import-declaration.create",request,()=>imports.Create(HttpContext.GetActor(),companyId,request,HttpContext.TraceIdentifier,ct),ct);
+    [HttpPost("import-declarations/{id:guid}/approve"), Authorize(Policy=Permissions.CostingApprove)]
+    public Task<IActionResult> ApproveImport(Guid companyId,Guid id,ApproveCostingPolicyRequest request,CancellationToken ct)=>
+        InventoryApiCommands.Execute(HttpContext,commands,companyId,$"import-declaration.approve:{id}",request,()=>imports.Approve(HttpContext.GetActor(),companyId,id,request,HttpContext.TraceIdentifier,ct),ct);
+    [HttpGet("import-declarations/{id:guid}"), Authorize(Policy=Permissions.CostingRead)]
+    public async Task<IActionResult> GetImport(Guid companyId,Guid id,CancellationToken ct)=>Ok(await imports.Get(HttpContext.GetActor(),companyId,id,ct));
+    [HttpGet("import-declarations"), Authorize(Policy=Permissions.CostingRead)]
+    public async Task<IActionResult> ListImports(Guid companyId,CancellationToken ct,Guid? before=null,int take=25)=>Ok(await imports.List(HttpContext.GetActor(),companyId,before,take,ct));
     [HttpGet("landed-cost-sources/{id:guid}"), Authorize(Policy=Permissions.CostingRead)]
     public async Task<IActionResult> Source(Guid companyId,Guid id,[FromServices] StockCostPreparationQueries queries,CancellationToken ct)
     {

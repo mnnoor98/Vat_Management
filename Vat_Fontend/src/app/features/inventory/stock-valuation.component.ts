@@ -2,9 +2,9 @@ import { Component, OnDestroy, effect, inject, signal, untracked } from '@angula
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
-import { Subscription, Observable, EMPTY, expand, reduce, forkJoin } from 'rxjs';
+import { Subscription, Observable, EMPTY, expand, reduce, forkJoin, of } from 'rxjs';
 import { CompanyContextService } from '../../core/services/company-context.service';
-import { StockValuationApiService, OpeningPosition, OpeningDraft, OpeningReview, LandedDraft, LandedReview, LandedSource, LedgerStatus, LedgerEntry } from '../../core/services/api/stock-valuation-api.service';
+import { StockValuationApiService, OpeningPosition, OpeningDraft, OpeningReview, LandedDraft, LandedReview, LandedSource, LedgerStatus, LedgerEntry, ImportDraft, ImportReview } from '../../core/services/api/stock-valuation-api.service';
 
 @Component({selector:'app-stock-valuation',standalone:true,imports:[CommonModule,FormsModule,RouterLink],template:`
   <section class="vat-card" style="padding:24px">
@@ -39,11 +39,24 @@ import { StockValuationApiService, OpeningPosition, OpeningDraft, OpeningReview,
       </tbody></table><button (click)="reviewPage.set(reviewPage()-1)" [disabled]="reviewPage()===0">Previous</button><button (click)="reviewPage.set(reviewPage()+1)" [disabled]="(reviewPage()+1)*25>=a.lines.length">Next</button>
       <button class="btn btn-primary" (click)="approveOpening(a)" [disabled]="busy() || !canApprove(a)">Approve reviewed opening and activate valuation</button><button (click)="reviewOpening.set(null)">Close review</button>
     </section>
+    <h2>Reviewed import declaration</h2>
+    <p>Freeze the bill of entry, foreign invoice, exchange rate, tax split and classified charges before allocating landed cost. An independent approver is required.</p>
+    <fieldset *ngIf="context.hasPermission('costing.manage')" [disabled]="busy()">
+      <label>Prepared receipt <select [(ngModel)]="importDraft.planId"><option value="">Select receipt</option><option *ngFor="let s of sources()" [value]="s.planId">{{s.purchaseReference}} / {{s.businessDate}}</option></select></label>
+      <label>Declaration number <input [(ngModel)]="importDraft.declarationNumber" maxlength="100"></label><label>Declaration date <input type="date" [(ngModel)]="importDraft.declarationDate"></label>
+      <label>Currency <input [(ngModel)]="importDraft.currency" maxlength="3"></label><label>Foreign invoice <input [(ngModel)]="importDraft.foreignInvoiceAmount" inputmode="decimal"></label><label>BDT exchange rate <input [(ngModel)]="importDraft.exchangeRate" inputmode="decimal"></label>
+      <label>Recoverable tax BDT <input [(ngModel)]="importDraft.recoverableTaxAmount" inputmode="decimal"></label><label>Non-recoverable tax BDT <input [(ngModel)]="importDraft.nonrecoverableTaxAmount" inputmode="decimal"></label>
+      <label>Evidence <input [(ngModel)]="importDraft.evidence" maxlength="1000"></label>
+      <div *ngFor="let charge of importDraft.charges"><select [(ngModel)]="charge.kind"><option *ngFor="let k of importKinds" [value]="k">{{k}}</option></select><input [(ngModel)]="charge.amount" inputmode="decimal" placeholder="BDT amount"><input [(ngModel)]="charge.evidence" maxlength="500" placeholder="Charge evidence"><label><input type="checkbox" [(ngModel)]="charge.capitalizable"> Capitalize</label></div>
+      <button (click)="addImportCharge()">Add charge</button><button class="btn btn-primary" (click)="createImport()">Save import declaration</button>
+    </fieldset>
+    <table class="vat-table"><thead><tr><th>Declaration / currency</th><th>BDT basis / capitalizable</th><th>State / action</th></tr></thead><tbody><tr *ngFor="let d of importReviews()"><td>{{d.declarationNumber}} / {{d.currency}}</td><td>{{d.functionalInvoiceAmount}} / {{d.capitalizableChargeAmount}}</td><td>{{d.state}} / {{d.createdBy}} <button (click)="approveImport(d)" [disabled]="busy() || !canApprove(d)">Approve</button></td></tr></tbody></table>
     <h2>Landed cost before purchase receipt</h2>
     <p>Allocate the full declared BDT freight/duty/other capitalizable cost across every receipt line. VAT components already in the purchase calculation must not be entered again. Record zero charges explicitly when none apply. Amounts freeze on approval; late charges after posting require a separate reconciliation workflow.</p>
     <fieldset *ngIf="context.hasPermission('costing.manage')" [disabled]="busy()">
       <button (click)="sourceBefore=undefined; loadSources()">Load prepared receipts</button><button (click)="olderSources()" [disabled]="sources().length!==25">Older prepared receipts</button>
       <label>Receipt <select [ngModel]="landed.planId" (ngModelChange)="chooseSource($event)"><option value="">Select prepared purchase receipt</option><option *ngFor="let s of sources()" [value]="s.planId">{{s.purchaseReference}} / {{s.warehouse}} / {{s.businessDate}}</option></select></label>
+      <label>Approved import declaration <select [(ngModel)]="landed.importDeclarationId"><option [ngValue]="null">Domestic / none</option><option *ngFor="let d of approvedImportsForLanded()" [value]="d.id">{{d.declarationNumber}} / BDT {{d.capitalizableChargeAmount}}</option></select></label>
       <label>Declared total landed cost (BDT) <input [(ngModel)]="landed.totalAmount" inputmode="decimal"></label>
       <label>Supporting charge / allocation evidence <input [(ngModel)]="landed.evidence" maxlength="1000"></label>
       <button (click)="declareZero()" [disabled]="!landed.planId">Declare no landed charges</button>
@@ -68,27 +81,28 @@ export class StockValuationComponent implements OnDestroy {
   readonly context=inject(CompanyContextService); private api=inject(StockValuationApiService); private subscriptions=new Subscription();
   private requests=new Map<string,Subscription>();
   readonly status=signal<LedgerStatus|null>(null); readonly entries=signal<LedgerEntry[]>([]); readonly openings=signal<OpeningReview[]>([]);
-  readonly landedReviews=signal<LandedReview[]>([]); readonly sources=signal<LandedSource[]>([]); readonly positions=signal<OpeningPosition[]>([]);
+  readonly landedReviews=signal<LandedReview[]>([]); readonly importReviews=signal<ImportReview[]>([]); readonly sources=signal<LandedSource[]>([]); readonly positions=signal<OpeningPosition[]>([]);
   readonly reviewOpening=signal<OpeningReview|null>(null); readonly reviewLanded=signal<LandedReview|null>(null); readonly reviewSource=signal<LandedSource|null>(null);
   readonly busy=signal(false); readonly error=signal(''); readonly message=signal(''); readonly positionsLoaded=signal(false);
   readonly openingPage=signal(0); readonly reviewPage=signal(0); private reloadRequired=true; private scope=''; private commandKeys=new Map<string,string>();
   opening:OpeningDraft={businessDate:'',basis:'NetPlusNonrecoverableTaxAndLanded',evidence:'',lines:[]};
   landed:LandedDraft={planId:'',totalAmount:'',evidence:'',lines:[]}; openingBefore?:string; landedBefore?:string; entryBefore?:string; sourceBefore?:string;
+  readonly importKinds=['Duty','Freight','Insurance','Port','Clearing','Other']; importDraft:ImportDraft={planId:'',declarationNumber:'',declarationDate:'',currency:'USD',foreignInvoiceAmount:'',exchangeRate:'',recoverableTaxAmount:'0.0000',nonrecoverableTaxAmount:'0.0000',evidence:'',charges:[]};
   constructor(){effect(()=>{const company=this.context.companyGuid();untracked(()=>this.reset(company));});}
   reset(company:string):void{
     this.subscriptions.unsubscribe();this.subscriptions=new Subscription();this.scope=company;this.commandKeys.clear();this.busy.set(false);this.message.set('');
-    this.opening={businessDate:'',basis:'NetPlusNonrecoverableTaxAndLanded',evidence:'',lines:[]};this.landed={planId:'',totalAmount:'',evidence:'',lines:[]};
+    this.opening={businessDate:'',basis:'NetPlusNonrecoverableTaxAndLanded',evidence:'',lines:[]};this.landed={planId:'',totalAmount:'',evidence:'',lines:[]};this.importDraft={planId:'',declarationNumber:'',declarationDate:'',currency:'USD',foreignInvoiceAmount:'',exchangeRate:'',recoverableTaxAmount:'0.0000',nonrecoverableTaxAmount:'0.0000',evidence:'',charges:[]};
     this.positions.set([]);this.positionsLoaded.set(false);this.openingPage.set(0);this.reviewPage.set(0);this.sources.set([]);
     this.openingBefore=this.landedBefore=this.entryBefore=this.sourceBefore=undefined;this.reload();
   }
   reload():void{
     if(this.busy())return;this.subscriptions.unsubscribe();this.subscriptions=new Subscription();this.requests.clear();this.error.set('');this.reloadRequired=true;this.reviewOpening.set(null);this.reviewLanded.set(null);this.reviewSource.set(null);this.status.set(null);
-    this.openings.set([]);this.landedReviews.set([]);this.entries.set([]);
+    this.openings.set([]);this.landedReviews.set([]);this.importReviews?.set([]);this.entries.set([]);
     if(!this.context.hasPermission('costing.read')){this.error.set('Costing read permission is required.');return;}
     this.busy.set(true);
-    this.read(forkJoin({status:this.api.status(),openings:this.api.openings(this.openingBefore),landed:this.api.landed(this.landedBefore),entries:this.api.journal(this.entryBefore)}),r=>{
+    this.read(forkJoin({status:this.api.status(),openings:this.api.openings(this.openingBefore),landed:this.api.landed(this.landedBefore),imports:this.api.imports?.()??of([]),entries:this.api.journal(this.entryBefore)}),r=>{
       if(r.status.companyId!==this.scope||r.openings.some(a=>a.companyId!==this.scope)||r.landed.some(a=>a.companyId!==this.scope))throw new Error('Ledger/review scope mismatch.');
-      this.status.set(r.status);this.openings.set(r.openings);this.landedReviews.set(r.landed);this.entries.set(r.entries);this.reloadRequired=false;this.busy.set(false);
+      this.status.set(r.status);this.openings.set(r.openings);this.landedReviews.set(r.landed);this.importReviews?.set(r.imports);this.entries.set(r.entries);this.reloadRequired=false;this.busy.set(false);
     },'reload');
   }
   private read<T>(request:Observable<T>,next:(value:T)=>void,slot='page'):void{
@@ -111,10 +125,17 @@ export class StockValuationComponent implements OnDestroy {
       if(rows.length>10000)throw new Error('Opening exceeds 10000 positions.');this.positions.set(rows);this.opening.lines=rows.map(x=>({warehouseId:x.warehouseId,productId:x.productId,quantity:x.quantity,value:''}));this.positionsLoaded.set(true);this.busy.set(false);
     },'positions');
   }
-  chooseSource(id:string):void{const s=this.sources().find(x=>x.planId===id);this.landed={planId:s?.planId??'',totalAmount:'',evidence:'',lines:s?.lines.map(x=>({purchaseLineId:x.purchaseLineId,amount:''}))??[]};}
+  chooseSource(id:string):void{const s=this.sources().find(x=>x.planId===id);this.landed={planId:s?.planId??'',totalAmount:'',evidence:'',lines:s?.lines.map(x=>({purchaseLineId:x.purchaseLineId,amount:''}))??[],importDeclarationId:null};}
+  approvedImportsForLanded():ImportReview[]{return this.importReviews().filter(x=>x.state==='Approved'&&x.planId===this.landed.planId);}
+  addImportCharge():void{this.importDraft.charges.push({kind:'Freight',amount:'',evidence:'',capitalizable:true});}
+  createImport():void{
+    if(this.busy()||!this.context.hasPermission('costing.manage'))return;
+    const d=this.importDraft;if(!d.planId||!d.declarationNumber.trim()||!this.validDate(d.declarationDate)||!/^[A-Za-z]{3}$/.test(d.currency)||!this.amount(d.foreignInvoiceAmount)||!/^\d+(\.\d{1,8})?$/.test(d.exchangeRate)||Number(d.exchangeRate)<=0||!this.amount(d.recoverableTaxAmount)||!this.amount(d.nonrecoverableTaxAmount)||!d.evidence.trim()||d.charges.some(x=>!this.amount(x.amount)||!x.evidence.trim())){this.error.set('Complete the receipt, declaration, currency/rate, tax, evidence and charge fields.');return;}
+    const draft=structuredClone(d);this.command('import',draft,key=>this.api.createImport(draft,key),r=>r.state==='Draft'&&r.planId===draft.planId&&r.declarationNumber===draft.declarationNumber.trim());
+  }
   declareZero():void{this.landed.totalAmount='0.0000';this.landed.lines=this.landed.lines.map(x=>({...x,amount:'0.0000'}));}
   selectLanded(a:LandedReview):void{this.reviewLanded.set(a);this.reviewSource.set(null);this.read(this.api.source(a.planId),source=>{if(this.reviewLanded()?.id===a.id && source.planId===a.planId)this.reviewSource.set(source);},'review-source');}
-  canApprove(a:OpeningReview|LandedReview):boolean{return !this.reloadRequired&&a.companyId===this.context.companyGuid()&&a.state==='Draft'&&a.version===1&&a.createdBy!==this.context.currentUser().id&&this.context.hasPermission('costing.approve');}
+  canApprove(a:OpeningReview|LandedReview|ImportReview):boolean{return !this.reloadRequired&&a.companyId===this.context.companyGuid()&&a.state==='Draft'&&a.version===1&&a.createdBy!==this.context.currentUser().id&&this.context.hasPermission('costing.approve');}
   createOpening():void{
     if(this.busy()||!this.context.hasPermission('costing.manage')||!this.positionsLoaded())return;
     if(!this.validDate(this.opening.businessDate)||!this.opening.evidence.trim()||this.opening.lines.some(x=>!this.amount(x.value))){this.error.set('Enter a valid opening date, evidence and every reviewed total value.');return;}
@@ -127,6 +148,7 @@ export class StockValuationComponent implements OnDestroy {
   }
   approveOpening(a:OpeningReview):void{if(!this.canApprove(a)||this.busy())return;this.command('approve-opening',{id:a.id,version:a.version},key=>this.api.approveOpening(a,key),r=>r.id===a.id&&r.state==='Approved'&&r.version===2&&this.openingMatches(r,a));}
   approveLanded(a:LandedReview):void{if(!this.canApprove(a)||this.busy()||this.reviewSource()?.planId!==a.planId)return;this.command('approve-landed',{id:a.id,version:a.version},key=>this.api.approveLanded(a,key),r=>r.id===a.id&&r.state==='Approved'&&r.version===2&&this.landedMatches(r,a));}
+  approveImport(a:ImportReview):void{if(!this.canApprove(a)||this.busy())return;this.command('approve-import',{id:a.id,version:a.version},key=>this.api.approveImport(a,key),r=>r.id===a.id&&r.state==='Approved'&&r.version===2&&r.planId===a.planId);}
   private command<T extends {companyId:string}>(kind:string,payload:unknown,send:(key:string)=>Observable<T>,valid:(response:T)=>boolean):void{
     const scope=this.context.companyGuid();if(scope!==this.scope)return;const fingerprint=JSON.stringify([kind,payload]);let key=this.commandKeys.get(fingerprint);if(!key){key=crypto.randomUUID();this.commandKeys.set(fingerprint,key);}
     this.busy.set(true);this.error.set('');this.message.set('');this.subscriptions.add(send(key).subscribe({next:r=>{if(scope!==this.context.companyGuid())return;if(r.companyId!==scope||!valid(r)){this.fail(new Error('Command response mismatch. Reload required.'));return;}this.busy.set(false);this.message.set('Saved and verified. Reloaded current ledger and reviews.');this.reload();},error:e=>{if(scope===this.context.companyGuid())this.fail(e);}}));

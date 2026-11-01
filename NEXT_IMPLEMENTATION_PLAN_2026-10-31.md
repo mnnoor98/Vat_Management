@@ -1,6 +1,6 @@
 # Stock valuation-এর পরবর্তী implementation plan
 
-> 2026-11-01 update: physical scrap/by-product stock, the Manufacturing execution-status inbox, material-return reversal, cumulative partial output correction and independently approved closed-execution reopening are implemented. The durable queue projects committed financial execution events with deduplication, monotonic versions and quarantine recovery. The next priority is Import/Export, followed by subcontract production. See [physical output guide](VAt_Asper_backend/docs/PRODUCTION_PHYSICAL_OUTPUTS.md), [execution inbox guide](VAt_Asper_backend/docs/PRODUCTION_EXECUTION_INBOX.md) and [reversal guide](VAt_Asper_backend/docs/PRODUCTION_REVERSALS.md).
+> 2026-11-01 update: reviewed import declaration, currency/tax/charge evidence and exact linkage to pre-receipt landed-cost capitalization are implemented after production reopening. The next Import/Export slice is export shipment/evidence linkage, followed by late import charge corrections and subcontract production. See [import declaration guide](VAt_Asper_backend/docs/IMPORT_DECLARATIONS.md).
 
 তারিখ: ৩১ অক্টোবর ২০২৬, Asia/Dhaka। Scope: VAT Management; Trading + Manufacturing, Import/Export এবং subcontract production। পূর্ণ ERP/HR/payroll এই scope-এর অংশ নয়।
 
