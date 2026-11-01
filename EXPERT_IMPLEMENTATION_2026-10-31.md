@@ -2,6 +2,8 @@
 
 ## 2026-11-01 milestone: production material-return reversal
 
+Production output correction now accepts a reviewed partial quantity for finished receipts and by-products. Multiple approved corrections may reference one immutable receipt; each removes original source cost, restores WIP and is capped by aggregate database guards. Intermediate BDT rounding is deterministic and the final correction consumes the exact residual. Migration `20261101074904_ProductionPartialOutputCorrections` replaces the one-reversal index with guarded cumulative evidence. Focused FIFO/Moving Average acceptance passed **2/2** and prior full/material-return compatibility passed **4/4**.
+
 Material-return reversal removes the exact original returned quantity/value from FIFO layers or the Moving Weighted Average pool and restores that value to WIP. The original Return remains immutable; the correction requires an open date, open execution, source-linked Reverse document and independent approval. Consumed, transferred or value-mismatched returned stock is rejected. Migration `20261101071316_ProductionMaterialReturnReversals` extends database movement, cost-entry and source-evidence guards. Focused domain/API validation passed **4/4** across both costing methods.
 
 ## 2026-11-01 milestone: Manufacturing execution-status inbox

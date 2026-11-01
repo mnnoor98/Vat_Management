@@ -93,7 +93,7 @@ internal sealed class StockCostLedger(VatDbContext db, StockCostHead head, DateT
     public async Task<decimal> Production(ProductionStockMovement source,CancellationToken ct)
     {
         var p=await Position(source.WarehouseId,source.ProductId,source.BusinessDate,ct);var state=State(p);IReadOnlyList<CostChunk> chunks;
-        if(source.Kind=="ReceiptReversal")chunks=state.ReverseReceipt(source.OriginalIssueId!.Value,-source.Quantity,-source.Value);
+        if(source.Kind=="ReceiptReversal")chunks=state.ReverseReceiptPortion(source.OriginalIssueId!.Value,-source.Quantity,-source.Value);
         else if(source.Kind=="ReturnReversal"){
             var original=await db.Set<StockCostEntry>().AsNoTracking().SingleOrDefaultAsync(x=>x.TenantId==head.TenantId&&x.CompanyId==head.CompanyId&&x.Kind=="ProductionReturn"&&x.SourceId==source.OriginalIssueId,ct)
                 ??throw new DomainException("production_cost_return_missing","Original production return cost allocation is missing.",409);

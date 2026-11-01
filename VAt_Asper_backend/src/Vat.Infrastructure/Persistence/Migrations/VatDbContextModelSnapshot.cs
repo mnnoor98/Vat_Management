@@ -2311,7 +2311,6 @@ namespace Vat.Infrastructure.Persistence.Migrations
                     b.HasKey("TenantId", "CompanyId", "Id");
 
                     b.HasIndex("TenantId", "CompanyId", "ReversesOperationId")
-                        .IsUnique()
                         .HasFilter("\"State\"='Posted' AND \"ReversesOperationId\" IS NOT NULL");
 
                     b.HasIndex("TenantId", "CompanyId", "SessionId");

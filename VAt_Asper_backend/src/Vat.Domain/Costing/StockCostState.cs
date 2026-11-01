@@ -50,6 +50,31 @@ public sealed class StockCostState
         Quantity -= quantity; Value -= value; Check(); return chunks;
     }
 
+    public IReadOnlyList<CostChunk> ReverseReceiptPortion(Guid origin, decimal quantity, decimal value)
+    {
+        Valid(quantity, value);
+        List<CostChunk> chunks;
+        if (Method == "FIFO")
+        {
+            var candidates = Layers.Where(x => x.Origin == origin).ToList();
+            if (candidates.Sum(x => x.Quantity) < quantity)
+                throw new DomainException("cost_receipt_consumed", "The requested original output quantity is consumed or held in another warehouse.", 409);
+            chunks = Consume(candidates, quantity);
+            if (chunks.Sum(x => x.Value) != value)
+                throw new DomainException("cost_receipt_value_changed", "The requested output correction no longer carries its original FIFO value.", 409);
+            foreach (var chunk in chunks)
+            {
+                var index = Layers.FindIndex(x => x.Id == chunk.Id); var layer = Layers[index];
+                if (layer.Quantity == chunk.Quantity) Layers.RemoveAt(index);
+                else Layers[index] = layer with { Quantity = layer.Quantity - chunk.Quantity, Value = layer.Value - chunk.Value };
+            }
+        }
+        else chunks = [new(Guid.NewGuid(), origin, quantity, value)];
+        if (Quantity < quantity || Value < value || (Quantity == quantity && Value != value))
+            throw new DomainException("cost_reversal_reconciliation_required", "The original output value cannot be removed from the remaining cost pool.", 409);
+        Quantity -= quantity; Value -= value; Check(); return chunks;
+    }
+
     public IReadOnlyList<CostChunk> ReverseReturn(IReadOnlyList<CostChunk> returned)
     {
         var quantity=returned.Sum(x=>x.Quantity);var value=returned.Sum(x=>x.Value);Valid(quantity,value);

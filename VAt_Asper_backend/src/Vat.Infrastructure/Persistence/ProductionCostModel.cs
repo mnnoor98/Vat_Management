@@ -50,7 +50,7 @@ internal static class ProductionCostModel
             });
             b.HasKey(x=>new{x.TenantId,x.CompanyId,x.Id});b.Property(x=>x.Id).ValueGeneratedNever();b.Property(x=>x.Version).IsConcurrencyToken();b.Property(x=>x.Lines).HasColumnType("jsonb");b.Property(x=>x.Evidence).HasMaxLength(1000);
             b.HasOne<ProductionCostOperation>().WithMany().HasForeignKey(x=>new{x.TenantId,x.CompanyId,Id=x.ReversesOperationId}).OnDelete(DeleteBehavior.Restrict);
-            b.HasIndex(x=>new{x.TenantId,x.CompanyId,x.ReversesOperationId}).IsUnique().HasFilter("\"State\"='Posted' AND \"ReversesOperationId\" IS NOT NULL");
+            b.HasIndex(x=>new{x.TenantId,x.CompanyId,x.ReversesOperationId}).HasFilter("\"State\"='Posted' AND \"ReversesOperationId\" IS NOT NULL");
             b.Property(x=>x.CreatedBy).HasMaxLength(200);b.Property(x=>x.ApprovedBy).HasMaxLength(200);
             foreach(var name in new[]{"Labor","Utility","Overhead","Amount","PostedValue"})b.Property<decimal>(name).HasPrecision(24,4);b.Property(x=>x.OutputQuantity).HasPrecision(24,6);b.Property(x=>x.OutputInputQuantity).HasPrecision(24,6);b.Property(x=>x.OutputUnitOfMeasure).HasMaxLength(20);
             b.HasOne<ProductionCostSession>().WithMany().HasForeignKey(x=>new{x.TenantId,x.CompanyId,Id=x.SessionId}).OnDelete(DeleteBehavior.Restrict);

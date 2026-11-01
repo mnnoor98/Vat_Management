@@ -66,8 +66,13 @@ public sealed class ProductionCostService(VatDbContext db,IProductionExecutionRe
         if(r.Kind=="Close"&&(amount!=0||output!=0||labor+utility+overhead!=0))throw new DomainException("validation_failed","Close carries no stock or charge amount.");
         if((r.Kind=="Reverse")!=(r.ReversesOperationId is not null))throw new DomainException("validation_failed","Only reversals must identify an original posted operation.");
         if(r.Kind=="Reverse"){
-            if(amount!=0||output!=0||labor+utility+overhead!=0)throw new DomainException("validation_failed","Reversal amounts come exclusively from the original posted source.");
-            _=await ReversalSource(actor,company,session,r.ReversesOperationId!.Value,r.BusinessDate,ct);
+            if(amount!=0||labor+utility+overhead!=0)throw new DomainException("validation_failed","Reversal values come exclusively from the original posted source.");
+            var original=await ReversalSource(actor,company,session,r.ReversesOperationId!.Value,r.BusinessDate,ct);
+            if(original.Kind is "Receipt" or "ByProduct"){
+                var remaining=await OutputRemaining(actor,company,original,ct);if(output==0)output=remaining.Quantity;
+                if(output<=0||output>remaining.Quantity)throw new DomainException("production_reversal_quantity_invalid","Output correction quantity must not exceed the unreversed original quantity.",409);
+            }
+            else if(output!=0)throw new DomainException("validation_failed","Only production-output reversals may specify a correction quantity.");
         }
         var o=new ProductionCostOperation{TenantId=actor.TenantId,CompanyId=company,Id=Guid.CreateVersion7(),SessionId=session,SessionVersion=h.Version,Kind=r.Kind,BusinessDate=r.BusinessDate,Evidence=r.Evidence.Trim(),
             Lines=JsonSerializer.Serialize(lines,Json),Amount=amount,OutputQuantity=output,Labor=labor,Utility=utility,Overhead=overhead,OutputInputQuantity=outputInput,OutputUnitOfMeasure=outputUnit,OutputProductId=r.OutputProductId,OutputWarehouseId=r.OutputWarehouseId,ReversesOperationId=r.ReversesOperationId,CreatedBy=actor.Subject,CreatedAt=clock.GetUtcNow()};db.Add(o);
@@ -118,8 +123,10 @@ public sealed class ProductionCostService(VatDbContext db,IProductionExecutionRe
             actual=original.PostedValue;wipDelta=-entry.Value;
             if(original.Kind is "Receipt" or "ByProduct"){
                 var receipt=await db.Set<ProductionStockMovement>().AsNoTracking().SingleAsync(x=>x.TenantId==actor.TenantId&&x.CompanyId==company&&x.OperationId==original.Id&&x.Kind=="Receipt",ct);
-                var m=new ProductionStockMovement{TenantId=actor.TenantId,CompanyId=company,Id=Guid.CreateVersion7(),SessionId=session,OperationId=o.Id,Kind="ReceiptReversal",WarehouseId=receipt.WarehouseId,ProductId=receipt.ProductId,Quantity=-receipt.Quantity,Value=-receipt.Value,OriginalIssueId=receipt.Id,BusinessDate=o.BusinessDate};
-                _=await ledger.Production(m,ct);db.Add(m);await Physical(m,ct);if(original.Kind=="Receipt")h.ReceivedQuantity-=receipt.Quantity;
+                var remaining=await OutputRemaining(actor,company,original,ct);if(o.OutputQuantity<=0||o.OutputQuantity>remaining.Quantity)throw new DomainException("production_reversal_quantity_invalid","Output correction quantity exceeds the unreversed original quantity.",409);
+                actual=o.OutputQuantity==remaining.Quantity?remaining.Value:decimal.Round(receipt.Value*o.OutputQuantity/receipt.Quantity,4,MidpointRounding.ToEven);wipDelta=actual;
+                var m=new ProductionStockMovement{TenantId=actor.TenantId,CompanyId=company,Id=Guid.CreateVersion7(),SessionId=session,OperationId=o.Id,Kind="ReceiptReversal",WarehouseId=receipt.WarehouseId,ProductId=receipt.ProductId,Quantity=-o.OutputQuantity,Value=-actual,OriginalIssueId=receipt.Id,BusinessDate=o.BusinessDate};
+                _=await ledger.Production(m,ct);db.Add(m);await Physical(m,ct);if(original.Kind=="Receipt")h.ReceivedQuantity-=o.OutputQuantity;
             }
             if(original.Kind=="Return")foreach(var returned in await db.Set<ProductionStockMovement>().AsNoTracking().Where(x=>x.TenantId==actor.TenantId&&x.CompanyId==company&&x.OperationId==original.Id&&x.Kind=="Return").OrderBy(x=>x.Id).ToArrayAsync(ct)){
                 var m=new ProductionStockMovement{TenantId=actor.TenantId,CompanyId=company,Id=Guid.CreateVersion7(),SessionId=session,OperationId=o.Id,Kind="ReturnReversal",WarehouseId=returned.WarehouseId,ProductId=returned.ProductId,Quantity=-returned.Quantity,Value=-returned.Value,OriginalIssueId=returned.Id,BusinessDate=o.BusinessDate};
@@ -163,8 +170,14 @@ public sealed class ProductionCostService(VatDbContext db,IProductionExecutionRe
     private async Task<ProductionCostOperation> ReversalSource(Actor actor,Guid company,Guid session,Guid originalId,DateOnly date,CancellationToken ct){
         var original=await Operation(actor,company,session,originalId,ct);
         if(original.State!="Posted"||original.Kind is not("Return" or "Conversion" or "Loss" or "Receipt" or "ByProduct")||original.BusinessDate>date)throw new DomainException("production_reversal_source_invalid","Reverse an earlier posted material return, conversion, loss or production output in this execution.",409);
-        if(await db.Set<ProductionCostOperation>().AnyAsync(x=>x.TenantId==actor.TenantId&&x.CompanyId==company&&x.ReversesOperationId==originalId&&x.State=="Posted",ct))throw new DomainException("production_already_reversed","This operation already has a posted reversal.",409);
+        if(original.Kind is not("Receipt" or "ByProduct")&&await db.Set<ProductionCostOperation>().AnyAsync(x=>x.TenantId==actor.TenantId&&x.CompanyId==company&&x.ReversesOperationId==originalId&&x.State=="Posted",ct))throw new DomainException("production_already_reversed","This operation already has a posted reversal.",409);
         return original;
+    }
+    private async Task<(decimal Quantity,decimal Value)> OutputRemaining(Actor actor,Guid company,ProductionCostOperation original,CancellationToken ct){
+        var receipt=await db.Set<ProductionStockMovement>().AsNoTracking().SingleAsync(x=>x.TenantId==actor.TenantId&&x.CompanyId==company&&x.OperationId==original.Id&&x.Kind=="Receipt",ct);
+        var reversed=await(from m in db.Set<ProductionStockMovement>().AsNoTracking() join o in db.Set<ProductionCostOperation>().AsNoTracking() on new{m.TenantId,m.CompanyId,Id=m.OperationId} equals new{o.TenantId,o.CompanyId,Id=o.Id} where m.TenantId==actor.TenantId&&m.CompanyId==company&&o.ReversesOperationId==original.Id&&o.State=="Posted"&&m.Kind=="ReceiptReversal" select new{m.Quantity,m.Value}).ToArrayAsync(ct);
+        var quantity=receipt.Quantity+reversed.Sum(x=>x.Quantity);var value=receipt.Value+reversed.Sum(x=>x.Value);
+        if(quantity<=0||value<0)throw new DomainException("production_already_reversed","This production output is already fully reversed.",409);return(quantity,value);
     }
     private static decimal Number(string s,int scale,bool positive=false){if(!decimal.TryParse(s,NumberStyles.AllowDecimalPoint,CultureInfo.InvariantCulture,out var v)||v<0||(positive&&v==0)||v>=(scale==6?1000000000000m:100000000000000000000m)||decimal.Round(v,scale)!=v)throw new DomainException("validation_failed","Require nonnegative decimal strings at quantity scale 6 / BDT scale 4.");return v;}
     private static void Open(ProductionCostSession h,int expected){if(h.State!="Open"||h.Version!=expected)throw new DomainException("version_conflict","Reload an open execution at the expected version.",409);}
