@@ -40,8 +40,8 @@ public sealed class ProductionCostService(VatDbContext db,IProductionExecutionRe
     public async Task<CommandOutcome> Create(Actor actor,Guid company,Guid session,CreateProductionOperationRequest r,string correlation,CancellationToken ct)
     {
         Require(actor,company,Permissions.ManufacturingRequest,Permissions.CostingManage);Guard.Text(r.Evidence,"Actual production/charge/variance evidence",1000);
-        if(r.BusinessDate==default||r.Kind is not("Issue" or "Return" or "Conversion" or "Receipt" or "ByProduct" or "Loss" or "Close" or "Reverse")||r.Lines is null||r.Lines.Count>100||r.Lines.Any(x=>x is null))throw new DomainException("validation_failed","Require a date, supported production operation and at most 100 actual material lines.");
-        await periods.RequireOpen(actor.TenantId,company,r.BusinessDate,ct);await CostingStore.LockScope(db,actor.TenantId,company,false,ct);var h=await Find(actor,company,session,ct);Open(h,r.ExpectedSessionVersion);
+        if(r.BusinessDate==default||r.Kind is not("Issue" or "Return" or "Conversion" or "Receipt" or "ByProduct" or "Loss" or "Close" or "Reopen" or "Reverse")||r.Lines is null||r.Lines.Count>100||r.Lines.Any(x=>x is null))throw new DomainException("validation_failed","Require a date, supported production operation and at most 100 actual material lines.");
+        await periods.RequireOpen(actor.TenantId,company,r.BusinessDate,ct);await CostingStore.LockScope(db,actor.TenantId,company,false,ct);var h=await Find(actor,company,session,ct);State(h,r.ExpectedSessionVersion,r.Kind=="Reopen"?"Closed":"Open");
         var source=Source(h);if(r.BusinessDate<source.Evidence.BusinessDate)throw new DomainException("production_date_invalid","Operation cannot predate the approved production order.");
         var lines=r.Lines.Select(x=>{
             var product=source.Evidence.Materials.SingleOrDefault(m=>m.Product.Id==x.ProductId)?.Product??throw new DomainException("production_material_scope","Require a BOM material.",404);
@@ -64,6 +64,7 @@ public sealed class ProductionCostService(VatDbContext db,IProductionExecutionRe
         if(r.Kind=="ByProduct"&&(output<=0||amount<=0||labor+utility+overhead!=0))throw new DomainException("validation_failed","By-product receipt requires a positive quantity and reviewed WIP value allocation.");
         if(r.Kind=="Loss"&&(amount<=0||output!=0||labor+utility+overhead!=0))throw new DomainException("validation_failed","WIP loss requires a positive reviewed loss amount only.");
         if(r.Kind=="Close"&&(amount!=0||output!=0||labor+utility+overhead!=0))throw new DomainException("validation_failed","Close carries no stock or charge amount.");
+        if(r.Kind=="Reopen"&&(amount!=0||output!=0||labor+utility+overhead!=0))throw new DomainException("validation_failed","Reopen carries no stock or charge amount.");
         if((r.Kind=="Reverse")!=(r.ReversesOperationId is not null))throw new DomainException("validation_failed","Only reversals must identify an original posted operation.");
         if(r.Kind=="Reverse"){
             if(amount!=0||labor+utility+overhead!=0)throw new DomainException("validation_failed","Reversal values come exclusively from the original posted source.");
@@ -83,7 +84,7 @@ public sealed class ProductionCostService(VatDbContext db,IProductionExecutionRe
         Require(actor,company,Permissions.ManufacturingApprove,Permissions.CostingApprove,Permissions.InventoryPost);
         if(!policy.Enabled)throw new DomainException("posting_disabled","Financial posting is disabled.",503);
         await periodStore.LockCompany(actor.TenantId,company,false,ct);await CostingStore.LockScope(db,actor.TenantId,company,false,ct);
-        var h=await Find(actor,company,session,ct);Open(h,r.ExpectedSessionVersion);var o=await Operation(actor,company,session,id,ct);
+        var h=await Find(actor,company,session,ct);var o=await Operation(actor,company,session,id,ct);State(h,r.ExpectedSessionVersion,o.Kind=="Reopen"?"Closed":"Open");
         if(o.State!="Draft"||o.Version!=r.ExpectedVersion||o.SessionVersion!=h.Version)throw new DomainException("version_conflict","Reload execution; this draft or WIP version is stale.",409);
         if(o.CreatedBy==actor.Subject)throw new DomainException("self_approval","A different user must approve actual production posting.",403);
         await periods.RequireOpen(actor.TenantId,company,o.BusinessDate,ct);var source=Source(h);await VerifyProducts(actor,company,source,ct);
@@ -139,6 +140,7 @@ public sealed class ProductionCostService(VatDbContext db,IProductionExecutionRe
             if(await db.Set<ProductionCostOperation>().AnyAsync(x=>x.TenantId==actor.TenantId&&x.CompanyId==company&&x.SessionId==session&&x.Id!=id&&x.State=="Draft",ct))throw new DomainException("production_pending_operations","Cancel or resolve other draft operations before closing.",409);
             h.State="Closed";
         }
+        if(o.Kind=="Reopen")h.State="Open";
         h.WipValue+=wipDelta;h.Version++;o.State="Posted";o.Version=2;o.ApprovedBy=actor.Subject;o.PostedAt=clock.GetUtcNow();o.PostedValue=actual;
         db.Add(new ProductionWipEntry{TenantId=actor.TenantId,CompanyId=company,SessionId=session,OperationId=id,SessionVersion=h.Version,Kind=o.Kind,Value=wipDelta,BusinessDate=o.BusinessDate});
         audit.Append(actor,company,id,"ProductionOperationPosted",correlation,2);events.Append(actor.TenantId,company,session,h.Version,nameof(ProductionCostPostedV1),correlation,new ProductionCostPostedV1(session,h.OrderId,id,o.Kind,h.Version,V(h.WipValue),Q(h.ReceivedQuantity)));
@@ -180,7 +182,7 @@ public sealed class ProductionCostService(VatDbContext db,IProductionExecutionRe
         if(quantity<=0||value<0)throw new DomainException("production_already_reversed","This production output is already fully reversed.",409);return(quantity,value);
     }
     private static decimal Number(string s,int scale,bool positive=false){if(!decimal.TryParse(s,NumberStyles.AllowDecimalPoint,CultureInfo.InvariantCulture,out var v)||v<0||(positive&&v==0)||v>=(scale==6?1000000000000m:100000000000000000000m)||decimal.Round(v,scale)!=v)throw new DomainException("validation_failed","Require nonnegative decimal strings at quantity scale 6 / BDT scale 4.");return v;}
-    private static void Open(ProductionCostSession h,int expected){if(h.State!="Open"||h.Version!=expected)throw new DomainException("version_conflict","Reload an open execution at the expected version.",409);}
+    private static void State(ProductionCostSession h,int expected,string state){if(h.State!=state||h.Version!=expected)throw new DomainException("version_conflict",$"Reload the {state.ToLowerInvariant()} execution at the expected version.",409);}
     private static string Hash(ProductionOrderSource s)=>Convert.ToHexString(SHA256.HashData(JsonSerializer.SerializeToUtf8Bytes(s,Json)));
     private static string Q(decimal x)=>x.ToString("0.000000",CultureInfo.InvariantCulture);private static string V(decimal x)=>x.ToString("0.0000",CultureInfo.InvariantCulture);
     private static void Page(int take){if(take is <1 or >100)throw new DomainException("validation_failed","Require take 1-100.");}

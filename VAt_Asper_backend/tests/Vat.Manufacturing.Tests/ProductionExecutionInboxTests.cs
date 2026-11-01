@@ -37,7 +37,11 @@ public sealed class ProductionExecutionInboxTests(ManufacturingApiFactory factor
             var close=Message(tenant,company,session,order,Guid.NewGuid(),new(session,order,Guid.NewGuid(),"Close",3,"0.0000","2.000000"));
             Assert.Equal("Processed",(await processor.Process(close,default)).Status);db.ChangeTracker.Clear();
             var checkpoint=await db.ExecutionCheckpoints.SingleAsync(x=>x.OrderId==order);Assert.Equal("Completed",checkpoint.ExecutionState);Assert.Equal(3,checkpoint.SessionVersion);
-            Assert.Equal("Completed",(await db.Orders.SingleAsync(x=>x.Id==order)).State);Assert.Equal(3,await db.ExecutionInbox.CountAsync(x=>x.OrderId==order));return 0;
+            var reopen=Message(tenant,company,session,order,Guid.NewGuid(),new(session,order,Guid.NewGuid(),"Reopen",4,"0.0000","2.000000"));
+            Assert.Equal("Processed",(await processor.Process(reopen,default)).Status);db.ChangeTracker.Clear();checkpoint=await db.ExecutionCheckpoints.SingleAsync(x=>x.OrderId==order);Assert.Equal("Running",checkpoint.ExecutionState);Assert.Equal(4,checkpoint.SessionVersion);
+            var reclose=Message(tenant,company,session,order,Guid.NewGuid(),new(session,order,Guid.NewGuid(),"Close",5,"0.0000","2.000000"));
+            Assert.Equal("Processed",(await processor.Process(reclose,default)).Status);db.ChangeTracker.Clear();
+            Assert.Equal("Completed",(await db.Orders.SingleAsync(x=>x.Id==order)).State);Assert.Equal(5,await db.ExecutionInbox.CountAsync(x=>x.OrderId==order));return 0;
         });
     }
     [Fact]

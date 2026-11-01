@@ -31,7 +31,7 @@ public sealed class ProductionExecutionInboxProcessor(ManufacturingDbContext db,
             else if (error is null && envelope!.EventType == nameof(ProductionCostPostedV1)) posted = envelope.Payload.Deserialize<ProductionCostPostedV1>(Json);
             else if (error is null) return new("Ignored");
             if (error is null && accepted is not null && (accepted.SessionId != envelope!.AggregateId || accepted.OrderId == Guid.Empty || accepted.SourceSha256.Length != 64)) error = "invalid_execution_payload";
-            if (error is null && posted is not null && (posted.SessionId != envelope!.AggregateId || posted.OrderId == Guid.Empty || posted.OperationId == Guid.Empty || posted.SessionVersion < 1 || posted.Kind is not ("Issue" or "Return" or "Conversion" or "Receipt" or "ByProduct" or "Loss" or "Close" or "Reverse") || !Exact(posted.WipValue,4) || !Exact(posted.ReceivedQuantity,6))) error = "invalid_execution_payload";
+            if (error is null && posted is not null && (posted.SessionId != envelope!.AggregateId || posted.OrderId == Guid.Empty || posted.OperationId == Guid.Empty || posted.SessionVersion < 1 || posted.Kind is not ("Issue" or "Return" or "Conversion" or "Receipt" or "ByProduct" or "Loss" or "Close" or "Reopen" or "Reverse") || !Exact(posted.WipValue,4) || !Exact(posted.ReceivedQuantity,6))) error = "invalid_execution_payload";
         }
         catch (JsonException) { error = "invalid_json"; }
 

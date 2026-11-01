@@ -43,7 +43,7 @@ internal static class ProductionCostModel
         });
         model.Entity<ProductionCostOperation>(b=>{
             b.ToTable("production_cost_operations","inventory",t=>{
-                t.HasCheckConstraint("ck_production_operation_kind","\"Kind\" IN ('Issue','Return','Conversion','Receipt','ByProduct','Loss','Close','Reverse')");
+                t.HasCheckConstraint("ck_production_operation_kind","\"Kind\" IN ('Issue','Return','Conversion','Receipt','ByProduct','Loss','Close','Reopen','Reverse')");
                 t.HasCheckConstraint("ck_production_operation_reversal","(\"Kind\"='Reverse')=(\"ReversesOperationId\" IS NOT NULL)");
                 t.HasCheckConstraint("ck_production_operation_state","(\"State\"='Draft' AND \"Version\"=1 AND \"ApprovedBy\" IS NULL AND \"PostedAt\" IS NULL AND \"PostedValue\"=0) OR (\"State\"='Cancelled' AND \"Version\"=2 AND \"ApprovedBy\" IS NULL AND \"PostedAt\" IS NULL AND \"PostedValue\"=0) OR (\"State\"='Posted' AND \"Version\"=2 AND \"ApprovedBy\" IS NOT NULL AND \"ApprovedBy\"<>\"CreatedBy\" AND \"PostedAt\" IS NOT NULL)");
                 t.HasCheckConstraint("ck_production_operation_amounts","\"Amount\">=0 AND \"OutputQuantity\">=0 AND \"PostedValue\">=0 AND \"Labor\">=0 AND \"Utility\">=0 AND \"Overhead\">=0");

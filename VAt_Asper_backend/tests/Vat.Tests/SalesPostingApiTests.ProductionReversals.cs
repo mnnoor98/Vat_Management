@@ -17,6 +17,32 @@ public sealed partial class SalesPostingApiTests
     [Theory]
     [InlineData("FIFO")]
     [InlineData("WEIGHTED_AVERAGE")]
+    public async Task Closed_production_requires_reviewed_reopen_before_correction_and_reclose(string method)
+    {
+        var s=await Setup();await ActivateCosting(s,method);
+        var fg=await Created<ProductResponse>(s.Maker,$"{s.Root}/products",new CreateProductRequest("REOPEN-FG","Reopen output","PCS","TEST-DOMESTIC"));
+        var purchase=await Approve(s,lines:[new PurchaseLineInput("ITEM","Raw",10,100)]);var plan=await Prepare(s,purchase.Id);await ApproveLanded(s,plan,"55.0000");
+        Assert.Equal(HttpStatusCode.OK,(await Post(s.Checker,$"{s.Purchase(purchase.Id)}/posting-plans/{plan.Id}/post",new TransitionRequest(4))).StatusCode);
+        var evidence=new ProductionOrderEvidence(Guid.NewGuid(),1,3,new string('D',64),s.Warehouse,"Main warehouse",new(2026,10,23),new(fg.Id,"REOPEN-FG","PCS"),10,10,[new(new(s.Product,"ITEM","KG"),8,0)]);
+        var hash=Convert.ToHexString(System.Security.Cryptography.SHA256.HashData(System.Text.Json.JsonSerializer.SerializeToUtf8Bytes(evidence,new System.Text.Json.JsonSerializerOptions(System.Text.Json.JsonSerializerDefaults.Web))));
+        var source=new ProductionOrderSource(s.Tenant,s.Company,Guid.NewGuid(),3,"Approved","REOPEN-CORRECTION","owner-maker","owner-checker",hash,evidence);ProductionSessionView head;
+        using(var host=factory.WithWebHostBuilder(b=>b.ConfigureTestServices(services=>services.AddSingleton<IProductionExecutionReferences>(new ApprovedProduction(source))))){using var client=host.CreateClient();client.DefaultRequestHeaders.Authorization=s.Maker.DefaultRequestHeaders.Authorization;head=(await (await Post(client,$"{s.Root}/inventory/production-executions",new ImportProductionRequest(source.OrderId))).Content.ReadFromJsonAsync<ProductionSessionView>())!;}
+        var issue=await ProductionDraft(s,head.Id,"Issue",[new(s.Warehouse,s.Product,"8")]);await PostProduction(s,head.Id,issue);
+        var receipt=await ProductionDraft(s,head.Id,"Receipt",amount:"880",quantity:"4");await PostProduction(s,head.Id,receipt);
+        var close=await ProductionDraft(s,head.Id,"Close");await PostProduction(s,head.Id,close);
+        var root=$"{s.Root}/inventory/production-executions/{head.Id}";head=(await s.Maker.GetFromJsonAsync<ProductionSessionView>(root))!;Assert.Equal("Closed",head.State);
+        Assert.Equal(HttpStatusCode.Conflict,(await Post(s.Maker,$"{root}/operations",new CreateProductionOperationRequest(head.Version,"Reverse",new(2026,10,24),"Cannot bypass reopening",[],OutputQuantity:"1",ReversesOperationId:receipt.Id))).StatusCode);
+        var reopen=await ProductionDraft(s,head.Id,"Reopen");Assert.Equal(HttpStatusCode.Forbidden,(await Post(s.Maker,$"{root}/operations/{reopen.Id}/approve",new ApproveProductionOperationRequest(1,head.Version))).StatusCode);await PostProduction(s,head.Id,reopen);
+        var correction=await ProductionDraft(s,head.Id,"Reverse",quantity:"1",reverses:receipt.Id);await PostProduction(s,head.Id,correction);
+        var replacement=await ProductionDraft(s,head.Id,"Receipt",amount:"220",quantity:"1");await PostProduction(s,head.Id,replacement);
+        var reclose=await ProductionDraft(s,head.Id,"Close");await PostProduction(s,head.Id,reclose);
+        head=(await s.Maker.GetFromJsonAsync<ProductionSessionView>(root))!;Assert.Equal("Closed",head.State);Assert.Equal("0.0000",head.WipValue);Assert.Equal("4.000000",head.ReceivedQuantity);
+        await factory.Inspect(async db=>{Assert.Equal(1,await db.Set<ProductionCostOperation>().CountAsync(x=>x.SessionId==head.Id&&x.Kind=="Reopen"&&x.State=="Posted"));Assert.Equal(2,await db.Set<ProductionCostOperation>().CountAsync(x=>x.SessionId==head.Id&&x.Kind=="Close"&&x.State=="Posted"));return 0;});
+    }
+
+    [Theory]
+    [InlineData("FIFO")]
+    [InlineData("WEIGHTED_AVERAGE")]
     public async Task Production_output_allows_cumulative_partial_corrections_at_original_cost(string method)
     {
         var s=await Setup();await ActivateCosting(s,method);

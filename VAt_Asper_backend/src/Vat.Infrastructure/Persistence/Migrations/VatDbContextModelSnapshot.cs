@@ -2319,7 +2319,7 @@ namespace Vat.Infrastructure.Persistence.Migrations
                         {
                             t.HasCheckConstraint("ck_production_operation_amounts", "\"Amount\">=0 AND \"OutputQuantity\">=0 AND \"PostedValue\">=0 AND \"Labor\">=0 AND \"Utility\">=0 AND \"Overhead\">=0");
 
-                            t.HasCheckConstraint("ck_production_operation_kind", "\"Kind\" IN ('Issue','Return','Conversion','Receipt','ByProduct','Loss','Close','Reverse')");
+                            t.HasCheckConstraint("ck_production_operation_kind", "\"Kind\" IN ('Issue','Return','Conversion','Receipt','ByProduct','Loss','Close','Reopen','Reverse')");
 
                             t.HasCheckConstraint("ck_production_operation_reversal", "(\"Kind\"='Reverse')=(\"ReversesOperationId\" IS NOT NULL)");
 
